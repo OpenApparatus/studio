@@ -66,17 +66,13 @@ public sealed class LegendBar : Control
         double cardY = (size.Height - cardH) * 0.5;
         var cardRect = new Rect(cardX, cardY, cardW, cardH);
 
-        // Drop shadow — three offset semi-transparent rectangles fake a soft
-        // blur. DrawingContext can't render Avalonia's BoxShadow directly, so
-        // approximate it with stacked tints.
-        for (int s = 4; s >= 1; s--)
-        {
-            byte alpha = (byte)(28 - s * 4); // 24, 20, 16, 12
-            var shadowRect = new Rect(cardX - s, cardY + s + 2, cardW + s * 2, cardH + s);
-            ctx.DrawRectangle(
-                new SolidColorBrush(Color.FromArgb(alpha, 0, 0, 0)),
-                null, shadowRect, cornerRadius + s, cornerRadius + s);
-        }
+        // Drop shadow — a single soft offset rectangle. Anything more layered
+        // reads as too heavy on the light bar background.
+        ctx.DrawRectangle(
+            new SolidColorBrush(Color.FromArgb(18, 0, 0, 0)),
+            null,
+            new Rect(cardX, cardY + 2, cardW, cardH),
+            cornerRadius, cornerRadius);
 
         // Card.
         ctx.DrawRectangle(
