@@ -59,7 +59,11 @@ public sealed class LegendBar : Control
             if (i < entries.Length - 1) rowWidth += cellSpacing;
         }
 
-        double y = size.Height * 0.5;
+        // Shift the row down a few px: the door symbol extends ~30 px above
+        // its hinge point but only ~4 px below, so a perfect mathematical
+        // mid-line reads as visually too high. Push the baseline down so the
+        // optical centre of the row sits near the bar's centre.
+        double y = size.Height * 0.5 + 8;
         double x = System.Math.Max(0, (size.Width - rowWidth) * 0.5);
         for (int i = 0; i < entries.Length; i++)
         {
