@@ -496,15 +496,17 @@ public partial class MainWindowViewModel : ViewModelBase
             var mtlPath = System.IO.Path.ChangeExtension(objPath, ".mtl");
             var mtlFileName = System.IO.Path.GetFileName(mtlPath);
 
+            IReadOnlyList<ObjExporter.MaterialSlot> slots;
             await using (var stream = await file.OpenWriteAsync())
             using (var writer = new StreamWriter(stream))
             {
-                ObjExporter.Export(writer, CurrentEnvironment, WallThickness, WallHeight, mtlFileName);
+                slots = ObjExporter.Export(
+                    writer, CurrentEnvironment, WallThickness, WallHeight, mtlFileName);
             }
 
             using (var mtlWriter = new StreamWriter(mtlPath))
             {
-                ObjExporter.WriteMtl(mtlWriter);
+                ObjExporter.WriteMtl(mtlWriter, slots);
             }
 
             StatusMessage = $"Exported OBJ + MTL → {file.Name}";

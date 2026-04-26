@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using OpenApparatus.Geometry;
@@ -6,23 +7,26 @@ using OpenApparatus.Topology;
 namespace OpenApparatus.Studio.Services;
 
 /// <summary>
-/// Writes a generated MultiRoomEnvironment's geometry to a Wavefront .obj file. Each room
-/// becomes one OBJ object ('o room_&lt;id&gt;'), with one named group per submesh
-/// (g floor / g walls / g ceiling) tagged with a `usemtl` directive so importers like
-/// Unity create one material slot per submesh. A sidecar .mtl file with placeholder
-/// materials can be written alongside.
+/// Writes a generated MultiRoomEnvironment's geometry to a Wavefront .obj file. To
+/// guarantee Unity (and other importers that fold by material) creates distinct
+/// floor/walls/ceiling meshes for every room, each (room, submesh) combination is
+/// written as its own OBJ object with a unique vertex block and a unique material
+/// name. Sidecar .mtl entries reference the same default colors per type, so the
+/// rooms look consistent until the user overrides individual materials.
 /// </summary>
 public static class ObjExporter
 {
-    public const string FloorMaterialName = "OpenApparatus_Floor";
-    public const string WallsMaterialName = "OpenApparatus_Walls";
-    public const string CeilingMaterialName = "OpenApparatus_Ceiling";
+    public const string FloorMaterialPrefix = "OpenApparatus_Floor";
+    public const string WallsMaterialPrefix = "OpenApparatus_Walls";
+    public const string CeilingMaterialPrefix = "OpenApparatus_Ceiling";
 
     /// <summary>
     /// Writes OBJ geometry. If <paramref name="mtlLibFileName"/> is non-null the file
-    /// emits an `mtllib` reference at the top so importers pick up the sidecar MTL.
+    /// emits an `mtllib` reference at the top so importers pick up the sidecar MTL,
+    /// and the returned list is the ordered set of material names that need entries
+    /// in the .mtl file. Pass it to <see cref="WriteMtl"/>.
     /// </summary>
-    public static void Export(
+    public static IReadOnlyList<MaterialSlot> Export(
         TextWriter w,
         MultiRoomEnvironment plan,
         float wallThickness,
@@ -37,65 +41,86 @@ public static class ObjExporter
             w.WriteLine($"mtllib {mtlLibFileName}");
         w.WriteLine();
 
-        // OBJ vertex indices are 1-based and global to the file.
+        var slots = new List<MaterialSlot>();
+
+        // OBJ vertex indices are 1-based and global. We re-emit only the verts each
+        // sub-object needs so importers that key by `o` get clean per-object meshes
+        // even when they don't honor `usemtl`-based subset splitting.
         int vertexBase = 1;
 
         foreach (var assembled in roomMeshes)
         {
             var mesh = assembled.Mesh;
-            w.WriteLine($"o room_{assembled.Room.Id}");
-
-            for (int i = 0; i < mesh.VertexCount; i++)
-            {
-                var v = mesh.Vertices[i];
-                w.WriteLine(string.Format(CultureInfo.InvariantCulture,
-                    "v {0:F6} {1:F6} {2:F6}", v.X, v.Y, v.Z));
-            }
-            for (int i = 0; i < mesh.VertexCount; i++)
-            {
-                var n = mesh.Normals[i];
-                w.WriteLine(string.Format(CultureInfo.InvariantCulture,
-                    "vn {0:F6} {1:F6} {2:F6}", n.X, n.Y, n.Z));
-            }
-            for (int i = 0; i < mesh.VertexCount; i++)
-            {
-                var u = mesh.Uv0[i];
-                w.WriteLine(string.Format(CultureInfo.InvariantCulture,
-                    "vt {0:F6} {1:F6}", u.X, u.Y));
-            }
+            int roomId = assembled.Room.Id;
 
             for (int s = 0; s < mesh.SubmeshCount; s++)
             {
                 var tris = mesh.SubmeshIndices[s];
                 if (tris.Length == 0) continue;
-                w.WriteLine($"g {SubmeshGroupName(s)}");
-                w.WriteLine($"usemtl {SubmeshMaterialName(s)}");
+
+                string objectName = $"room_{roomId}_{SubmeshShortName(s)}";
+                string materialName = $"{SubmeshMaterialPrefix(s)}_Room{roomId}";
+                slots.Add(new MaterialSlot(materialName, SubmeshDefaultColor(s)));
+
+                w.WriteLine($"o {objectName}");
+                w.WriteLine($"usemtl {materialName}");
+
+                // Compact the verts: only those referenced by this submesh's faces.
+                // Track insertion order separately — Dictionary key iteration order is
+                // not guaranteed and we need normals/UVs to line up with vertices.
+                var localIndex = new Dictionary<int, int>(tris.Length);
+                var orderedGlobals = new List<int>();
+                foreach (int globalIdx in tris)
+                {
+                    if (localIndex.ContainsKey(globalIdx)) continue;
+                    localIndex[globalIdx] = orderedGlobals.Count;
+                    orderedGlobals.Add(globalIdx);
+                }
+                foreach (int globalIdx in orderedGlobals)
+                {
+                    var v = mesh.Vertices[globalIdx];
+                    w.WriteLine(string.Format(CultureInfo.InvariantCulture,
+                        "v {0:F6} {1:F6} {2:F6}", v.X, v.Y, v.Z));
+                }
+                foreach (int globalIdx in orderedGlobals)
+                {
+                    var n = mesh.Normals[globalIdx];
+                    w.WriteLine(string.Format(CultureInfo.InvariantCulture,
+                        "vn {0:F6} {1:F6} {2:F6}", n.X, n.Y, n.Z));
+                }
+                foreach (int globalIdx in orderedGlobals)
+                {
+                    var u = mesh.Uv0[globalIdx];
+                    w.WriteLine(string.Format(CultureInfo.InvariantCulture,
+                        "vt {0:F6} {1:F6}", u.X, u.Y));
+                }
+
                 for (int t = 0; t < tris.Length; t += 3)
                 {
-                    int a = tris[t + 0] + vertexBase;
-                    int b = tris[t + 1] + vertexBase;
-                    int c = tris[t + 2] + vertexBase;
+                    int a = localIndex[tris[t + 0]] + vertexBase;
+                    int b = localIndex[tris[t + 1]] + vertexBase;
+                    int c = localIndex[tris[t + 2]] + vertexBase;
                     w.WriteLine($"f {a}/{a}/{a} {b}/{b}/{b} {c}/{c}/{c}");
                 }
-            }
 
-            vertexBase += mesh.VertexCount;
-            w.WriteLine();
+                vertexBase += orderedGlobals.Count;
+                w.WriteLine();
+            }
         }
+
+        return slots;
     }
 
     /// <summary>
-    /// Writes the sidecar .mtl file with three placeholder materials. Users can
-    /// freely override these in Unity by re-pointing the material slots — the
-    /// distinct names ensure Unity creates separate slots on import.
+    /// Writes the sidecar .mtl file. Pass the slot list returned by <see cref="Export"/>
+    /// so every material referenced by the OBJ is defined.
     /// </summary>
-    public static void WriteMtl(TextWriter w)
+    public static void WriteMtl(TextWriter w, IReadOnlyList<MaterialSlot> slots)
     {
         w.WriteLine("# OpenApparatus material library");
         w.WriteLine();
-        WriteMaterial(w, FloorMaterialName,   kd: (0.55f, 0.42f, 0.30f)); // warm wood
-        WriteMaterial(w, WallsMaterialName,   kd: (0.78f, 0.78f, 0.80f)); // light gray
-        WriteMaterial(w, CeilingMaterialName, kd: (0.92f, 0.92f, 0.90f)); // off-white
+        foreach (var slot in slots)
+            WriteMaterial(w, slot.Name, slot.Kd);
     }
 
     static void WriteMaterial(TextWriter w, string name, (float r, float g, float b) kd)
@@ -111,19 +136,29 @@ public static class ObjExporter
         w.WriteLine();
     }
 
-    static string SubmeshGroupName(int submeshIndex) => submeshIndex switch
+    static string SubmeshShortName(int submeshIndex) => submeshIndex switch
     {
         SubmeshIndex.Floor => "floor",
         SubmeshIndex.Walls => "walls",
         SubmeshIndex.Ceiling => "ceiling",
-        _ => $"submesh_{submeshIndex}",
+        _ => $"submesh{submeshIndex}",
     };
 
-    static string SubmeshMaterialName(int submeshIndex) => submeshIndex switch
+    static string SubmeshMaterialPrefix(int submeshIndex) => submeshIndex switch
     {
-        SubmeshIndex.Floor => FloorMaterialName,
-        SubmeshIndex.Walls => WallsMaterialName,
-        SubmeshIndex.Ceiling => CeilingMaterialName,
+        SubmeshIndex.Floor => FloorMaterialPrefix,
+        SubmeshIndex.Walls => WallsMaterialPrefix,
+        SubmeshIndex.Ceiling => CeilingMaterialPrefix,
         _ => $"OpenApparatus_Submesh{submeshIndex}",
     };
+
+    static (float r, float g, float b) SubmeshDefaultColor(int submeshIndex) => submeshIndex switch
+    {
+        SubmeshIndex.Floor   => (0.55f, 0.42f, 0.30f), // warm wood
+        SubmeshIndex.Walls   => (0.78f, 0.78f, 0.80f), // light gray
+        SubmeshIndex.Ceiling => (0.92f, 0.92f, 0.90f), // off-white
+        _                    => (0.7f,  0.7f,  0.7f),
+    };
+
+    public readonly record struct MaterialSlot(string Name, (float r, float g, float b) Kd);
 }
