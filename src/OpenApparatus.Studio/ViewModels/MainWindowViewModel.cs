@@ -506,20 +506,35 @@ public partial class MainWindowViewModel : ViewModelBase
             var mtlPath = System.IO.Path.ChangeExtension(objPath, ".mtl");
             var mtlFileName = System.IO.Path.GetFileName(mtlPath);
 
+            // Combined .obj: one file with every room as its own group/object.
+            // Useful in Blender / Maya which honor `o`. Unity flattens it, so
+            // we also write per-room .obj files alongside.
             IReadOnlyList<ObjExporter.MaterialSlot> slots;
             await using (var stream = await file.OpenWriteAsync())
             using (var writer = new StreamWriter(stream))
             {
-                slots = ObjExporter.Export(
+                slots = ObjExporter.ExportCombined(
                     writer, CurrentEnvironment, WallThickness, WallHeight, mtlFileName);
             }
+
+            // Per-room .obj files in <stem>_rooms/ — one OBJ model per room is
+            // the only reliable way to get child GameObjects out of Unity's
+            // built-in OBJ importer. Each per-room file references the same
+            // sidecar .mtl two directories up, so the relative path resolves
+            // when both are dragged into the same Unity project folder.
+            var folder = System.IO.Path.GetDirectoryName(objPath) ?? ".";
+            var stem = System.IO.Path.GetFileNameWithoutExtension(objPath);
+            var roomsFolder = System.IO.Path.Combine(folder, $"{stem}_rooms");
+            ObjExporter.ExportPerRoom(
+                roomsFolder, stem, CurrentEnvironment, WallThickness, WallHeight,
+                $"../{mtlFileName}");
 
             using (var mtlWriter = new StreamWriter(mtlPath))
             {
                 ObjExporter.WriteMtl(mtlWriter, slots);
             }
 
-            StatusMessage = $"Exported OBJ + MTL → {file.Name}";
+            StatusMessage = $"Exported {file.Name} + per-room files → {stem}_rooms/";
         }
         catch (Exception ex)
         {
