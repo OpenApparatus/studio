@@ -56,9 +56,9 @@
 
                     <TextBlock Classes="label" Text="Floor dimensions"/>
                     <StackPanel Classes="section">
-                        <TextBlock Text="Total width (cells)"/>
+                        <TextBlock Text="Total width (tiles)"/>
                         <NumericUpDown Value="{Binding FloorWidthCells}" Minimum="1" Maximum="32" FormatString="0"/>
-                        <TextBlock Text="Total length (cells)"/>
+                        <TextBlock Text="Total length (tiles)"/>
                         <NumericUpDown Value="{Binding FloorLengthCells}" Minimum="1" Maximum="32" FormatString="0"/>
                         <TextBlock Text="Tile size (m)"/>
                         <NumericUpDown Value="{Binding TileSize}" Minimum="0.5" Maximum="10" Increment="0.5" FormatString="0.0"/>
@@ -105,7 +105,7 @@
             </ScrollViewer>
 
             <Border Grid.Column="1" Background="#202028">
-                <views:FloorPlanView Plan="{Binding CurrentPlan}"
+                <views:MultiRoomEnvironmentView Plan="{Binding CurrentEnvironment}"
                                      WallThickness="{Binding WallThickness}"
                                      Margin="8"/>
             </Border>

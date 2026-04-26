@@ -6,27 +6,27 @@ using OpenApparatus.Topology;
 namespace OpenApparatus.Studio.Services;
 
 /// <summary>
-/// Writes a generated FloorPlan's geometry to a Wavefront .obj file. Each cell
-/// becomes one OBJ object ('o cell_<id>'), with one named group per submesh
+/// Writes a generated MultiRoomEnvironment's geometry to a Wavefront .obj file. Each room
+/// becomes one OBJ object ('o room_<id>'), with one named group per submesh
 /// (g floor / g walls / g ceiling) so other tools can target them by name.
 /// </summary>
 public static class ObjExporter
 {
-    public static void Export(TextWriter w, FloorPlan plan, float wallThickness, float wallHeight)
+    public static void Export(TextWriter w, MultiRoomEnvironment plan, float wallThickness, float wallHeight)
     {
-        var cellMeshes = new FloorPlanMeshAssembler().Assemble(plan, wallThickness, wallHeight);
+        var roomMeshes = new MultiRoomEnvironmentMeshAssembler().Assemble(plan, wallThickness, wallHeight);
 
         w.WriteLine("# OpenApparatus floor-plan export");
-        w.WriteLine($"# {cellMeshes.Count} cells");
+        w.WriteLine($"# {roomMeshes.Count} rooms");
         w.WriteLine();
 
         // OBJ vertex indices are 1-based and global to the file.
         int vertexBase = 1;
 
-        foreach (var assembled in cellMeshes)
+        foreach (var assembled in roomMeshes)
         {
             var mesh = assembled.Mesh;
-            w.WriteLine($"o cell_{assembled.Cell.Id}");
+            w.WriteLine($"o room_{assembled.Room.Id}");
 
             for (int i = 0; i < mesh.VertexCount; i++)
             {

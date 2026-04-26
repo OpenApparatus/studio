@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace OpenApparatus.Studio.Services;
 
-public static class FloorPlanJsonSerializer
+public static class MultiRoomEnvironmentJsonSerializer
 {
     static readonly JsonSerializerOptions Options = new()
     {
@@ -10,10 +10,10 @@ public static class FloorPlanJsonSerializer
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
-    public static string Serialize(FloorPlanSpec spec) =>
+    public static string Serialize(MultiRoomEnvironmentSpec spec) =>
         JsonSerializer.Serialize(spec, Options);
 
-    public static FloorPlanSpec Deserialize(string json) =>
-        JsonSerializer.Deserialize<FloorPlanSpec>(json, Options)
+    public static MultiRoomEnvironmentSpec Deserialize(string json) =>
+        JsonSerializer.Deserialize<MultiRoomEnvironmentSpec>(json, Options)
             ?? throw new System.IO.InvalidDataException("Empty or invalid JSON.");
 }

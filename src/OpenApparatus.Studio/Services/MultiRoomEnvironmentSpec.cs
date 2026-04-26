@@ -6,10 +6,10 @@ namespace OpenApparatus.Studio.Services;
 /// <summary>
 /// Plain-data record of all generator/assigner parameters needed to reproduce a
 /// floor plan. This is the on-disk format for .floorplan.json files — it does not
-/// include the materialized FloorPlan, since that's regenerated deterministically
+/// include the materialized MultiRoomEnvironment, since that's regenerated deterministically
 /// from these inputs.
 /// </summary>
-public sealed class FloorPlanSpec
+public sealed class MultiRoomEnvironmentSpec
 {
     public int SchemaVersion { get; set; } = 1;
     public int FloorWidthCells { get; set; }
@@ -25,7 +25,7 @@ public sealed class FloorPlanSpec
     public float DoorWidth { get; set; }
     public float DoorHeight { get; set; }
 
-    public static FloorPlanSpec From(MainWindowViewModel vm) => new()
+    public static MultiRoomEnvironmentSpec From(MainWindowViewModel vm) => new()
     {
         SchemaVersion = 1,
         FloorWidthCells = vm.FloorWidthCells,

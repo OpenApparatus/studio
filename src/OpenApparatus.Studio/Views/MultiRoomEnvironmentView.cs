@@ -9,7 +9,7 @@ using OpenApparatus.Topology;
 namespace OpenApparatus.Studio.Views;
 
 /// <summary>
-/// A 2D top-down renderer for a <see cref="FloorPlan"/>. Cells are drawn as
+/// A 2D top-down renderer for a <see cref="MultiRoomEnvironment"/>. Rooms are drawn as
 /// filled polygons; walls (closed boundaries) as solid lines; doorways as
 /// gaps in the wall lines; open boundaries are not drawn.
 ///
@@ -18,15 +18,15 @@ namespace OpenApparatus.Studio.Views;
 /// Avalonia's screen-space Y growing downward, we flip it for cartographic
 /// readability).
 /// </summary>
-public class FloorPlanView : Control
+public class MultiRoomEnvironmentView : Control
 {
-    public static readonly StyledProperty<FloorPlan?> PlanProperty =
-        AvaloniaProperty.Register<FloorPlanView, FloorPlan?>(nameof(Plan));
+    public static readonly StyledProperty<MultiRoomEnvironment?> PlanProperty =
+        AvaloniaProperty.Register<MultiRoomEnvironmentView, MultiRoomEnvironment?>(nameof(Plan));
 
     public static readonly StyledProperty<float> WallThicknessProperty =
-        AvaloniaProperty.Register<FloorPlanView, float>(nameof(WallThickness), defaultValue: 0.2f);
+        AvaloniaProperty.Register<MultiRoomEnvironmentView, float>(nameof(WallThickness), defaultValue: 0.2f);
 
-    public FloorPlan? Plan
+    public MultiRoomEnvironment? Plan
     {
         get => GetValue(PlanProperty);
         set => SetValue(PlanProperty, value);
@@ -38,9 +38,9 @@ public class FloorPlanView : Control
         set => SetValue(WallThicknessProperty, value);
     }
 
-    static FloorPlanView()
+    static MultiRoomEnvironmentView()
     {
-        AffectsRender<FloorPlanView>(PlanProperty, WallThicknessProperty);
+        AffectsRender<MultiRoomEnvironmentView>(PlanProperty, WallThicknessProperty);
     }
 
     public override void Render(DrawingContext ctx)
@@ -70,17 +70,17 @@ public class FloorPlanView : Control
             offsetX + (p.X - bounds.Min.X) * scale,
             size.Height - (offsetY + (p.Y - bounds.Min.Y) * scale));
 
-        // Draw each cell as a filled polygon.
+        // Draw each room as a filled polygon.
         var cellFill = new SolidColorBrush(Color.FromRgb(245, 245, 248));
         var rectangleFill = new SolidColorBrush(Color.FromRgb(225, 232, 245));
-        foreach (var cell in Plan.Cells)
+        foreach (var room in Plan.Rooms)
         {
-            var fill = cell.RoomType == RoomType.Rectangle ? rectangleFill : cellFill;
-            DrawCellInterior(ctx, cell, WorldToScreen, fill);
+            var fill = room.RoomType == RoomType.Rectangle ? rectangleFill : cellFill;
+            DrawCellInterior(ctx, room, WorldToScreen, fill);
         }
 
         // Draw walls / doors per adjacency. Doors use a vivid orange that
-        // contrasts both with the cell fills (gray / pale blue) and the black
+        // contrasts both with the room fills (gray / pale blue) and the black
         // wall lines, plus a thicker stroke so they read as openings clearly.
         var wallPen = new Pen(Brushes.Black, 2.0);
         var doorPen = new Pen(new SolidColorBrush(Color.FromRgb(224, 96, 16)), 5.0)
@@ -103,21 +103,21 @@ public class FloorPlanView : Control
             }
         }
 
-        // Cell id labels.
+        // Room id labels.
         var labelBrush = new SolidColorBrush(Color.FromRgb(80, 80, 80));
         var typeface = new Typeface("Inter");
-        foreach (var cell in Plan.Cells)
+        foreach (var room in Plan.Rooms)
         {
-            var c = WorldToScreen(cell.GetWorldBounds().Center);
-            var text = new FormattedText(cell.Id.ToString(), System.Globalization.CultureInfo.InvariantCulture,
+            var c = WorldToScreen(room.GetWorldBounds().Center);
+            var text = new FormattedText(room.Id.ToString(), System.Globalization.CultureInfo.InvariantCulture,
                 FlowDirection.LeftToRight, typeface, 12, labelBrush);
             ctx.DrawText(text, new Point(c.X - text.Width * 0.5, c.Y - text.Height * 0.5));
         }
     }
 
-    static void DrawCellInterior(DrawingContext ctx, Cell cell, Func<Vector2, Point> toScreen, IBrush fill)
+    static void DrawCellInterior(DrawingContext ctx, Room room, Func<Vector2, Point> toScreen, IBrush fill)
     {
-        var outline = cell.GetWorldOutline();
+        var outline = room.GetWorldOutline();
         if (outline.Count == 0) return;
         var geo = new StreamGeometry();
         using (var sgc = geo.Open())

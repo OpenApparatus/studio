@@ -41,7 +41,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] float _doorWidth = 1.2f;
     [ObservableProperty] float _doorHeight = 2.2f;
 
-    [ObservableProperty] FloorPlan? _currentPlan;
+    [ObservableProperty] MultiRoomEnvironment? _currentEnvironment;
     [ObservableProperty] string _statusMessage = "Ready.";
 
     /// <summary>Backing list for the orientation ComboBox.</summary>
@@ -83,13 +83,13 @@ public partial class MainWindowViewModel : ViewModelBase
                     _ => null,
                 },
             }.Assign(plan, new SeededRandom(Seed));
-            CurrentPlan = plan;
-            StatusMessage = $"Generated {plan.Cells.Count} cells, {plan.Adjacencies.Count} adjacencies (seed {Seed}).";
+            CurrentEnvironment = plan;
+            StatusMessage = $"Generated {plan.Rooms.Count} rooms, {plan.Adjacencies.Count} adjacencies (seed {Seed}).";
         }
         catch (Exception ex)
         {
             StatusMessage = $"Generation failed: {ex.Message}";
-            CurrentPlan = null;
+            CurrentEnvironment = null;
         }
     }
 
@@ -108,14 +108,14 @@ public partial class MainWindowViewModel : ViewModelBase
             Title = "Save floor plan parameters",
             SuggestedFileName = $"floorplan-{Seed}.json",
             DefaultExtension = "json",
-            FileTypeChoices = new[] { new FilePickerFileType("FloorPlan JSON") { Patterns = new[] { "*.json" } } },
+            FileTypeChoices = new[] { new FilePickerFileType("MultiRoomEnvironment JSON") { Patterns = new[] { "*.json" } } },
         });
         if (file is null) return;
 
         try
         {
-            var spec = FloorPlanSpec.From(this);
-            var json = FloorPlanJsonSerializer.Serialize(spec);
+            var spec = MultiRoomEnvironmentSpec.From(this);
+            var json = MultiRoomEnvironmentJsonSerializer.Serialize(spec);
             await using var stream = await file.OpenWriteAsync();
             await using var writer = new StreamWriter(stream);
             await writer.WriteAsync(json);
@@ -135,7 +135,7 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             Title = "Load floor plan parameters",
             AllowMultiple = false,
-            FileTypeFilter = new[] { new FilePickerFileType("FloorPlan JSON") { Patterns = new[] { "*.json" } } },
+            FileTypeFilter = new[] { new FilePickerFileType("MultiRoomEnvironment JSON") { Patterns = new[] { "*.json" } } },
         });
         if (files.Count == 0) return;
 
@@ -144,7 +144,7 @@ public partial class MainWindowViewModel : ViewModelBase
             await using var stream = await files[0].OpenReadAsync();
             using var reader = new StreamReader(stream);
             var json = await reader.ReadToEndAsync();
-            var spec = FloorPlanJsonSerializer.Deserialize(json);
+            var spec = MultiRoomEnvironmentJsonSerializer.Deserialize(json);
             spec.ApplyTo(this);
             Regenerate();
             StatusMessage = $"Loaded ← {files[0].Name}";
@@ -158,7 +158,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     async Task ExportObjAsync(Window? owner)
     {
-        if (owner is null || CurrentPlan is null) return;
+        if (owner is null || CurrentEnvironment is null) return;
         var file = await owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
             Title = "Export geometry as OBJ",
@@ -172,7 +172,7 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             await using var stream = await file.OpenWriteAsync();
             using var writer = new StreamWriter(stream);
-            ObjExporter.Export(writer, CurrentPlan, WallThickness, WallHeight);
+            ObjExporter.Export(writer, CurrentEnvironment, WallThickness, WallHeight);
             StatusMessage = $"Exported OBJ → {file.Name}";
         }
         catch (Exception ex)
