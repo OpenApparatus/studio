@@ -435,10 +435,24 @@ public partial class MainWindowViewModel : ViewModelBase
 
         try
         {
-            await using var stream = await file.OpenWriteAsync();
-            using var writer = new StreamWriter(stream);
-            ObjExporter.Export(writer, CurrentEnvironment, WallThickness, WallHeight);
-            StatusMessage = $"Exported OBJ → {file.Name}";
+            // Sidecar MTL lives next to the OBJ. Without `mtllib`+`usemtl`, Unity
+            // collapses each room into a single material slot per object.
+            var objPath = file.Path.LocalPath;
+            var mtlPath = System.IO.Path.ChangeExtension(objPath, ".mtl");
+            var mtlFileName = System.IO.Path.GetFileName(mtlPath);
+
+            await using (var stream = await file.OpenWriteAsync())
+            using (var writer = new StreamWriter(stream))
+            {
+                ObjExporter.Export(writer, CurrentEnvironment, WallThickness, WallHeight, mtlFileName);
+            }
+
+            using (var mtlWriter = new StreamWriter(mtlPath))
+            {
+                ObjExporter.WriteMtl(mtlWriter);
+            }
+
+            StatusMessage = $"Exported OBJ + MTL → {file.Name}";
         }
         catch (Exception ex)
         {
