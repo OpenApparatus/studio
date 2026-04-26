@@ -45,7 +45,7 @@ public class GridEditorView : Control
     MainWindowViewModel? Vm => DataContext as MainWindowViewModel;
 
     /// <summary>Width of the interior wall border in screen pixels.</summary>
-    const double InteriorBorderThicknessPx = 7.0;
+    const double InteriorBorderThicknessPx = 14.0;
     /// <summary>Distance from the wall outline to the border's centerline. Set to
     /// half the thickness so the border's outer edge sits flush with the wall —
     /// the borders are no longer clickable, so the gap that used to keep them
@@ -167,14 +167,25 @@ public class GridEditorView : Control
         var selectedFill = new SolidColorBrush(Color.FromRgb(255, 220, 130));
         var gridStroke = new Pen(new SolidColorBrush(Color.FromRgb(200, 200, 205)), 1.0);
 
-        // Tiles.
+        // Tiles. Floor view uses each room's floor color, Ceiling view uses its
+        // ceiling color. Either falls back to the auto-generated room hue if no
+        // color has been seeded yet (e.g. very old saves).
+        bool ceilingMode = vm.ViewMode == MainWindowViewModel.ViewSurface.Ceiling;
+        var perRoom = ceilingMode ? vm.RoomCeilingColors : vm.RoomFloorColors;
         for (int x = 0; x < vm.GridWidth; x++)
             for (int z = 0; z < vm.GridLength; z++)
             {
                 var rect = TileRect(origin, tileSize, x, z, vm.GridLength);
                 int id = vm.RoomGrid[x, z];
                 IBrush fill;
-                if (id >= 0) fill = RoomColor(id);
+                if (id >= 0)
+                {
+                    var rgb = perRoom.TryGetValue(id, out var c)
+                        ? c
+                        : MainWindowViewModel.RoomColorRgb(id);
+                    fill = new SolidColorBrush(Color.FromRgb(
+                        (byte)(rgb.X * 255), (byte)(rgb.Y * 255), (byte)(rgb.Z * 255)));
+                }
                 else if (vm.SelectedTiles.Contains((x, z))) fill = selectedFill;
                 else fill = emptyFill;
                 ctx.FillRectangle(fill, rect);

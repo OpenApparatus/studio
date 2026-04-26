@@ -135,6 +135,45 @@ public partial class MainWindowViewModel : ViewModelBase
     /// </summary>
     [ObservableProperty] int _selectedRoomId = -1;
 
+    /// <summary>Defaults applied to every new room's floor / ceiling. Editing them
+    /// does NOT retroactively change existing rooms — those keep whatever colors
+    /// they had at creation (or after manual override).</summary>
+    [ObservableProperty] System.Numerics.Vector3 _defaultFloorColor   = new(0.55f, 0.42f, 0.30f);
+    [ObservableProperty] System.Numerics.Vector3 _defaultCeilingColor = new(0.92f, 0.92f, 0.90f);
+
+    /// <summary>Which surface the editor view recolors tiles by — "Floor" shows
+    /// each room's floor color, "Ceiling" shows each room's ceiling color.</summary>
+    public enum ViewSurface { Floor, Ceiling }
+    [ObservableProperty] ViewSurface _viewMode = ViewSurface.Floor;
+
+    partial void OnViewModeChanged(ViewSurface value) => EditVersion++;
+
+    /// <summary>Auto-generated room color used as both the visible tile fill and
+    /// the seed for the room's wall color when it is first created. The same
+    /// HSV walk used by the editor view, exposed here so the VM can decide on
+    /// a wall color before the view ever runs.</summary>
+    public static System.Numerics.Vector3 RoomColorRgb(int roomId)
+    {
+        double h = (roomId * 137.5) % 360.0;
+        return HsvToRgb(h, 0.45f, 0.92f);
+    }
+
+    static System.Numerics.Vector3 HsvToRgb(double h, float s, float v)
+    {
+        double c = v * s;
+        double hp = h / 60.0;
+        double x = c * (1 - System.Math.Abs(hp % 2 - 1));
+        double r = 0, g = 0, b = 0;
+        if (hp < 1)      { r = c; g = x; }
+        else if (hp < 2) { r = x; g = c; }
+        else if (hp < 3) { g = c; b = x; }
+        else if (hp < 4) { g = x; b = c; }
+        else if (hp < 5) { r = x; b = c; }
+        else             { r = c; b = x; }
+        double m = v - c;
+        return new System.Numerics.Vector3((float)(r + m), (float)(g + m), (float)(b + m));
+    }
+
     public bool HasSelectedRoom => SelectedRoomId >= 0;
     public string SelectedRoomTitle => SelectedRoomId >= 0 ? $"Room {SelectedRoomId}" : "";
 
@@ -262,6 +301,13 @@ public partial class MainWindowViewModel : ViewModelBase
         int id = _nextRoomId++;
         foreach (var (x, z) in SelectedTiles)
             RoomGrid[x, z] = id;
+
+        // Seed appearance from the auto-generated room hue (used as the wall
+        // color so the room reads as a single colored block by default) and
+        // the user-configured floor / ceiling defaults.
+        _roomSingleWallColors[id] = RoomColorRgb(id);
+        _roomFloorColors[id]      = DefaultFloorColor;
+        _roomCeilingColors[id]    = DefaultCeilingColor;
 
         SelectedTiles.Clear();
         SelectedRoomId = id; // auto-select the new room so its editor panel appears
@@ -613,6 +659,15 @@ public partial class MainWindowViewModel : ViewModelBase
                         if (x >= 0 && x < GridWidth && z >= 0 && z < GridLength)
                             RoomGrid[x, z] = room.Id;
                 if (room.Id >= maxId) maxId = room.Id + 1;
+                // Seed appearance for every random room so the editor view and the
+                // glTF export both read consistently without forcing the user to
+                // visit each room's panel.
+                if (!_roomSingleWallColors.ContainsKey(room.Id))
+                    _roomSingleWallColors[room.Id] = RoomColorRgb(room.Id);
+                if (!_roomFloorColors.ContainsKey(room.Id))
+                    _roomFloorColors[room.Id] = DefaultFloorColor;
+                if (!_roomCeilingColors.ContainsKey(room.Id))
+                    _roomCeilingColors[room.Id] = DefaultCeilingColor;
             }
             _nextRoomId = maxId;
 

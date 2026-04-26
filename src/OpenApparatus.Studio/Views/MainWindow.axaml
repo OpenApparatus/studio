@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:OpenApparatus.Studio.ViewModels"
         xmlns:views="using:OpenApparatus.Studio.Views"
+        xmlns:converters="using:OpenApparatus.Studio.Converters"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="700"
@@ -35,6 +36,18 @@
             <Setter Property="HorizontalAlignment" Value="Stretch"/>
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="Padding" Value="8 6"/>
+        </Style>
+        <!-- Tab-styled radio buttons for the Floor/Ceiling view toggle. -->
+        <Style Selector="RadioButton.tab">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="#c8c8cf"/>
+            <Setter Property="BorderThickness" Value="1 1 1 0"/>
+            <Setter Property="CornerRadius" Value="4 4 0 0"/>
+            <Setter Property="Margin" Value="0 0 4 0"/>
+        </Style>
+        <Style Selector="RadioButton.tab:checked">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
         </Style>
     </Window.Styles>
 
@@ -109,6 +122,16 @@
                         <NumericUpDown Value="{Binding TileSize}" Minimum="0.5" Maximum="10" Increment="0.5" FormatString="0.0"/>
                     </StackPanel>
 
+                    <TextBlock Classes="label" Text="Defaults for new rooms"/>
+                    <StackPanel Classes="section">
+                        <Button Content="Default floor color…" Classes="action"
+                                Click="OnPickDefaultFloor"
+                                ToolTip.Tip="Used as the floor color when a new room is created."/>
+                        <Button Content="Default ceiling color…" Classes="action"
+                                Click="OnPickDefaultCeiling"
+                                ToolTip.Tip="Used as the ceiling color when a new room is created."/>
+                    </StackPanel>
+
                     <TextBlock Classes="label" Text="Walls"/>
                     <StackPanel Classes="section">
                         <TextBlock Text="Wall thickness (m)"/>
@@ -152,9 +175,25 @@
                 </StackPanel>
             </ScrollViewer>
 
-            <Border Grid.Column="1" Background="#1a1a1f">
-                <views:GridEditorView EditVersion="{Binding EditVersion}" Margin="8"/>
-            </Border>
+            <Grid Grid.Column="1" RowDefinitions="Auto,*">
+                <!-- View tabs: Floor / Ceiling. Each tile gets recolored to that
+                     room's floor or ceiling color when the tab is active. -->
+                <Border Grid.Row="0" Background="#e6e6ea" BorderBrush="#c8c8cf" BorderThickness="0 0 0 1" Padding="8 6">
+                    <StackPanel Orientation="Horizontal" Spacing="0">
+                        <RadioButton GroupName="ViewMode"
+                                     Content="Floor"
+                                     IsChecked="{Binding ViewMode, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=Floor}"
+                                     Classes="tab" Padding="14 4"/>
+                        <RadioButton GroupName="ViewMode"
+                                     Content="Ceiling"
+                                     IsChecked="{Binding ViewMode, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=Ceiling}"
+                                     Classes="tab" Padding="14 4"/>
+                    </StackPanel>
+                </Border>
+                <Border Grid.Row="1" Background="#1a1a1f">
+                    <views:GridEditorView EditVersion="{Binding EditVersion}" Margin="8"/>
+                </Border>
+            </Grid>
 
             <!-- Right-side per-room appearance editor. Visibility is controlled by
                  the panel's own IsVisible binding (HasSelectedRoom) so the column
