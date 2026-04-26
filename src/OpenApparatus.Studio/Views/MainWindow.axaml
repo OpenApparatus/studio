@@ -1,0 +1,106 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:OpenApparatus.Studio.ViewModels"
+        xmlns:views="using:OpenApparatus.Studio.Views"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="700"
+        x:Class="OpenApparatus.Studio.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Width="1100" Height="700"
+        Title="OpenApparatus Studio">
+
+    <Window.Styles>
+        <Style Selector="TextBlock.label">
+            <Setter Property="Margin" Value="0 8 0 2"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style Selector="StackPanel.section">
+            <Setter Property="Margin" Value="0 0 0 8"/>
+        </Style>
+    </Window.Styles>
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+    <DockPanel LastChildFill="True">
+        <!-- Top toolbar -->
+        <Border DockPanel.Dock="Top" Background="#202028" Padding="8">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <Button Content="Regenerate" Command="{Binding RegenerateCommand}"/>
+                <Button Content="Reseed" Command="{Binding ReseedCommand}"/>
+                <Separator Width="12"/>
+                <Button Content="Save…"
+                        Command="{Binding SaveCommand}"
+                        CommandParameter="{Binding $parent[Window]}"/>
+                <Button Content="Load…"
+                        Command="{Binding LoadCommand}"
+                        CommandParameter="{Binding $parent[Window]}"/>
+                <Separator Width="12"/>
+                <Button Content="Export OBJ…"
+                        Command="{Binding ExportObjCommand}"
+                        CommandParameter="{Binding $parent[Window]}"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Status bar -->
+        <Border DockPanel.Dock="Bottom" Background="#101014" Padding="8 4">
+            <TextBlock Text="{Binding StatusMessage}" Foreground="#cccccc"/>
+        </Border>
+
+        <!-- Main split: parameter panel + viewer -->
+        <Grid ColumnDefinitions="280,*">
+            <ScrollViewer Grid.Column="0" Background="#f4f4f7">
+                <StackPanel Margin="12" Spacing="0">
+
+                    <TextBlock Classes="label" Text="Floor dimensions"/>
+                    <StackPanel Classes="section">
+                        <TextBlock Text="Width (cells)"/>
+                        <NumericUpDown Value="{Binding FloorWidthCells}" Minimum="1" Maximum="32" FormatString="0"/>
+                        <TextBlock Text="Height (cells)"/>
+                        <NumericUpDown Value="{Binding FloorHeightCells}" Minimum="1" Maximum="32" FormatString="0"/>
+                        <TextBlock Text="Tile size (m)"/>
+                        <NumericUpDown Value="{Binding TileSize}" Minimum="0.5" Maximum="10" Increment="0.5" FormatString="0.0"/>
+                    </StackPanel>
+
+                    <TextBlock Classes="label" Text="Rooms"/>
+                    <StackPanel Classes="section">
+                        <TextBlock Text="Rectangle (1×2) rooms"/>
+                        <NumericUpDown Value="{Binding RectangleRoomCount}" Minimum="0" Maximum="50" FormatString="0"/>
+                    </StackPanel>
+
+                    <TextBlock Classes="label" Text="Walls"/>
+                    <StackPanel Classes="section">
+                        <TextBlock Text="Wall thickness (m)"/>
+                        <NumericUpDown Value="{Binding WallThickness}" Minimum="0.05" Maximum="2.0" Increment="0.05" FormatString="0.00"/>
+                        <TextBlock Text="Wall height (m)"/>
+                        <NumericUpDown Value="{Binding WallHeight}" Minimum="0.5" Maximum="6.0" Increment="0.5" FormatString="0.0"/>
+                    </StackPanel>
+
+                    <TextBlock Classes="label" Text="Doorways"/>
+                    <StackPanel Classes="section">
+                        <CheckBox Content="Include outer entrance" IsChecked="{Binding IncludeOuterEntrance}"/>
+                        <TextBlock Text="Door width (m)"/>
+                        <NumericUpDown Value="{Binding DoorWidth}" Minimum="0.5" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
+                        <TextBlock Text="Door height (m)"/>
+                        <NumericUpDown Value="{Binding DoorHeight}" Minimum="1.5" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
+                    </StackPanel>
+
+                    <TextBlock Classes="label" Text="Determinism"/>
+                    <StackPanel Classes="section">
+                        <TextBlock Text="Seed"/>
+                        <NumericUpDown Value="{Binding Seed}" Minimum="0" Maximum="2147483647" FormatString="0"/>
+                    </StackPanel>
+
+                </StackPanel>
+            </ScrollViewer>
+
+            <Border Grid.Column="1" Background="#202028">
+                <views:FloorPlanView Plan="{Binding CurrentPlan}"
+                                     WallThickness="{Binding WallThickness}"
+                                     Margin="8"/>
+            </Border>
+        </Grid>
+    </DockPanel>
+</Window>
