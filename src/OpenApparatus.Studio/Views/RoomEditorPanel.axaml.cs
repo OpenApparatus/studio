@@ -40,6 +40,8 @@ public partial class RoomEditorPanel : UserControl
     void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(MainWindowViewModel.SelectedRoomId)
+                          or nameof(MainWindowViewModel.SelectedOpeningIndex)
+                          or nameof(MainWindowViewModel.HasSelectedOpening)
                           or nameof(MainWindowViewModel.EditVersion)
                           or nameof(MainWindowViewModel.CurrentEnvironment))
         {
@@ -50,8 +52,22 @@ public partial class RoomEditorPanel : UserControl
     void Rebuild()
     {
         BodyPanel.Children.Clear();
-        if (_vm is null || _vm.SelectedRoomId < 0) return;
-        int roomId = _vm.SelectedRoomId;
+        if (_vm is null) return;
+
+        // Opening edits take precedence — when an opening is selected the user
+        // is in 'tweak this door / window' context; the room panel can wait.
+        if (_vm.HasSelectedOpening)
+        {
+            BuildOpeningEditor();
+            return;
+        }
+        if (_vm.SelectedRoomId < 0) return;
+        BuildRoomEditor();
+    }
+
+    void BuildRoomEditor()
+    {
+        int roomId = _vm!.SelectedRoomId;
 
         BodyPanel.Children.Add(new TextBlock
         {
@@ -119,6 +135,94 @@ public partial class RoomEditorPanel : UserControl
                     clearer: () => _vm.ClearWallColor(roomId, capturedAdj)));
             }
         }
+    }
+
+    void BuildOpeningEditor()
+    {
+        var op = _vm!.SelectedOpening!.Value;
+        bool isWindow = op.IsWindow;
+        string label = isWindow ? "Window" : "Door";
+
+        BodyPanel.Children.Add(new TextBlock
+        {
+            Text = label,
+            FontWeight = FontWeight.SemiBold,
+            FontSize = 16,
+            Margin = new Thickness(0, 0, 0, 12),
+        });
+
+        // Width
+        BodyPanel.Children.Add(NumericRow(
+            "Width (m)", op.Width, 0.3, 6.0, 0.1,
+            v => _vm.UpdateSelectedOpening(o => o.With(width: (float)v))));
+
+        // Head height
+        BodyPanel.Children.Add(NumericRow(
+            "Head height (m)", op.Height, isWindow ? 0.5 : 1.5, 4.0, 0.1,
+            v => _vm.UpdateSelectedOpening(o => o.With(height: (float)v))));
+
+        if (isWindow)
+        {
+            BodyPanel.Children.Add(NumericRow(
+                "Sill height (m)", op.SillHeight, 0.05, 2.5, 0.05,
+                v => _vm.UpdateSelectedOpening(o => o.With(sillHeight: (float)v))));
+        }
+        else
+        {
+            // Door swing controls.
+            BodyPanel.Children.Add(SectionHeader("Hinge", topMargin: 12));
+            BodyPanel.Children.Add(ToggleRow(
+                "At end of opening",
+                op.HingeAtEnd,
+                v => _vm.UpdateSelectedOpening(o => o.With(hingeAtEnd: v))));
+
+            BodyPanel.Children.Add(SectionHeader("Swing", topMargin: 12));
+            BodyPanel.Children.Add(ToggleRow(
+                _vm.SelectedAdjacency?.IsInternal == true
+                    ? $"Into Room {_vm.SelectedAdjacency.RoomA.Id} (flip swing)"
+                    : "Reverse swing",
+                op.SwingNegative != (_vm.SelectedAdjacency?.IsInternal == true),
+                v =>
+                {
+                    bool isInternal = _vm.SelectedAdjacency?.IsInternal == true;
+                    bool wantNegative = isInternal ? !v : v;
+                    _vm.UpdateSelectedOpening(o => o.With(swingNegative: wantNegative));
+                }));
+        }
+    }
+
+    Control NumericRow(string label, double value, double min, double max, double step,
+        System.Action<double> onChanged)
+    {
+        var box = new NumericUpDown
+        {
+            Value = (decimal)value,
+            Minimum = (decimal)min,
+            Maximum = (decimal)max,
+            Increment = (decimal)step,
+            FormatString = "0.00",
+        };
+        box.ValueChanged += (_, e) =>
+        {
+            if (e.NewValue.HasValue) onChanged((double)e.NewValue.Value);
+        };
+
+        var stack = new StackPanel { Margin = new Thickness(0, 0, 0, 6) };
+        stack.Children.Add(new TextBlock { Text = label, Margin = new Thickness(0, 0, 0, 2) });
+        stack.Children.Add(box);
+        return stack;
+    }
+
+    Control ToggleRow(string label, bool value, System.Action<bool> onChanged)
+    {
+        var cb = new CheckBox
+        {
+            Content = label,
+            IsChecked = value,
+            Margin = new Thickness(0, 0, 0, 4),
+        };
+        cb.IsCheckedChanged += (_, _) => onChanged(cb.IsChecked == true);
+        return cb;
     }
 
     static TextBlock SectionHeader(string text, double topMargin = 0)

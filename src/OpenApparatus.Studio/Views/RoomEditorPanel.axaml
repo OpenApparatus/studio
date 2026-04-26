@@ -6,8 +6,10 @@
              Width="260">
     <Border Background="#f4f4f7" BorderBrush="#c8c8cf" BorderThickness="1 0 0 0">
         <ScrollViewer>
-            <StackPanel Margin="14" Spacing="0" x:Name="Body" IsVisible="{Binding HasSelectedRoom}">
-                <!-- Populated by code-behind on SelectedRoomId / EditVersion changes. -->
+            <StackPanel Margin="14" Spacing="0" x:Name="Body">
+                <!-- Populated by code-behind: shows opening editor when an
+                     opening is selected, room editor when a room is selected,
+                     or hides when neither. -->
             </StackPanel>
         </ScrollViewer>
     </Border>

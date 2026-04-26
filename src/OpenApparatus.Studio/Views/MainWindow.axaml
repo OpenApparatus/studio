@@ -223,11 +223,17 @@
                 <views:LegendBar Grid.Row="2"/>
             </Grid>
 
-            <!-- Right-side per-room appearance editor. Visibility is controlled by
-                 the panel's own IsVisible binding (HasSelectedRoom) so the column
-                 width collapses when no room is selected. -->
-            <views:RoomEditorPanel Grid.Column="2"
-                                   IsVisible="{Binding HasSelectedRoom}"/>
+            <!-- Right-side editor: rooms when a room is selected, doors / windows
+                 when an opening is selected. Hidden otherwise so the column
+                 collapses. -->
+            <views:RoomEditorPanel Grid.Column="2">
+                <views:RoomEditorPanel.IsVisible>
+                    <MultiBinding Converter="{x:Static converters:AnyTrueConverter.Instance}">
+                        <Binding Path="HasSelectedRoom"/>
+                        <Binding Path="HasSelectedOpening"/>
+                    </MultiBinding>
+                </views:RoomEditorPanel.IsVisible>
+            </views:RoomEditorPanel>
         </Grid>
     </DockPanel>
 </Window>

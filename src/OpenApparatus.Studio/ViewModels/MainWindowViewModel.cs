@@ -91,6 +91,44 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
+    /// <summary>Returns the index of the opening on <paramref name="adj"/> whose span
+    /// contains <paramref name="alongMeters"/>, or -1 if none.</summary>
+    static int FindOpeningAt(Adjacency adj, float alongMeters)
+    {
+        if (adj.Passage is not Passage.Doorway dw) return -1;
+        const float EPS = 1e-3f;
+        for (int i = 0; i < dw.Openings.Count; i++)
+        {
+            var op = dw.Openings[i];
+            if (alongMeters >= op.OffsetAlongEdge - EPS &&
+                alongMeters <= op.OffsetAlongEdge + op.Width + EPS)
+                return i;
+        }
+        return -1;
+    }
+
+    /// <summary>Replace the opening at <see cref="SelectedOpeningIndex"/> with the
+    /// result of <paramref name="transform"/>. No-op when no opening is selected.</summary>
+    public void UpdateSelectedOpening(System.Func<Opening, Opening> transform)
+    {
+        if (!HasSelectedOpening || SelectedAdjacency is null) return;
+        var dw = (Passage.Doorway)SelectedAdjacency.Passage;
+        var openings = new List<Opening>(dw.Openings);
+        var newOp = transform(openings[SelectedOpeningIndex]);
+        // Keep within wall length.
+        var seg = SelectedAdjacency.SharedSegment;
+        if (newOp.OffsetAlongEdge + newOp.Width > seg.Length + 1e-3f)
+        {
+            StatusMessage = $"Can't fit a {newOp.Width:F2}m opening — wall is only {seg.Length:F2}m.";
+            return;
+        }
+        openings[SelectedOpeningIndex] = newOp;
+        SelectedAdjacency.Passage = new Passage.Doorway(openings);
+        RememberPassage(SelectedAdjacency);
+        EditVersion++;
+        OnPropertyChanged(nameof(SelectedOpening));
+    }
+
     /// <summary>Effective wall color for a room's side of an adjacency, accounting for
     /// the room's multi-color toggle. Falls back to the default neutral when nothing
     /// has been set.</summary>
@@ -134,6 +172,27 @@ public partial class MainWindowViewModel : ViewModelBase
     /// Drives the right-side room editor panel.
     /// </summary>
     [ObservableProperty] int _selectedRoomId = -1;
+
+    /// <summary>
+    /// Index of the currently selected opening within <see cref="SelectedAdjacency"/>'s
+    /// passage (-1 = none). Set when the user clicks a wall anchor that lands inside
+    /// an existing opening, or right after toggling a new door / window in. Drives
+    /// the right-side opening editor panel — when this is &gt;=0 the panel shows
+    /// per-opening size + hinge / swing controls instead of room appearance.
+    /// </summary>
+    [ObservableProperty] int _selectedOpeningIndex = -1;
+
+    public bool HasSelectedOpening =>
+        SelectedOpeningIndex >= 0 && SelectedAdjacency?.Passage is Passage.Doorway dw
+        && SelectedOpeningIndex < dw.Openings.Count;
+
+    public Opening? SelectedOpening
+        => HasSelectedOpening
+            ? ((Passage.Doorway)SelectedAdjacency!.Passage).Openings[SelectedOpeningIndex]
+            : null;
+
+    partial void OnSelectedOpeningIndexChanged(int value)
+        => OnPropertyChanged(nameof(HasSelectedOpening));
 
     /// <summary>Defaults applied to every new room's floor / ceiling. Editing them
     /// does NOT retroactively change existing rooms — those keep whatever colors
@@ -478,6 +537,12 @@ public partial class MainWindowViewModel : ViewModelBase
             : 0f;
         _selectedClickAlong = SnapAlongToCandidate(along, seg.Length, TileSize);
 
+        // If the snapped anchor lands inside an existing opening, select it so
+        // the right-side panel pops up with that opening's settings.
+        SelectedOpeningIndex = FindOpeningAt(hit, _selectedClickAlong);
+        OnPropertyChanged(nameof(HasSelectedOpening));
+        OnPropertyChanged(nameof(SelectedOpening));
+
         EditVersion++;
         string b = hit.RoomB is null ? "outside" : $"#{hit.RoomB.Id}";
         StatusMessage = $"Selected wall #{hit.RoomA.Id} ↔ {b} ({hit.Passage.GetType().Name}). " +
@@ -581,7 +646,14 @@ public partial class MainWindowViewModel : ViewModelBase
                 return;
             }
 
-            openings.Add(new Opening(offset, w, reqHeight, reqSill));
+            // Default door swing: into the room with the higher id. RoomA is
+            // always the lower id by convention, so internal walls swing -N
+            // (into RoomB). Outer walls have RoomB = null → swing +N into the
+            // only room. Windows ignore hinge / swing.
+            bool defaultSwingNegative = !isWindow && adj.IsInternal;
+            openings.Add(new Opening(offset, w, reqHeight, reqSill,
+                hingeAtEnd: false,
+                swingNegative: defaultSwingNegative));
             MergeOverlappingSameKind(openings);
             StatusMessage = $"Added {label} at offset {offset:F2}m. {openings.Count} opening(s) on this wall.";
         }
@@ -590,6 +662,16 @@ public partial class MainWindowViewModel : ViewModelBase
             ? new Passage.Doorway(openings)
             : Passage.Closed.Instance;
         RememberPassage(adj);
+
+        // After mutating, surface the opening at the active anchor (if any) to
+        // the right-side panel so the user can immediately tweak its size /
+        // hinge / swing.
+        SelectedOpeningIndex = FindOpeningAt(adj, anchor);
+        OnPropertyChanged(nameof(HasSelectedOpening));
+        OnPropertyChanged(nameof(SelectedOpening));
+        // Clear room selection so the panel switches to opening mode.
+        if (HasSelectedOpening) SelectedRoomId = -1;
+
         EditVersion++;
     }
 

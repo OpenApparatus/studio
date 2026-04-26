@@ -444,17 +444,30 @@ public class GridEditorView : Control
                                 else
                                 {
                                     // Architectural door symbol: door panel +
-                                    // 90° swing arc + jamb tick marks. The
-                                    // panel hinges at the start of the opening
-                                    // and swings into the +N side (RoomA's
-                                    // interior — for outer walls there's no
-                                    // RoomB, so this is always inside).
+                                    // 90° swing arc + jamb tick marks.
+                                    // Hinge end and swing direction are read
+                                    // from the opening so the symbol matches
+                                    // whatever the user picked in the panel.
                                     if (nrmLen2 >= 1e-3 && dirLen > 1e-3)
                                     {
-                                        var hinge = startScr;
+                                        // Hinge: start of opening by default,
+                                        // end of opening when HingeAtEnd. Pivot
+                                        // direction (closed → open) flips
+                                        // accordingly.
+                                        var hinge = op.HingeAtEnd ? endScr : startScr;
+                                        var closedTip = op.HingeAtEnd ? startScr : endScr;
+                                        // Sign for swing direction: +1 = +N
+                                        // (RoomA side), -1 = -N (RoomB side or
+                                        // opposite for outer walls).
+                                        double swingSign = op.SwingNegative ? -1.0 : 1.0;
+                                        // Sign for "from hinge toward closed
+                                        // tip": the wall-direction unit vector
+                                        // pointing along the opening from the
+                                        // hinge to the other jamb.
+                                        double dirSign = op.HingeAtEnd ? -1.0 : 1.0;
                                         var openTip = new Point(
-                                            hinge.X + nrmU.X * dirLen,
-                                            hinge.Y + nrmU.Y * dirLen);
+                                            hinge.X + nrmU.X * dirLen * swingSign,
+                                            hinge.Y + nrmU.Y * dirLen * swingSign);
                                         var doorPanelPen = new Pen(
                                             new SolidColorBrush(Color.FromRgb(224, 96, 16)), 2.5)
                                         {
@@ -469,14 +482,19 @@ public class GridEditorView : Control
                                         // position) sampled as line segments —
                                         // simpler than wrangling StreamGeometry
                                         // sweep direction for either orientation.
+                                        // Arc from openTip (perpendicular to
+                                        // wall, on the chosen swing side) to
+                                        // closedTip (along wall from hinge).
                                         const int Steps = 16;
                                         var prevArc = openTip;
                                         for (int si = 1; si <= Steps; si++)
                                         {
                                             double t = si / (double)Steps;
                                             double ang = t * Math.PI / 2;
-                                            double dx = nrmU.X * Math.Cos(ang) + dirU.X * Math.Sin(ang);
-                                            double dy = nrmU.Y * Math.Cos(ang) + dirU.Y * Math.Sin(ang);
+                                            double dx = nrmU.X * swingSign * Math.Cos(ang)
+                                                      + dirU.X * dirSign * Math.Sin(ang);
+                                            double dy = nrmU.Y * swingSign * Math.Cos(ang)
+                                                      + dirU.Y * dirSign * Math.Sin(ang);
                                             var pt = new Point(
                                                 hinge.X + dx * dirLen,
                                                 hinge.Y + dy * dirLen);
