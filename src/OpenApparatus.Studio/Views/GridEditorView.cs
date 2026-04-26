@@ -50,14 +50,15 @@ public class GridEditorView : Control
         if (vm is null) return;
         var pos = e.GetPosition(this);
 
-        // 1. Try wall hit first — clicking a wall cycles its passage type.
+        // 1. Try wall hit first — clicking a wall selects it. Hotkeys (D/O/C) then
+        // mutate the selected wall's passage.
         var (origin, tilePxSize) = ComputeLayout(vm);
         if (tilePxSize > 0)
         {
             var worldPos = ScreenToWorld(pos, origin, tilePxSize, vm);
             // Tolerance: ~10px in world coords, given the current zoom.
             float toleranceWorld = (float)(10.0 * vm.TileSize / tilePxSize);
-            if (vm.TryCyclePassageAtWorld(worldPos, toleranceWorld))
+            if (vm.TrySelectAdjacencyAtWorld(worldPos, toleranceWorld))
             {
                 e.Handled = true;
                 return;
@@ -177,11 +178,21 @@ public class GridEditorView : Control
                     origin.X + xTile * tileSize,
                     origin.Y + (vm.GridLength - zTile) * tileSize);
             }
+            // Selected-wall highlight: drawn first so the wall pen renders on top of it.
+            var selectedHighlightPen = new Pen(new SolidColorBrush(Color.FromArgb(180, 255, 215, 80)), 9.0)
+            {
+                LineCap = PenLineCap.Round,
+            };
+
             foreach (var adj in env.Adjacencies)
             {
                 var s = adj.SharedSegment;
                 var p0 = ToScreen(s.Start);
                 var p1 = ToScreen(s.End);
+
+                if (ReferenceEquals(adj, vm.SelectedAdjacency))
+                    ctx.DrawLine(selectedHighlightPen, p0, p1);
+
                 switch (adj.Passage)
                 {
                     case OpenApparatus.Topology.Passage.Closed _:

@@ -123,6 +123,7 @@ public partial class MainWindowViewModel : ViewModelBase
     void ClearSelection()
     {
         SelectedTiles.Clear();
+        SelectedAdjacency = null;
         EditVersion++;
         StatusMessage = "Selection cleared.";
     }
@@ -136,11 +137,17 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Cycles the passage type of the wall closest to the given world XZ point,
-    /// if within <paramref name="toleranceWorld"/>. Cycle order: Closed → Doorway → Open → Closed.
-    /// Returns true if a wall was clicked.
+    /// The wall the user has clicked on. Set via <see cref="TrySelectAdjacencyAtWorld"/>;
+    /// hotkeys then mutate its passage. Cleared on grid changes (the materialized
+    /// adjacency would point at a stale Adjacency object).
     /// </summary>
-    public bool TryCyclePassageAtWorld(System.Numerics.Vector2 worldPos, float toleranceWorld)
+    [ObservableProperty] Adjacency? _selectedAdjacency;
+
+    /// <summary>
+    /// Selects the wall closest to the given world XZ point, if within tolerance.
+    /// Returns true if a wall was selected.
+    /// </summary>
+    public bool TrySelectAdjacencyAtWorld(System.Numerics.Vector2 worldPos, float toleranceWorld)
     {
         if (CurrentEnvironment is null) return false;
 
@@ -157,20 +164,65 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         if (hit is null) return false;
 
-        hit.Passage = hit.Passage switch
+        SelectedAdjacency = hit;
+        EditVersion++;
+        string b = hit.RoomB is null ? "outside" : $"#{hit.RoomB.Id}";
+        StatusMessage = $"Selected wall #{hit.RoomA.Id} ↔ {b} ({hit.Passage.GetType().Name}). " +
+                        "Press D for doorway, O for open, C for closed.";
+        return true;
+    }
+
+    /// <summary>Toggle a doorway on the currently selected wall (D hotkey).</summary>
+    [RelayCommand]
+    void ToggleDoorOnSelectedWall()
+    {
+        if (SelectedAdjacency is null)
         {
-            Passage.Closed _ => new Passage.Doorway(
-                (hit.SharedSegment.Length - System.Math.Min(DoorWidth, hit.SharedSegment.Length)) * 0.5f,
-                System.Math.Min(DoorWidth, hit.SharedSegment.Length),
-                DoorHeight),
-            Passage.Doorway _ => Passage.Open.Instance,
-            _ => Passage.Closed.Instance,
+            StatusMessage = "No wall selected. Click a wall first.";
+            return;
+        }
+        SelectedAdjacency.Passage = SelectedAdjacency.Passage switch
+        {
+            Passage.Doorway _ => Passage.Closed.Instance,
+            _ => MakeCenteredDoorway(SelectedAdjacency),
         };
         EditVersion++;
-        StatusMessage = $"Wall {hit.RoomA.Id}↔" +
-                        (hit.RoomB is null ? "outside" : $"{hit.RoomB.Id}") +
-                        $" → {hit.Passage.GetType().Name}";
-        return true;
+        StatusMessage = $"Wall → {SelectedAdjacency.Passage.GetType().Name}.";
+    }
+
+    /// <summary>Set the selected wall's passage to Open (no wall) — O hotkey.</summary>
+    [RelayCommand]
+    void OpenSelectedWall()
+    {
+        if (SelectedAdjacency is null)
+        {
+            StatusMessage = "No wall selected. Click a wall first.";
+            return;
+        }
+        SelectedAdjacency.Passage = Passage.Open.Instance;
+        EditVersion++;
+        StatusMessage = "Wall → Open (no wall).";
+    }
+
+    /// <summary>Set the selected wall's passage to Closed (solid wall) — C hotkey.</summary>
+    [RelayCommand]
+    void CloseSelectedWall()
+    {
+        if (SelectedAdjacency is null)
+        {
+            StatusMessage = "No wall selected. Click a wall first.";
+            return;
+        }
+        SelectedAdjacency.Passage = Passage.Closed.Instance;
+        EditVersion++;
+        StatusMessage = "Wall → Closed.";
+    }
+
+    Passage MakeCenteredDoorway(Adjacency adj)
+    {
+        float segLen = adj.SharedSegment.Length;
+        float w = System.Math.Min(DoorWidth, segLen);
+        return new Passage.Doorway((segLen - w) * 0.5f, w, DoorHeight);
     }
 
     static float DistanceFromPointToSegment(System.Numerics.Vector2 p, EdgeSegment seg)
@@ -262,12 +314,15 @@ public partial class MainWindowViewModel : ViewModelBase
         try
         {
             var env = MultiRoomEnvironmentBuilder.FromGrid(RoomGrid, TileSize);
-            // For now, all adjacencies stay Closed; D2 will add per-wall passage editing.
             CurrentEnvironment = env;
+            // The previous SelectedAdjacency points at a stale Adjacency from the previous
+            // build; clear it so the editor doesn't try to mutate orphaned objects.
+            SelectedAdjacency = null;
         }
         catch (Exception ex)
         {
             CurrentEnvironment = null;
+            SelectedAdjacency = null;
             StatusMessage = $"Build failed: {ex.Message}";
         }
     }
