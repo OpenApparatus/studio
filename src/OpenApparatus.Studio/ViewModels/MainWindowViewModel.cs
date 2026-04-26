@@ -41,30 +41,22 @@ public partial class MainWindowViewModel : ViewModelBase
     int _nextRoomId = 0;
 
     /// <summary>
-    /// Per-adjacency passage overrides remembered across grid rebuilds. Without this,
+    /// Per-wall passage overrides remembered across grid rebuilds. Without this,
     /// every Rebuild() resets all walls to Closed (since FromGrid produces a fresh
     /// MultiRoomEnvironment with default passages), losing user-placed doorways.
     ///
-    /// Keys identify an adjacency by its participant rooms:
-    ///   • Internal: (min(roomA, roomB), max(roomA, roomB), 0, 0) — two rooms uniquely
-    ///     determine their adjacency in our model.
-    ///   • Outer:    (roomId, -1, midX_mm, midZ_mm) — a room can have multiple outer
-    ///     sides; the segment midpoint (rounded to mm) disambiguates.
+    /// Keys identify a wall by its segment midpoint, quantized to millimeters.
+    /// This means a door survives outer→internal transitions: when a new room is
+    /// placed on the far side of an existing outer wall, the wall's physical
+    /// location stays the same and the override applies to the new internal
+    /// adjacency. Room-pair-based keys would lose the door in that case.
     /// </summary>
-    readonly Dictionary<(int, int, int, int), Passage> _passageOverrides = new();
+    readonly Dictionary<(int, int), Passage> _passageOverrides = new();
 
-    static (int, int, int, int) PassageKey(Adjacency adj)
+    static (int, int) PassageKey(Adjacency adj)
     {
-        if (adj.RoomB is { } roomB)
-        {
-            int a = System.Math.Min(adj.RoomA.Id, roomB.Id);
-            int b = System.Math.Max(adj.RoomA.Id, roomB.Id);
-            return (a, b, 0, 0);
-        }
         var mid = adj.SharedSegment.Midpoint;
         return (
-            adj.RoomA.Id,
-            -1,
             (int)System.Math.Round(mid.X * 1000),
             (int)System.Math.Round(mid.Y * 1000));
     }
@@ -461,12 +453,34 @@ public partial class MainWindowViewModel : ViewModelBase
             var env = MultiRoomEnvironmentBuilder.FromGrid(RoomGrid, TileSize);
 
             // Re-apply any persisted passage choices. Doors / open passages set by
-            // the user need to survive grid edits that don't change the participating
-            // rooms (e.g., creating a brand-new room elsewhere on the grid).
+            // the user need to survive grid edits — including outer↔internal
+            // transitions when new rooms are placed against existing walls.
             foreach (var adj in env.Adjacencies)
             {
-                if (_passageOverrides.TryGetValue(PassageKey(adj), out var passage))
+                if (!_passageOverrides.TryGetValue(PassageKey(adj), out var passage))
+                    continue;
+
+                // Validate any doorway openings still fit the (possibly different-length)
+                // segment in the new build. Skip openings that no longer fit.
+                if (passage is Passage.Doorway dw)
+                {
+                    var fitting = new List<Opening>();
+                    foreach (var op in dw.Openings)
+                    {
+                        if (op.OffsetAlongEdge >= 0f &&
+                            op.OffsetAlongEdge + op.Width <= adj.SharedSegment.Length + 1e-3f)
+                            fitting.Add(op);
+                    }
+                    if (fitting.Count == dw.Openings.Count)
+                        adj.Passage = passage;
+                    else if (fitting.Count > 0)
+                        adj.Passage = new Passage.Doorway(fitting);
+                    // else: leave as default Closed — no openings fit the new segment.
+                }
+                else
+                {
                     adj.Passage = passage;
+                }
             }
 
             CurrentEnvironment = env;
