@@ -65,6 +65,11 @@
                 <Button Content="Reset All" Command="{Binding ResetAllCommand}"/>
                 <Button Content="Random Fill" Command="{Binding RandomFillCommand}"/>
                 <Separator Width="12"/>
+                <CheckBox Content="Multi Mesh Walls"
+                          IsChecked="{Binding MultiMeshWalls}"
+                          ToolTip.Tip="When on, every wall exports as its own mesh with a unique material slot. When off (default), all walls of a room merge into one mesh."
+                          VerticalAlignment="Center"/>
+                <Separator Width="12"/>
                 <Button Content="Export glTF…"
                         Command="{Binding ExportGltfCommand}"
                         CommandParameter="{Binding $parent[Window]}"

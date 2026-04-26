@@ -53,6 +53,13 @@ public partial class MainWindowViewModel : ViewModelBase
     /// </summary>
     readonly Dictionary<(int, int), Passage> _passageOverrides = new();
 
+    /// <summary>
+    /// Per-wall color overrides keyed by (roomId, segment-midpoint-mm). A wall
+    /// shared between two rooms can carry two distinct colors — one per side.
+    /// Stored as RGB in 0..1; default gray is used when no override is set.
+    /// </summary>
+    readonly Dictionary<(int RoomId, int MidX, int MidZ), System.Numerics.Vector3> _wallColors = new();
+
     static (int, int) PassageKey(Adjacency adj)
     {
         var mid = adj.SharedSegment.Midpoint;
@@ -63,6 +70,23 @@ public partial class MainWindowViewModel : ViewModelBase
 
     void RememberPassage(Adjacency adj) => _passageOverrides[PassageKey(adj)] = adj.Passage;
 
+    /// <summary>Read-only access to per-wall color overrides (for view rendering).</summary>
+    public IReadOnlyDictionary<(int RoomId, int MidX, int MidZ), System.Numerics.Vector3> WallColors => _wallColors;
+
+    /// <summary>Sets the color for one room's side of the given wall. RGB in 0..1.</summary>
+    public void SetWallColor(int roomId, Adjacency adj, System.Numerics.Vector3 rgb)
+    {
+        _wallColors[GltfExporter.WallColorKey(roomId, adj)] = rgb;
+        EditVersion++;
+    }
+
+    /// <summary>Removes any color override for one room's side of the given wall.</summary>
+    public void ClearWallColor(int roomId, Adjacency adj)
+    {
+        _wallColors.Remove(GltfExporter.WallColorKey(roomId, adj));
+        EditVersion++;
+    }
+
     // ---- Visual / generation parameters ----
 
     [ObservableProperty] float _wallThickness = 0.2f;
@@ -72,6 +96,14 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] float _windowWidth = 1.2f;
     [ObservableProperty] float _windowHeight = 2.2f;
     [ObservableProperty] float _windowSillHeight = 1.0f;
+
+    /// <summary>
+    /// When true, every wall of every room exports as its own mesh (one per
+    /// adjacency) so each can carry a distinct material. When false (default),
+    /// a room's walls merge into a single mesh — fewer draw calls, but every
+    /// wall in a room shares the same material.
+    /// </summary>
+    [ObservableProperty] bool _multiMeshWalls;
 
     [ObservableProperty] MultiRoomEnvironment? _currentEnvironment;
     [ObservableProperty] string _statusMessage = "Click and drag to select tiles, then click 'Create Room'.";
@@ -510,7 +542,8 @@ public partial class MainWindowViewModel : ViewModelBase
             // (Root → Room_<id> → floor/ceiling/wall_<i>) survives import in
             // Unity, Blender, Three.js, or any glTF-aware tool.
             GltfExporter.Export(
-                file.Path.LocalPath, CurrentEnvironment, WallThickness, WallHeight);
+                file.Path.LocalPath, CurrentEnvironment, WallThickness, WallHeight,
+                MultiMeshWalls, _wallColors);
             StatusMessage = $"Exported glTF → {file.Name}";
         }
         catch (Exception ex)

@@ -1,0 +1,17 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="OpenApparatus.Studio.Views.WallColorDialog"
+        Width="320" Height="220"
+        Title="Pick wall color"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+    <StackPanel Margin="14" Spacing="10">
+        <TextBlock x:Name="HeaderText" FontWeight="SemiBold"/>
+        <ColorPicker x:Name="Picker" HorizontalAlignment="Stretch"/>
+        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+            <Button Content="Reset to default" Click="OnReset"/>
+            <Button Content="Cancel" Click="OnCancel"/>
+            <Button Content="OK" Click="OnOk" IsDefault="True"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

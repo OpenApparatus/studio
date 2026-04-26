@@ -35,15 +35,21 @@ public static class GltfExporter
         string path,
         MultiRoomEnvironment plan,
         float wallThickness,
-        float wallHeight)
+        float wallHeight,
+        bool multiMeshWalls = false,
+        IReadOnlyDictionary<(int RoomId, int MidX, int MidZ), Vector3>? wallColors = null)
     {
-        var model = BuildModel(plan, wallThickness, wallHeight);
+        var model = BuildModel(plan, wallThickness, wallHeight, multiMeshWalls, wallColors);
         // SharpGLTF picks GLB vs glTF+bin from the extension on Save.
         model.Save(path);
     }
 
     public static ModelRoot BuildModel(
-        MultiRoomEnvironment plan, float wallThickness, float wallHeight)
+        MultiRoomEnvironment plan,
+        float wallThickness,
+        float wallHeight,
+        bool multiMeshWalls = false,
+        IReadOnlyDictionary<(int RoomId, int MidX, int MidZ), Vector3>? wallColors = null)
     {
         var interiorBuilder = new RectangleInteriorBuilder();
         var wallBuilder = new BoundaryWallBuilder();
@@ -86,25 +92,57 @@ public static class GltfExporter
             AddMeshIfNonEmpty(scene, roomNode, ceilingMb, $"room_{room.Id}_ceiling");
 
             // -------- Walls --------
-            for (int i = 0; i < roomAdjacencies.Count; i++)
+            if (multiMeshWalls)
             {
-                var adj = roomAdjacencies[i];
-                var wall = wallMeshes[adj];
-                var seg = adj.SharedSegment;
-                var nrm3 = new Vector3(seg.Normal.X, 0f, seg.Normal.Y);
-                bool roomIsA = adj.RoomA == room;
-                bool isLowerOwner = LowerIdOwner(adj).Id == room.Id;
+                // One mesh per adjacency the room touches — each wall carries
+                // its own material, so per-wall colors apply independently.
+                for (int i = 0; i < roomAdjacencies.Count; i++)
+                {
+                    var adj = roomAdjacencies[i];
+                    var wall = wallMeshes[adj];
+                    var seg = adj.SharedSegment;
+                    var nrm3 = new Vector3(seg.Normal.X, 0f, seg.Normal.Y);
+                    bool roomIsA = adj.RoomA == room;
+                    bool isLowerOwner = LowerIdOwner(adj).Id == room.Id;
 
-                int wallNum = i + 1;
-                var wallMb = NewMesh($"room_{room.Id}_wall_{wallNum}");
-                var wallPrim = wallMb.UsePrimitive(MakeMaterial(
-                    $"{ObjExporter.WallsMaterialPrefix}{wallNum}_Room{room.Id}", WallsColor));
-                AddSplitWallTriangles(
-                    wallPrim, wall, SubmeshIndex.Walls, nrm3,
-                    includeBodyA: roomIsA,
-                    includeBodyB: !roomIsA,
-                    includeFrame: isLowerOwner);
-                AddMeshIfNonEmpty(scene, roomNode, wallMb, $"room_{room.Id}_wall_{wallNum}");
+                    int wallNum = i + 1;
+                    var color = ResolveWallColor(wallColors, room.Id, adj);
+                    var wallMb = NewMesh($"room_{room.Id}_wall_{wallNum}");
+                    var wallPrim = wallMb.UsePrimitive(MakeMaterial(
+                        $"{ObjExporter.WallsMaterialPrefix}{wallNum}_Room{room.Id}", color));
+                    AddSplitWallTriangles(
+                        wallPrim, wall, SubmeshIndex.Walls, nrm3,
+                        includeBodyA: roomIsA,
+                        includeBodyB: !roomIsA,
+                        includeFrame: isLowerOwner);
+                    AddMeshIfNonEmpty(scene, roomNode, wallMb, $"room_{room.Id}_wall_{wallNum}");
+                }
+            }
+            else
+            {
+                // One wall mesh for the whole room — fewer draw calls. Per-wall
+                // colors collapse to a single material; we pick the colors of
+                // any wall that has been overridden, or the default if none.
+                var wallsMb = NewMesh($"room_{room.Id}_walls");
+                var firstOverride = FirstWallColor(wallColors, room.Id, roomAdjacencies);
+                var wallsPrim = wallsMb.UsePrimitive(MakeMaterial(
+                    $"{ObjExporter.WallsMaterialPrefix}_Room{room.Id}",
+                    firstOverride ?? WallsColor));
+
+                foreach (var adj in roomAdjacencies)
+                {
+                    var wall = wallMeshes[adj];
+                    var seg = adj.SharedSegment;
+                    var nrm3 = new Vector3(seg.Normal.X, 0f, seg.Normal.Y);
+                    bool roomIsA = adj.RoomA == room;
+                    bool isLowerOwner = LowerIdOwner(adj).Id == room.Id;
+                    AddSplitWallTriangles(
+                        wallsPrim, wall, SubmeshIndex.Walls, nrm3,
+                        includeBodyA: roomIsA,
+                        includeBodyB: !roomIsA,
+                        includeFrame: isLowerOwner);
+                }
+                AddMeshIfNonEmpty(scene, roomNode, wallsMb, $"room_{room.Id}_walls");
             }
         }
 
@@ -196,6 +234,38 @@ public static class GltfExporter
     {
         if (adj.IsOuter) return adj.RoomA;
         return adj.RoomA.Id < adj.RoomB!.Id ? adj.RoomA : adj.RoomB;
+    }
+
+    /// <summary>Looks up a per-wall color override by (room, segment-midpoint).</summary>
+    static (float r, float g, float b) ResolveWallColor(
+        IReadOnlyDictionary<(int RoomId, int MidX, int MidZ), Vector3>? overrides,
+        int roomId, Adjacency adj)
+    {
+        if (overrides is null) return WallsColor;
+        var key = WallColorKey(roomId, adj);
+        if (!overrides.TryGetValue(key, out var v)) return WallsColor;
+        return (v.X, v.Y, v.Z);
+    }
+
+    static (float r, float g, float b)? FirstWallColor(
+        IReadOnlyDictionary<(int RoomId, int MidX, int MidZ), Vector3>? overrides,
+        int roomId, IEnumerable<Adjacency> adjacencies)
+    {
+        if (overrides is null) return null;
+        foreach (var adj in adjacencies)
+        {
+            if (overrides.TryGetValue(WallColorKey(roomId, adj), out var v))
+                return (v.X, v.Y, v.Z);
+        }
+        return null;
+    }
+
+    public static (int RoomId, int MidX, int MidZ) WallColorKey(int roomId, Adjacency adj)
+    {
+        var mid = adj.SharedSegment.Midpoint;
+        return (roomId,
+            (int)System.Math.Round(mid.X * 1000),
+            (int)System.Math.Round(mid.Y * 1000));
     }
 
     static readonly (float r, float g, float b) FloorColor   = (0.55f, 0.42f, 0.30f);
