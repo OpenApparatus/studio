@@ -71,11 +71,30 @@ public partial class RoomEditorPanel : UserControl
 
         BodyPanel.Children.Add(new TextBlock
         {
-            Text = $"Room {roomId}",
+            Text = roomId == 0 ? "Room 0 (start)" : $"Room {roomId}",
             FontWeight = FontWeight.SemiBold,
             FontSize = 16,
-            Margin = new Thickness(0, 0, 0, 12),
+            Margin = new Thickness(0, 0, 0, 8),
         });
+
+        // Start-room marker. The button is hidden when this room is already
+        // the start (id 0) so the panel doesn't show a dead-action button.
+        if (roomId != 0)
+        {
+            var markBtn = new Button
+            {
+                Content = "Mark as start room",
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Center,
+                Padding = new Thickness(8, 6),
+                Margin = new Thickness(0, 0, 0, 12),
+            };
+            ToolTip.SetTip(markBtn,
+                "Renumber rooms so this one becomes Room 0. " +
+                "Other rooms are reassigned by BFS distance, with ties broken by their previous id.");
+            markBtn.Click += async (_, _) => await OnMarkAsStart(roomId);
+            BodyPanel.Children.Add(markBtn);
+        }
 
         // Floor section.
         BodyPanel.Children.Add(SectionHeader("Floor"));
@@ -211,6 +230,23 @@ public partial class RoomEditorPanel : UserControl
         stack.Children.Add(new TextBlock { Text = label, Margin = new Thickness(0, 0, 0, 2) });
         stack.Children.Add(box);
         return stack;
+    }
+
+    async System.Threading.Tasks.Task OnMarkAsStart(int oldId)
+    {
+        if (_vm is null) return;
+        // Renumber first so the IDs the user sees afterwards line up. Then
+        // ask whether to flip door swings to point into the new higher rooms.
+        _vm.MarkSelectedRoomAsStartCommand.Execute(null);
+        var owner = TopLevel.GetTopLevel(this) as Window;
+        if (owner is null) return;
+        var dlg = new ConfirmDialog();
+        dlg.Configure("Update door swings?",
+            $"Room {oldId} is now Room 0 (start).\n\n" +
+            "Would you like every door's swing to be updated so it opens " +
+            "into the higher-numbered room? (Windows are unaffected.)");
+        await dlg.ShowDialog(owner);
+        if (dlg.Result) _vm.UpdateDoorSwingsToHigherRoom();
     }
 
     Control ToggleRow(string label, bool value, System.Action<bool> onChanged)

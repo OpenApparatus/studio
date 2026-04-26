@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
@@ -451,6 +452,185 @@ public partial class MainWindowViewModel : ViewModelBase
         EditVersion++;
         Rebuild();
         StatusMessage = $"Created room #{id} ({xMax - xMin + 1}×{zMax - zMin + 1} tiles).";
+    }
+
+    /// <summary>
+    /// Renumbers all rooms so the room with id <paramref name="newStartId"/>
+    /// becomes id 0, with the rest filled in BFS order from there. Walking the
+    /// adjacency graph this way keeps spatially-related rooms numerically
+    /// adjacent, which is the most useful default for downstream tooling that
+    /// reads room numbers as a navigation order. Disconnected rooms get
+    /// trailing ids in their previous order. All per-room state (colours,
+    /// multi-colour flag, per-wall overrides, current selection) is remapped
+    /// so the user sees no apparent change beyond the new ids.
+    /// </summary>
+    [RelayCommand]
+    void MarkSelectedRoomAsStart()
+    {
+        if (SelectedRoomId < 0)
+        {
+            StatusMessage = "Select a room first.";
+            return;
+        }
+        if (CurrentEnvironment is null) return;
+        if (SelectedRoomId == 0)
+        {
+            StatusMessage = "Room 0 is already the start room.";
+            return;
+        }
+        int oldStart = SelectedRoomId;
+        RenumberFromStart(oldStart);
+        SelectedRoomId = 0;
+        StatusMessage = $"Room {oldStart} is now Room 0 (start). Other rooms renumbered by BFS distance.";
+    }
+
+    void RenumberFromStart(int newStartOldId)
+    {
+        var env = CurrentEnvironment;
+        if (env is null) return;
+
+        // BFS through the adjacency graph; each room becomes the next id.
+        // Multi-exit branches break ties by the neighbour's current id, which
+        // is deterministic but otherwise arbitrary — the "best guess" the user
+        // asked for.
+        var oldToNew = new Dictionary<int, int>();
+        int next = 0;
+        oldToNew[newStartOldId] = next++;
+        var queue = new Queue<int>();
+        queue.Enqueue(newStartOldId);
+
+        while (queue.Count > 0)
+        {
+            int cur = queue.Dequeue();
+            var room = env.Rooms.FirstOrDefault(r => r.Id == cur);
+            if (room is null) continue;
+
+            var neighbours = new List<int>();
+            foreach (var adj in env.Adjacencies)
+            {
+                if (!adj.IsInternal) continue;
+                int? other =
+                    adj.RoomA.Id == cur ? adj.RoomB!.Id :
+                    adj.RoomB!.Id == cur ? adj.RoomA.Id :
+                    (int?)null;
+                if (other is int nid && !oldToNew.ContainsKey(nid))
+                    neighbours.Add(nid);
+            }
+            neighbours.Sort();
+            foreach (var nid in neighbours)
+            {
+                if (oldToNew.ContainsKey(nid)) continue; // could've been picked up by a previous neighbour
+                oldToNew[nid] = next++;
+                queue.Enqueue(nid);
+            }
+        }
+
+        // Disconnected rooms (graph-component-isolated) trail in id order.
+        foreach (var room in env.Rooms.OrderBy(r => r.Id))
+            if (!oldToNew.ContainsKey(room.Id))
+                oldToNew[room.Id] = next++;
+
+        // Identity mapping → no-op renumber.
+        bool anyChange = false;
+        foreach (var kvp in oldToNew)
+            if (kvp.Key != kvp.Value) { anyChange = true; break; }
+        if (!anyChange) return;
+
+        // Apply mapping to every place a room id is stored.
+        for (int x = 0; x < GridWidth; x++)
+            for (int z = 0; z < GridLength; z++)
+            {
+                int old = RoomGrid[x, z];
+                if (old >= 0 && oldToNew.TryGetValue(old, out var nu))
+                    RoomGrid[x, z] = nu;
+            }
+        RemapKeys(_roomFloorColors, oldToNew);
+        RemapKeys(_roomCeilingColors, oldToNew);
+        RemapKeys(_roomSingleWallColors, oldToNew);
+
+        var newMulti = new HashSet<int>();
+        foreach (var id in _multiColorRoomIds)
+            newMulti.Add(oldToNew.TryGetValue(id, out var nu) ? nu : id);
+        _multiColorRoomIds.Clear();
+        foreach (var id in newMulti) _multiColorRoomIds.Add(id);
+
+        var newWallColors = new Dictionary<(int RoomId, int MidX, int MidZ), System.Numerics.Vector3>();
+        foreach (var kvp in _wallColors)
+        {
+            int oldId = kvp.Key.RoomId;
+            int mappedId = oldToNew.TryGetValue(oldId, out var nu) ? nu : oldId;
+            newWallColors[(mappedId, kvp.Key.MidX, kvp.Key.MidZ)] = kvp.Value;
+        }
+        _wallColors.Clear();
+        foreach (var kvp in newWallColors) _wallColors[kvp.Key] = kvp.Value;
+
+        _nextRoomId = next;
+
+        Rebuild();
+        EditVersion++;
+    }
+
+    /// <summary>
+    /// Walks every internal adjacency and rewrites each door opening so it
+    /// swings into the room with the higher id (RoomB by Adjacency convention,
+    /// hence SwingNegative=true). Outer adjacencies and window openings are
+    /// left untouched.
+    /// </summary>
+    public void UpdateDoorSwingsToHigherRoom()
+    {
+        if (CurrentEnvironment is null) return;
+        int touched = 0;
+        foreach (var adj in CurrentEnvironment.Adjacencies)
+        {
+            if (!adj.IsInternal) continue;
+            if (adj.Passage is not Passage.Doorway dw) continue;
+
+            // Higher room is whichever of RoomA / RoomB has the larger id;
+            // in this codebase RoomA is always lower, so target = -N (true).
+            bool targetSwingNegative = adj.RoomB!.Id > adj.RoomA.Id;
+
+            var openings = new List<Opening>(dw.Openings.Count);
+            bool changed = false;
+            foreach (var op in dw.Openings)
+            {
+                if (op.IsWindow) { openings.Add(op); continue; }
+                if (op.SwingNegative != targetSwingNegative)
+                {
+                    openings.Add(op.With(swingNegative: targetSwingNegative));
+                    changed = true;
+                }
+                else
+                {
+                    openings.Add(op);
+                }
+            }
+            if (changed)
+            {
+                adj.Passage = new Passage.Doorway(openings);
+                RememberPassage(adj);
+                touched += openings.Count;
+            }
+        }
+        if (touched > 0)
+        {
+            EditVersion++;
+            StatusMessage = $"Updated swing on {touched} door opening(s).";
+        }
+        else
+        {
+            StatusMessage = "All doors already swing toward the higher-numbered room.";
+        }
+    }
+
+    static void RemapKeys<T>(Dictionary<int, T> dict, Dictionary<int, int> oldToNew)
+    {
+        var copy = new Dictionary<int, T>(dict);
+        dict.Clear();
+        foreach (var kvp in copy)
+        {
+            int newKey = oldToNew.TryGetValue(kvp.Key, out var nu) ? nu : kvp.Key;
+            dict[newKey] = kvp.Value;
+        }
     }
 
     /// <summary>
