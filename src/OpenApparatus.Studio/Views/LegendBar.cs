@@ -7,17 +7,17 @@ namespace OpenApparatus.Studio.Views;
 
 /// <summary>
 /// Horizontal strip rendered below the grid editor that lists the wall-symbol
-/// vocabulary (Wall / Door / Window / Open) using the same drawing primitives
-/// the editor uses inline. Sized to a fixed height so the grid never has to
-/// share space with the legend.
+/// vocabulary (Wall / Door / Window / Open) on a rounded card with a soft drop
+/// shadow so the legend reads as a callout panel rather than part of the
+/// underlying chrome.
 /// </summary>
 public sealed class LegendBar : Control
 {
     public LegendBar()
     {
-        // Tall enough that the door's swing arc (which extends ~0.7 × symbolW
-        // above the hinge) doesn't get clipped at the top edge.
-        Height = 64;
+        // Tall enough to fit the card + shadow + the door swing arc that
+        // extends ~30 px above its hinge.
+        Height = 78;
         ClipToBounds = true;
     }
 
@@ -27,10 +27,8 @@ public sealed class LegendBar : Control
         var size = Bounds.Size;
         if (size.Width <= 0 || size.Height <= 0) return;
 
-        ctx.FillRectangle(new SolidColorBrush(Color.FromRgb(245, 245, 248)), new Rect(size));
-        ctx.DrawLine(
-            new Pen(new SolidColorBrush(Color.FromRgb(200, 200, 205)), 1),
-            new Point(0, 0), new Point(size.Width, 0));
+        // Bar background — matches the studio panels so the card pops.
+        ctx.FillRectangle(new SolidColorBrush(Color.FromRgb(232, 232, 236)), new Rect(size));
 
         var typeface = new Typeface("Inter");
         var labelBrush = new SolidColorBrush(Color.FromRgb(40, 40, 50));
@@ -38,6 +36,8 @@ public sealed class LegendBar : Control
         const double symbolW = 44;
         const double labelGap = 8;
         const double cellSpacing = 28;
+        const double cardPadX = 22;
+        const double cornerRadius = 8;
 
         var entries = new (string Label, Action<DrawingContext, Point, double> Draw)[]
         {
@@ -47,7 +47,7 @@ public sealed class LegendBar : Control
             ("Open",   GridEditorView.DrawOpenSymbol),
         };
 
-        // Pre-measure each label so we can centre the row as a whole.
+        // Pre-measure each label so we can centre the row + size the card.
         var formats = new FormattedText[entries.Length];
         double rowWidth = 0;
         for (int i = 0; i < entries.Length; i++)
@@ -59,12 +59,35 @@ public sealed class LegendBar : Control
             if (i < entries.Length - 1) rowWidth += cellSpacing;
         }
 
-        // Shift the row down a few px: the door symbol extends ~30 px above
-        // its hinge point but only ~4 px below, so a perfect mathematical
-        // mid-line reads as visually too high. Push the baseline down so the
-        // optical centre of the row sits near the bar's centre.
-        double y = size.Height * 0.5 + 8;
-        double x = System.Math.Max(0, (size.Width - rowWidth) * 0.5);
+        // Card geometry. Height is fixed so the door swing arc has room.
+        double cardW = rowWidth + cardPadX * 2;
+        double cardH = 56;
+        double cardX = System.Math.Max(0, (size.Width - cardW) * 0.5);
+        double cardY = (size.Height - cardH) * 0.5;
+        var cardRect = new Rect(cardX, cardY, cardW, cardH);
+
+        // Drop shadow — three offset semi-transparent rectangles fake a soft
+        // blur. DrawingContext can't render Avalonia's BoxShadow directly, so
+        // approximate it with stacked tints.
+        for (int s = 4; s >= 1; s--)
+        {
+            byte alpha = (byte)(28 - s * 4); // 24, 20, 16, 12
+            var shadowRect = new Rect(cardX - s, cardY + s + 2, cardW + s * 2, cardH + s);
+            ctx.DrawRectangle(
+                new SolidColorBrush(Color.FromArgb(alpha, 0, 0, 0)),
+                null, shadowRect, cornerRadius + s, cornerRadius + s);
+        }
+
+        // Card.
+        ctx.DrawRectangle(
+            new SolidColorBrush(Color.FromRgb(252, 252, 253)),
+            new Pen(new SolidColorBrush(Color.FromRgb(210, 210, 218)), 1),
+            cardRect, cornerRadius, cornerRadius);
+
+        // Legend content centred on the card; baseline nudged down a few px so
+        // the door's tall swing arc doesn't push the row visually too high.
+        double y = cardY + cardH * 0.5 + 8;
+        double x = cardX + cardPadX;
         for (int i = 0; i < entries.Length; i++)
         {
             entries[i].Draw(ctx, new Point(x, y), symbolW);
