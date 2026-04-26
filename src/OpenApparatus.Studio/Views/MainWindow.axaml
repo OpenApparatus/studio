@@ -175,24 +175,35 @@
                 </StackPanel>
             </ScrollViewer>
 
-            <Grid Grid.Column="1" RowDefinitions="Auto,*">
+            <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto">
                 <!-- View tabs: Floor / Ceiling. Each tile gets recolored to that
                      room's floor or ceiling color when the tab is active. -->
                 <Border Grid.Row="0" Background="#e6e6ea" BorderBrush="#c8c8cf" BorderThickness="0 0 0 1" Padding="8 6">
-                    <StackPanel Orientation="Horizontal" Spacing="0">
-                        <RadioButton GroupName="ViewMode"
-                                     Content="Floor"
-                                     IsChecked="{Binding ViewMode, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=Floor}"
-                                     Classes="tab" Padding="14 4"/>
-                        <RadioButton GroupName="ViewMode"
-                                     Content="Ceiling"
-                                     IsChecked="{Binding ViewMode, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=Ceiling}"
-                                     Classes="tab" Padding="14 4"/>
-                    </StackPanel>
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="0">
+                            <RadioButton GroupName="ViewMode"
+                                         Content="Floor"
+                                         IsChecked="{Binding ViewMode, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=Floor}"
+                                         Classes="tab" Padding="14 4"/>
+                            <RadioButton GroupName="ViewMode"
+                                         Content="Ceiling"
+                                         IsChecked="{Binding ViewMode, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=Ceiling}"
+                                         Classes="tab" Padding="14 4"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <TextBlock Text="Wall border opacity" VerticalAlignment="Center" Foreground="#444"/>
+                            <Slider Width="160" Minimum="0" Maximum="1"
+                                    Value="{Binding WallBorderOpacity, Mode=TwoWay}"
+                                    TickFrequency="0.1" IsSnapToTickEnabled="False"
+                                    ToolTip.Tip="Editor-only — fades the coloured wall ribbons so doors / windows behind them are easier to see. Does not affect the exported colours."/>
+                        </StackPanel>
+                    </Grid>
                 </Border>
                 <Border Grid.Row="1" Background="#1a1a1f">
                     <views:GridEditorView EditVersion="{Binding EditVersion}" Margin="8"/>
                 </Border>
+                <!-- Legend strip below the grid, never overlapping the editor. -->
+                <views:LegendBar Grid.Row="2"/>
             </Grid>
 
             <!-- Right-side per-room appearance editor. Visibility is controlled by

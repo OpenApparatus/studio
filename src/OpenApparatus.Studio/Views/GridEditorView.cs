@@ -259,7 +259,8 @@ public class GridEditorView : Control
                     var inset = ShrinkSegment(ax, bx, InteriorBorderOffsetPx);
 
                     var rgb = vm.EffectiveWallColor(roomId, a);
-                    var pen = new Pen(new SolidColorBrush(Color.FromRgb(
+                    byte alpha = (byte)Math.Clamp(Math.Round(vm.WallBorderOpacity * 255), 0, 255);
+                    var pen = new Pen(new SolidColorBrush(Color.FromArgb(alpha,
                         (byte)(rgb.X * 255), (byte)(rgb.Y * 255), (byte)(rgb.Z * 255))),
                         InteriorBorderThicknessPx)
                     {
@@ -472,55 +473,17 @@ public class GridEditorView : Control
             ctx.DrawText(fmt, new Point(cx - fmt.Width * 0.5, cy - fmt.Height * 0.5));
         }
 
-        // Legend in the bottom-right corner — drawn last so nothing else can
-        // sit on top of it.
-        DrawLegend(ctx, size, typeface);
     }
 
-    static void DrawLegend(DrawingContext ctx, Size canvasSize, Typeface typeface)
-    {
-        const double rowH = 26;
-        const double padX = 12;
-        const double padY = 10;
-        const double symbolW = 44;
-        const double labelGap = 10;
-        const double boxW = 170;
-        var entries = new (string Label, System.Action<DrawingContext, Point, double> Draw)[]
-        {
-            ("Wall",   DrawWallSymbol),
-            ("Door",   DrawDoorSymbol),
-            ("Window", DrawWindowSymbol),
-            ("Open",   DrawOpenSymbol),
-        };
-        double boxH = padY * 2 + rowH * entries.Length + 4;
-        var box = new Rect(canvasSize.Width - boxW - 12, canvasSize.Height - boxH - 12, boxW, boxH);
-
-        ctx.FillRectangle(new SolidColorBrush(Color.FromArgb(235, 250, 250, 252)), box, 6);
-        ctx.DrawRectangle(null, new Pen(new SolidColorBrush(Color.FromRgb(180, 180, 190)), 1), box, 6);
-
-        var titleBrush = new SolidColorBrush(Color.FromRgb(60, 60, 70));
-        var rowBrush = new SolidColorBrush(Color.FromRgb(40, 40, 50));
-
-        for (int i = 0; i < entries.Length; i++)
-        {
-            double rowY = box.Y + padY + i * rowH + rowH * 0.5;
-            var symbolStart = new Point(box.X + padX, rowY);
-            entries[i].Draw(ctx, symbolStart, symbolW);
-            var fmt = new FormattedText(entries[i].Label,
-                System.Globalization.CultureInfo.InvariantCulture,
-                FlowDirection.LeftToRight, typeface, 12, rowBrush);
-            ctx.DrawText(fmt,
-                new Point(symbolStart.X + symbolW + labelGap, rowY - fmt.Height * 0.5));
-        }
-    }
-
-    static void DrawWallSymbol(DrawingContext ctx, Point start, double width)
+    /// <summary>Draws a single legend symbol; exposed so a separate legend control
+    /// can render the same vocabulary the editor uses inline.</summary>
+    public static void DrawWallSymbol(DrawingContext ctx, Point start, double width)
     {
         var pen = new Pen(Brushes.Black, 4) { LineCap = PenLineCap.Square };
         ctx.DrawLine(pen, start, new Point(start.X + width, start.Y));
     }
 
-    static void DrawDoorSymbol(DrawingContext ctx, Point start, double width)
+    public static void DrawDoorSymbol(DrawingContext ctx, Point start, double width)
     {
         // Hinge at left, opening to the right; arc swings up. Same vocabulary
         // (panel + arc + jambs) used in the editor proper.
@@ -559,7 +522,7 @@ public class GridEditorView : Control
             new Point(closedTip.X, closedTip.Y - 4), new Point(closedTip.X, closedTip.Y + 4));
     }
 
-    static void DrawWindowSymbol(DrawingContext ctx, Point start, double width)
+    public static void DrawWindowSymbol(DrawingContext ctx, Point start, double width)
     {
         var blue = new SolidColorBrush(Color.FromRgb(60, 140, 220));
         var winPen = new Pen(blue, 2) { LineCap = PenLineCap.Square };
@@ -577,7 +540,7 @@ public class GridEditorView : Control
             new Point(start.X + width, start.Y - 6), new Point(start.X + width, start.Y + 6));
     }
 
-    static void DrawOpenSymbol(DrawingContext ctx, Point start, double width)
+    public static void DrawOpenSymbol(DrawingContext ctx, Point start, double width)
     {
         var pen = new Pen(new SolidColorBrush(Color.FromRgb(120, 180, 120)), 1.5)
         {

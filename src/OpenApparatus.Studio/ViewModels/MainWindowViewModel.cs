@@ -146,6 +146,14 @@ public partial class MainWindowViewModel : ViewModelBase
     public enum ViewSurface { Floor, Ceiling }
     [ObservableProperty] ViewSurface _viewMode = ViewSurface.Floor;
 
+    /// <summary>Editor-only opacity multiplier for the interior wall borders.
+    /// 1.0 = fully opaque (default), 0 = invisible. Does NOT alter the colours
+    /// used by the glTF export — purely a viewport aid for spotting doors and
+    /// windows behind the coloured ribbons.</summary>
+    [ObservableProperty] double _wallBorderOpacity = 1.0;
+
+    partial void OnWallBorderOpacityChanged(double value) => EditVersion++;
+
     partial void OnViewModeChanged(ViewSurface value) => EditVersion++;
 
     /// <summary>Auto-generated room color used as both the visible tile fill and
@@ -438,7 +446,18 @@ public partial class MainWindowViewModel : ViewModelBase
         float reqWidth = isWindow ? WindowWidth : DoorWidth;
         float reqHeight = isWindow ? WindowHeight : DoorHeight;
         float reqSill = isWindow ? WindowSillHeight : 0f;
-        float w = System.Math.Min(reqWidth, segLen);
+        // Refuse to place an opening that won't fit at the selected anchor.
+        // The previous behaviour clamped w = min(reqWidth, segLen), which on
+        // walls shorter than DoorWidth produced a door spanning the entire
+        // wall instead of one centered on the click — confusing.
+        if (reqWidth > segLen + 1e-3f)
+        {
+            string label1 = isWindow ? "window" : "door";
+            StatusMessage = $"Can't fit a {reqWidth:F2}m {label1} on this {segLen:F2}m wall. " +
+                            $"Reduce the {label1} width or pick a longer wall.";
+            return;
+        }
+        float w = reqWidth;
         float anchor = _selectedClickAlong > 0f ? _selectedClickAlong : segLen * 0.5f;
         string label = isWindow ? "window" : "door";
 
