@@ -47,8 +47,9 @@ public class GridEditorView : Control
     /// <summary>How far the interior wall border sits from the actual wall, in screen
     /// pixels. Big enough to be clearly distinct from the wall's clickable region;
     /// small enough that the border still reads as belonging to its room.</summary>
-    const double InteriorBorderOffsetPx = 10.0;
-    const double InteriorBorderHitTolerancePx = 6.0;
+    const double InteriorBorderOffsetPx = 16.0;
+    const double InteriorBorderHitTolerancePx = 12.0;
+    const double InteriorBorderThicknessPx = 7.0;
 
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
@@ -65,7 +66,8 @@ public class GridEditorView : Control
         // is reachable even though the wall is right next to it.
         if (TryHitInteriorBorder(pos, vm, origin, tilePxSize, out var hit))
         {
-            _ = ShowWallColorDialog(vm, hit);
+            vm.StatusMessage = $"Wall border hit: room {hit.RoomId} — opening colour picker…";
+            _ = ShowWallColorDialogSafe(vm, hit);
             e.Handled = true;
             return;
         }
@@ -175,30 +177,46 @@ public class GridEditorView : Control
         return System.Math.Sqrt((p.X - cx) * (p.X - cx) + (p.Y - cy) * (p.Y - cy));
     }
 
-    async System.Threading.Tasks.Task ShowWallColorDialog(
+    async System.Threading.Tasks.Task ShowWallColorDialogSafe(
         MainWindowViewModel vm, (int RoomId, OpenApparatus.Topology.Adjacency Adj) hit)
     {
-        var owner = TopLevel.GetTopLevel(this) as Window;
-        if (owner is null) return;
-
-        System.Numerics.Vector3? current = null;
-        if (vm.WallColors.TryGetValue(
-            OpenApparatus.Studio.Services.GltfExporter.WallColorKey(hit.RoomId, hit.Adj),
-            out var existing))
+        try
         {
-            current = existing;
+            var owner = TopLevel.GetTopLevel(this) as Window;
+            if (owner is null)
+            {
+                vm.StatusMessage = "Couldn't find owner window for colour picker.";
+                return;
+            }
+
+            System.Numerics.Vector3? current = null;
+            if (vm.WallColors.TryGetValue(
+                OpenApparatus.Studio.Services.GltfExporter.WallColorKey(hit.RoomId, hit.Adj),
+                out var existing))
+            {
+                current = existing;
+            }
+
+            var dlg = new WallColorDialog($"Room {hit.RoomId} — wall", current);
+            await dlg.ShowDialog(owner);
+            switch (dlg.ChosenOutcome)
+            {
+                case WallColorDialog.Outcome.Set:
+                    vm.SetWallColor(hit.RoomId, hit.Adj, dlg.ChosenColor);
+                    vm.StatusMessage = $"Set wall colour for room {hit.RoomId}.";
+                    break;
+                case WallColorDialog.Outcome.Reset:
+                    vm.ClearWallColor(hit.RoomId, hit.Adj);
+                    vm.StatusMessage = $"Reset wall colour for room {hit.RoomId} to default.";
+                    break;
+                default:
+                    vm.StatusMessage = "Colour picker cancelled.";
+                    break;
+            }
         }
-
-        var dlg = new WallColorDialog($"Room {hit.RoomId} — wall", current);
-        await dlg.ShowDialog(owner);
-        switch (dlg.ChosenOutcome)
+        catch (System.Exception ex)
         {
-            case WallColorDialog.Outcome.Set:
-                vm.SetWallColor(hit.RoomId, hit.Adj, dlg.ChosenColor);
-                break;
-            case WallColorDialog.Outcome.Reset:
-                vm.ClearWallColor(hit.RoomId, hit.Adj);
-                break;
+            vm.StatusMessage = $"Colour picker failed: {ex.Message}";
         }
     }
 
@@ -369,7 +387,7 @@ public class GridEditorView : Control
             // overlap the wall outline. Coloured with any per-(room, wall) override
             // the user has set, otherwise a subtle neutral so the border still
             // reads as clickable.
-            var defaultBorderPen = new Pen(new SolidColorBrush(Color.FromArgb(160, 80, 80, 90)), 2.0)
+            var defaultBorderPen = new Pen(new SolidColorBrush(Color.FromArgb(180, 60, 60, 70)), InteriorBorderThicknessPx)
             {
                 LineCap = PenLineCap.Round,
             };
@@ -402,7 +420,8 @@ public class GridEditorView : Control
                     if (vm.WallColors.TryGetValue(key, out var rgb))
                     {
                         var pen = new Pen(new SolidColorBrush(Color.FromRgb(
-                            (byte)(rgb.X * 255), (byte)(rgb.Y * 255), (byte)(rgb.Z * 255))), 4.0)
+                            (byte)(rgb.X * 255), (byte)(rgb.Y * 255), (byte)(rgb.Z * 255))),
+                            InteriorBorderThicknessPx)
                         {
                             LineCap = PenLineCap.Round,
                         };
