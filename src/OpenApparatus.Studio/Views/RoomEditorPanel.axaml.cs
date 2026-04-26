@@ -39,10 +39,16 @@ public partial class RoomEditorPanel : UserControl
 
     void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        // Deliberately NOT listening to EditVersion: any text input or
+        // NumericUpDown edit in this panel mutates VM state that bumps
+        // EditVersion, which would otherwise rebuild the panel mid-edit and
+        // either lose focus or — when the input fires a re-entrant TextChanged
+        // on tree-attach — spin into an infinite rebuild loop. Visual-only
+        // changes (path colour, ShowPaths, opacity, etc.) live in the editor
+        // view, not in this panel, so skipping EditVersion costs nothing.
         if (e.PropertyName is nameof(MainWindowViewModel.SelectedRoomId)
                           or nameof(MainWindowViewModel.SelectedOpeningIndex)
                           or nameof(MainWindowViewModel.HasSelectedOpening)
-                          or nameof(MainWindowViewModel.EditVersion)
                           or nameof(MainWindowViewModel.CurrentEnvironment))
         {
             Rebuild();
