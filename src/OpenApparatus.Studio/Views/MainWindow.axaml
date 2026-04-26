@@ -65,11 +65,6 @@
                 <Button Content="Reset All" Command="{Binding ResetAllCommand}"/>
                 <Button Content="Random Fill" Command="{Binding RandomFillCommand}"/>
                 <Separator Width="12"/>
-                <CheckBox Content="Multi Mesh Walls"
-                          IsChecked="{Binding MultiMeshWalls}"
-                          ToolTip.Tip="When on, every wall exports as its own mesh with a unique material slot. When off (default), all walls of a room merge into one mesh."
-                          VerticalAlignment="Center"/>
-                <Separator Width="12"/>
                 <Button Content="Export glTF…"
                         Command="{Binding ExportGltfCommand}"
                         CommandParameter="{Binding $parent[Window]}"
@@ -120,6 +115,10 @@
                         <NumericUpDown Value="{Binding WallThickness}" Minimum="0.05" Maximum="2.0" Increment="0.05" FormatString="0.00"/>
                         <TextBlock Text="Wall height (m)"/>
                         <NumericUpDown Value="{Binding WallHeight}" Minimum="0.5" Maximum="6.0" Increment="0.5" FormatString="0.0"/>
+                        <CheckBox Content="Multi Mesh Walls"
+                                  IsChecked="{Binding MultiMeshWalls}"
+                                  Margin="0 6 0 0"
+                                  ToolTip.Tip="When on, every wall exports as its own mesh with a unique material. When off (default), a room's walls merge into one mesh."/>
                     </StackPanel>
 
                     <TextBlock Classes="label" Text="Doorways"/>

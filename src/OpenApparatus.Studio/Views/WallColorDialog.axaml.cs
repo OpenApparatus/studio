@@ -4,12 +4,6 @@ using Avalonia.Media;
 
 namespace OpenApparatus.Studio.Views;
 
-/// <summary>
-/// Modal dialog used to pick a color for a wall (or reset to the default).
-/// Result returned via <see cref="Result"/>: a <see cref="System.Numerics.Vector3"/>
-/// RGB triple if the user picked a color, or null if they chose "reset to default"
-/// (clear the override) or cancelled.
-/// </summary>
 public partial class WallColorDialog : Window
 {
     public enum Outcome { Cancelled, Set, Reset }
@@ -22,24 +16,34 @@ public partial class WallColorDialog : Window
         InitializeComponent();
     }
 
-    public WallColorDialog(string roomLabel, System.Numerics.Vector3? current) : this()
+    /// <summary>
+    /// Configure the dialog after construction. Pulled into a separate method so
+    /// any null look-ups against named XAML elements raise a clear error from
+    /// here rather than silently from a constructor's body.
+    /// </summary>
+    public void Configure(string roomLabel, System.Numerics.Vector3? current)
     {
-        HeaderText.Text = $"Color for {roomLabel}";
+        var header = this.FindControl<TextBlock>("HeaderText")
+            ?? throw new System.InvalidOperationException("HeaderText control missing from WallColorDialog XAML.");
+        var picker = this.FindControl<ColorPicker>("Picker")
+            ?? throw new System.InvalidOperationException("Picker control missing from WallColorDialog XAML.");
 
-        if (current.HasValue)
-            Picker.Color = Color.FromRgb(
+        header.Text = $"Color for {roomLabel}";
+        picker.Color = current.HasValue
+            ? Color.FromRgb(
                 (byte)(current.Value.X * 255),
                 (byte)(current.Value.Y * 255),
-                (byte)(current.Value.Z * 255));
-        else
-            Picker.Color = Color.FromRgb(199, 199, 204); // default-ish gray
+                (byte)(current.Value.Z * 255))
+            : Color.FromRgb(199, 199, 204); // default-ish gray
     }
 
     void InitializeComponent() => AvaloniaXamlLoader.Load(this);
 
     void OnOk(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        var c = Picker.Color;
+        var picker = this.FindControl<ColorPicker>("Picker");
+        if (picker is null) { Close(); return; }
+        var c = picker.Color;
         ChosenColor = new System.Numerics.Vector3(c.R / 255f, c.G / 255f, c.B / 255f);
         ChosenOutcome = Outcome.Set;
         Close();

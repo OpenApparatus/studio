@@ -197,7 +197,8 @@ public class GridEditorView : Control
                 current = existing;
             }
 
-            var dlg = new WallColorDialog($"Room {hit.RoomId} — wall", current);
+            var dlg = new WallColorDialog();
+            dlg.Configure($"Room {hit.RoomId} — wall", current);
             await dlg.ShowDialog(owner);
             switch (dlg.ChosenOutcome)
             {
