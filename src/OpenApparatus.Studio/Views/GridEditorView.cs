@@ -196,7 +196,9 @@ public class GridEditorView : Control
         // coords are in meters; convert to tile units (÷ vm.TileSize) then to pixels.
         if (vm.CurrentEnvironment is { } env)
         {
-            var closedPen = new Pen(Brushes.Black, 2.5);
+            // Bumped from 2.5 to 4 px so the wall outline still reads clearly
+            // against the 14 px coloured interior borders that flank it.
+            var closedPen = new Pen(Brushes.Black, 4.0);
             var doorPen = new Pen(new SolidColorBrush(Color.FromRgb(224, 96, 16)), 5.0)
             {
                 LineCap = PenLineCap.Round,
@@ -285,9 +287,26 @@ public class GridEditorView : Control
                         break;
                     case OpenApparatus.Topology.Passage.Doorway d:
                         {
-                            // For each opening: gap in the wall + orange door indicator
-                            // across the gap. Closed sections fill the spaces between/around.
+                            // For each opening: gap in the wall + colored indicator
+                            // across the gap. Doors get perpendicular jamb tick marks
+                            // at each end (standard architectural notation). Windows
+                            // get parallel sill lines spanning the opening.
                             var dir = s.Direction;
+                            var nrm2 = s.Normal;
+                            var nrmScr = new Point(
+                                nrm2.X / vm.TileSize * tileSize,
+                                -nrm2.Y / vm.TileSize * tileSize);
+                            double nrmLen2 = Math.Sqrt(nrmScr.X * nrmScr.X + nrmScr.Y * nrmScr.Y);
+                            var nrmU = nrmLen2 < 1e-3 ? new Point(0, 0)
+                                : new Point(nrmScr.X / nrmLen2, nrmScr.Y / nrmLen2);
+
+                            var jambPen = new Pen(Brushes.Black, 2.5)
+                            {
+                                LineCap = PenLineCap.Square,
+                            };
+                            const double JambHalfPx = 7.0;
+                            const double WindowSillOffsetPx = 3.0;
+
                             var ordered = d.Openings
                                 .OrderBy(o => o.OffsetAlongEdge)
                                 .ToList();
@@ -300,8 +319,37 @@ public class GridEditorView : Control
                                         ToScreen(s.Start + dir * op.OffsetAlongEdge));
                                 var doorStartW = s.Start + dir * op.OffsetAlongEdge;
                                 var doorEndW = s.Start + dir * (op.OffsetAlongEdge + op.Width);
-                                ctx.DrawLine(op.IsWindow ? windowPen : doorPen,
-                                    ToScreen(doorStartW), ToScreen(doorEndW));
+                                var startScr = ToScreen(doorStartW);
+                                var endScr = ToScreen(doorEndW);
+
+                                if (op.IsWindow)
+                                {
+                                    // Two thin sill lines straddling the wall — the
+                                    // standard top-down window symbol.
+                                    var pInner = new Point(nrmU.X * WindowSillOffsetPx, nrmU.Y * WindowSillOffsetPx);
+                                    ctx.DrawLine(windowPen,
+                                        new Point(startScr.X + pInner.X, startScr.Y + pInner.Y),
+                                        new Point(endScr.X + pInner.X, endScr.Y + pInner.Y));
+                                    ctx.DrawLine(windowPen,
+                                        new Point(startScr.X - pInner.X, startScr.Y - pInner.Y),
+                                        new Point(endScr.X - pInner.X, endScr.Y - pInner.Y));
+                                }
+                                else
+                                {
+                                    // Threshold line + perpendicular jamb tick marks
+                                    // at each end.
+                                    ctx.DrawLine(doorPen, startScr, endScr);
+                                    if (nrmLen2 >= 1e-3)
+                                    {
+                                        var off = new Point(nrmU.X * JambHalfPx, nrmU.Y * JambHalfPx);
+                                        ctx.DrawLine(jambPen,
+                                            new Point(startScr.X - off.X, startScr.Y - off.Y),
+                                            new Point(startScr.X + off.X, startScr.Y + off.Y));
+                                        ctx.DrawLine(jambPen,
+                                            new Point(endScr.X - off.X, endScr.Y - off.Y),
+                                            new Point(endScr.X + off.X, endScr.Y + off.Y));
+                                    }
+                                }
                                 prev = op.OffsetAlongEdge + op.Width;
                             }
                             if (s.Length > prev + 1e-4f)
