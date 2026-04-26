@@ -253,41 +253,43 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Snap a click position along a wall to the nearest "nice" door anchor: either
-    /// the whole-wall midpoint, or the center of one of the shared tile-pair seams
-    /// (i.e., the center of an individual grid tile along the wall length). Both
-    /// kinds of anchor are explicitly requested by the editor design.
+    /// Snap a click position along a wall to the nearest valid door anchor. Anchors
+    /// are at every tile center along the wall AND at every internal tile-seam
+    /// (the boundary between two consecutive tiles, excluding the two corners).
     /// </summary>
     static float SnapAlongToCandidate(float clickAlong, float segLen, float tileSize)
     {
-        float best = segLen * 0.5f;            // whole-wall midpoint
-        float bestDist = System.Math.Abs(clickAlong - best);
-
-        int n = (int)System.Math.Max(1, System.Math.Round(segLen / tileSize));
-        for (int i = 0; i < n; i++)
+        float best = float.MaxValue;
+        float bestDist = float.MaxValue;
+        foreach (var anchor in DoorAnchorPositions(segLen, tileSize))
         {
-            float tileCenter = (i + 0.5f) * tileSize;
-            float d = System.Math.Abs(clickAlong - tileCenter);
+            float d = System.Math.Abs(clickAlong - anchor);
             if (d < bestDist)
             {
                 bestDist = d;
-                best = tileCenter;
+                best = anchor;
             }
         }
         return best;
     }
 
     /// <summary>
-    /// All valid door anchors along the given wall (whole-wall midpoint + each
-    /// tile-pair-seam center), in world units along the segment. Used by the view
-    /// to render small markers showing where doors can be placed.
+    /// All valid door anchors along the given wall, in world units along the segment.
+    /// For an N-tile-long wall there are 2N-1 anchors:
+    ///   • N tile centers — at (i + 0.5) × tileSize for i = 0..N-1
+    ///   • N-1 internal tile-seam centers — at i × tileSize for i = 1..N-1
+    ///     (corners at 0 and N×tileSize are excluded — those are wall ends)
     /// </summary>
-    public static IEnumerable<float> DoorAnchorsAlongWall(EdgeSegment segment, float tileSize)
+    public static IEnumerable<float> DoorAnchorsAlongWall(EdgeSegment segment, float tileSize) =>
+        DoorAnchorPositions(segment.Length, tileSize);
+
+    static IEnumerable<float> DoorAnchorPositions(float segLen, float tileSize)
     {
-        yield return segment.Length * 0.5f;
-        int n = (int)System.Math.Max(1, System.Math.Round(segment.Length / tileSize));
+        int n = (int)System.Math.Max(1, System.Math.Round(segLen / tileSize));
         for (int i = 0; i < n; i++)
-            yield return (i + 0.5f) * tileSize;
+            yield return (i + 0.5f) * tileSize;       // tile centers
+        for (int i = 1; i < n; i++)
+            yield return i * tileSize;                 // internal tile-seams
     }
 
     static float DistanceFromPointToSegment(System.Numerics.Vector2 p, EdgeSegment seg)
