@@ -52,7 +52,14 @@ public partial class MainWindowViewModel : ViewModelBase
     /// location stays the same and the override applies to the new internal
     /// adjacency. Room-pair-based keys would lose the door in that case.
     /// </summary>
-    readonly Dictionary<(int, int), Passage> _passageOverrides = new();
+    /// <summary>
+    /// Per-wall passage overrides remembered across grid rebuilds. The Start
+    /// position is captured alongside the passage so that when the wall's
+    /// segment direction flips on a rebuild (which happens whenever the lower-
+    /// id RoomA changes — e.g. after a renumber), each opening's offset can
+    /// be flipped to keep its world position fixed.
+    /// </summary>
+    readonly Dictionary<(int, int), (Passage Passage, System.Numerics.Vector2 Start)> _passageOverrides = new();
 
     /// <summary>
     /// Per-wall color overrides keyed by (roomId, segment-midpoint-mm). A wall
@@ -69,7 +76,8 @@ public partial class MainWindowViewModel : ViewModelBase
             (int)System.Math.Round(mid.Y * 1000));
     }
 
-    void RememberPassage(Adjacency adj) => _passageOverrides[PassageKey(adj)] = adj.Passage;
+    void RememberPassage(Adjacency adj)
+        => _passageOverrides[PassageKey(adj)] = (adj.Passage, adj.SharedSegment.Start);
 
     /// <summary>Read-only access to per-wall color overrides (for view rendering).</summary>
     public IReadOnlyDictionary<(int RoomId, int MidX, int MidZ), System.Numerics.Vector3> WallColors => _wallColors;
@@ -1114,29 +1122,40 @@ public partial class MainWindowViewModel : ViewModelBase
             // transitions when new rooms are placed against existing walls.
             foreach (var adj in env.Adjacencies)
             {
-                if (!_passageOverrides.TryGetValue(PassageKey(adj), out var passage))
+                if (!_passageOverrides.TryGetValue(PassageKey(adj), out var stored))
                     continue;
 
-                // Validate any doorway openings still fit the (possibly different-length)
-                // segment in the new build. Skip openings that no longer fit.
-                if (passage is Passage.Doorway dw)
+                // If the new segment's Start is closer to the stored End than to
+                // the stored Start, the wall direction flipped on rebuild
+                // (typical after renumbering: RoomA is always the lower-id
+                // room, so swapping ids can flip the segment). Re-orient the
+                // openings so they keep their world positions.
+                var newSeg = adj.SharedSegment;
+                bool flipped = (newSeg.Start - stored.Start).LengthSquared()
+                             > (newSeg.End - stored.Start).LengthSquared();
+
+                if (stored.Passage is Passage.Doorway dw)
                 {
-                    var fitting = new List<Opening>();
+                    var rebased = new List<Opening>(dw.Openings.Count);
                     foreach (var op in dw.Openings)
                     {
-                        if (op.OffsetAlongEdge >= 0f &&
-                            op.OffsetAlongEdge + op.Width <= adj.SharedSegment.Length + 1e-3f)
-                            fitting.Add(op);
+                        var op2 = flipped
+                            ? op.With(
+                                offsetAlongEdge: newSeg.Length - op.OffsetAlongEdge - op.Width,
+                                hingeAtEnd: !op.HingeAtEnd,
+                                swingNegative: !op.SwingNegative)
+                            : op;
+                        if (op2.OffsetAlongEdge >= -1e-3f &&
+                            op2.OffsetAlongEdge + op2.Width <= newSeg.Length + 1e-3f)
+                            rebased.Add(op2);
                     }
-                    if (fitting.Count == dw.Openings.Count)
-                        adj.Passage = passage;
-                    else if (fitting.Count > 0)
-                        adj.Passage = new Passage.Doorway(fitting);
+                    if (rebased.Count > 0)
+                        adj.Passage = new Passage.Doorway(rebased);
                     // else: leave as default Closed — no openings fit the new segment.
                 }
                 else
                 {
-                    adj.Passage = passage;
+                    adj.Passage = stored.Passage;
                 }
             }
 
