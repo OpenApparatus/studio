@@ -214,6 +214,12 @@ public partial class MainWindowViewModel : ViewModelBase
     public enum ViewSurface { Floor, Ceiling }
     [ObservableProperty] ViewSurface _viewMode = ViewSurface.Floor;
 
+    /// <summary>When on, the editor draws a path overlay through every
+    /// traversable passage (open or doorway), anchoring each leg to the
+    /// centres of the tile cells on either side of the opening.</summary>
+    [ObservableProperty] bool _showPaths;
+    partial void OnShowPathsChanged(bool value) => EditVersion++;
+
     /// <summary>Editor-only opacity multiplier for the interior wall borders.
     /// 1.0 = fully opaque (default), 0 = invisible. Does NOT alter the colours
     /// used by the glTF export — purely a viewport aid for spotting doors and
@@ -517,6 +523,9 @@ public partial class MainWindowViewModel : ViewModelBase
             foreach (var adj in env.Adjacencies)
             {
                 if (!adj.IsInternal) continue;
+                // Only follow traversable passages — closed walls don't form a
+                // path between rooms and shouldn't drive the numbering order.
+                if (adj.Passage is Passage.Closed) continue;
                 int? other =
                     adj.RoomA.Id == cur ? adj.RoomB!.Id :
                     adj.RoomB!.Id == cur ? adj.RoomA.Id :

@@ -190,7 +190,11 @@
                                          IsChecked="{Binding ViewMode, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=Ceiling}"
                                          Classes="tab" Padding="14 4"/>
                         </StackPanel>
-                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+                            <CheckBox Content="Show path(s)"
+                                      IsChecked="{Binding ShowPaths}"
+                                      VerticalAlignment="Center"
+                                      ToolTip.Tip="Draw a green polyline through every traversable wall (open or doorway) to visualize how rooms connect."/>
                             <TextBlock Text="Wall border opacity" VerticalAlignment="Center" Foreground="#444"/>
                             <Slider Width="160" Minimum="0" Maximum="1"
                                     Value="{Binding WallBorderOpacity, Mode=TwoWay}"

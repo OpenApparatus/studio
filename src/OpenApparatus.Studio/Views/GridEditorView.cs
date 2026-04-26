@@ -162,6 +162,14 @@ public class GridEditorView : Control
         e.Handled = true;
     }
 
+    static System.Numerics.Vector2 RoomCenterWorld(OpenApparatus.Topology.Room room)
+    {
+        var b = room.GetWorldBounds();
+        return new System.Numerics.Vector2(
+            (b.Min.X + b.Max.X) * 0.5f,
+            (b.Min.Y + b.Max.Y) * 0.5f);
+    }
+
     static (Point A, Point B) ShrinkSegment(Point a, Point b, double pixels)
     {
         double dx = b.X - a.X, dy = b.Y - a.Y;
@@ -523,6 +531,54 @@ public class GridEditorView : Control
                     case OpenApparatus.Topology.Passage.Open _:
                         ctx.DrawLine(openPen, p0, p1);
                         break;
+                }
+            }
+
+            // Path overlay: when ShowPaths is on, draw a polyline from each
+            // room's centre through every traversable opening into its
+            // neighbour's centre. Closed walls don't form paths and are
+            // skipped. Anchored at door / opening midpoints since cell-centre
+            // anchoring isn't well-defined for multi-tile rooms.
+            if (vm.ShowPaths)
+            {
+                var pathPen = new Pen(new SolidColorBrush(Color.FromArgb(220, 32, 168, 96)), 2.5)
+                {
+                    LineCap = PenLineCap.Round,
+                };
+                var pathDot = new SolidColorBrush(Color.FromRgb(32, 168, 96));
+
+                foreach (var adj in env.Adjacencies)
+                {
+                    if (!adj.IsInternal) continue;
+                    if (adj.Passage is OpenApparatus.Topology.Passage.Closed) continue;
+
+                    var aWorld = RoomCenterWorld(adj.RoomA);
+                    var bWorld = RoomCenterWorld(adj.RoomB!);
+                    var aScr = ToScreen(aWorld);
+                    var bScr = ToScreen(bWorld);
+
+                    var seg = adj.SharedSegment;
+                    var dir2 = seg.Direction;
+                    var doorPoints = new System.Collections.Generic.List<System.Numerics.Vector2>();
+                    if (adj.Passage is OpenApparatus.Topology.Passage.Doorway dw)
+                    {
+                        foreach (var op in dw.Openings)
+                            doorPoints.Add(seg.Start + dir2 * (op.OffsetAlongEdge + op.Width * 0.5f));
+                    }
+                    else
+                    {
+                        doorPoints.Add(seg.Midpoint);
+                    }
+
+                    foreach (var dp in doorPoints)
+                    {
+                        var midScr = ToScreen(dp);
+                        ctx.DrawLine(pathPen, aScr, midScr);
+                        ctx.DrawLine(pathPen, midScr, bScr);
+                        ctx.DrawEllipse(pathDot, null, midScr, 3, 3);
+                    }
+                    ctx.DrawEllipse(pathDot, null, aScr, 4, 4);
+                    ctx.DrawEllipse(pathDot, null, bScr, 4, 4);
                 }
             }
 
