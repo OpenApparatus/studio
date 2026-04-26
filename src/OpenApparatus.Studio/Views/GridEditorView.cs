@@ -38,6 +38,9 @@ public class GridEditorView : Control
     public GridEditorView()
     {
         Focusable = true;
+        // Clip drawing to the control's bounds so a zoomed grid never spills
+        // over the surrounding chrome (toolbar, side panel, legend bar).
+        ClipToBounds = true;
     }
 
     bool _dragging;
