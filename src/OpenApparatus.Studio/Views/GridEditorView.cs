@@ -167,6 +167,13 @@ public class GridEditorView : Control
             {
                 LineCap = PenLineCap.Round,
             };
+            // Windows: light blue, dashed-thin so they read as a different opening type
+            // than doors (which are a solid orange line) when both share a wall.
+            var windowPen = new Pen(new SolidColorBrush(Color.FromRgb(60, 140, 220)), 5.0)
+            {
+                LineCap = PenLineCap.Round,
+                DashStyle = new DashStyle(new[] { 1.6, 1.0 }, 0),
+            };
             var openPen = new Pen(new SolidColorBrush(Color.FromRgb(120, 180, 120)), 1.5)
             {
                 DashStyle = DashStyle.Dash,
@@ -216,7 +223,8 @@ public class GridEditorView : Control
                                         ToScreen(s.Start + dir * op.OffsetAlongEdge));
                                 var doorStartW = s.Start + dir * op.OffsetAlongEdge;
                                 var doorEndW = s.Start + dir * (op.OffsetAlongEdge + op.Width);
-                                ctx.DrawLine(doorPen, ToScreen(doorStartW), ToScreen(doorEndW));
+                                ctx.DrawLine(op.IsWindow ? windowPen : doorPen,
+                                    ToScreen(doorStartW), ToScreen(doorEndW));
                                 prev = op.OffsetAlongEdge + op.Width;
                             }
                             if (s.Length > prev + 1e-4f)

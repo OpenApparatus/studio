@@ -45,6 +45,7 @@
     <Window.KeyBindings>
         <KeyBinding Gesture="R" Command="{Binding CreateRoomFromSelectionCommand}"/>
         <KeyBinding Gesture="D" Command="{Binding ToggleDoorOnSelectedWallCommand}"/>
+        <KeyBinding Gesture="W" Command="{Binding ToggleWindowOnSelectedWallCommand}"/>
         <KeyBinding Gesture="O" Command="{Binding OpenSelectedWallCommand}"/>
         <KeyBinding Gesture="C" Command="{Binding CloseSelectedWallCommand}"/>
         <KeyBinding Gesture="Escape" Command="{Binding ClearSelectionCommand}"/>
@@ -119,6 +120,16 @@
                         <NumericUpDown Value="{Binding DoorHeight}" Minimum="1.5" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
                     </StackPanel>
 
+                    <TextBlock Classes="label" Text="Windows"/>
+                    <StackPanel Classes="section">
+                        <TextBlock Text="Window width (m)"/>
+                        <NumericUpDown Value="{Binding WindowWidth}" Minimum="0.3" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
+                        <TextBlock Text="Window head height (m)"/>
+                        <NumericUpDown Value="{Binding WindowHeight}" Minimum="1.0" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
+                        <TextBlock Text="Sill height (m)"/>
+                        <NumericUpDown Value="{Binding WindowSillHeight}" Minimum="0.1" Maximum="2.5" Increment="0.1" FormatString="0.0"/>
+                    </StackPanel>
+
                     <TextBlock Classes="label" Text="How to use"/>
                     <TextBlock TextWrapping="Wrap" Foreground="#444" Margin="0 0 0 6"
                                Text="• Click+drag empty tiles to select. Click+drag selected tiles to deselect."/>
@@ -127,7 +138,9 @@
                     <TextBlock TextWrapping="Wrap" Foreground="#444" Margin="0 0 0 6"
                                Text="• Click a wall to select it (yellow highlight)."/>
                     <TextBlock TextWrapping="Wrap" Foreground="#444" Margin="0 0 0 6"
-                               Text="• With a wall selected: D = doorway, O = open (no wall), C = closed."/>
+                               Text="• With a wall selected: D = doorway, W = window, O = open (no wall), C = closed."/>
+                    <TextBlock TextWrapping="Wrap" Foreground="#444" Margin="0 0 0 6"
+                               Text="• Adjacent windows merge into a single wider window."/>
                     <TextBlock TextWrapping="Wrap" Foreground="#444"
                                Text="• Random Fill generates a starter layout you can edit."/>
 

@@ -69,6 +69,9 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] float _wallHeight = 3f;
     [ObservableProperty] float _doorWidth = 1.2f;
     [ObservableProperty] float _doorHeight = 2.2f;
+    [ObservableProperty] float _windowWidth = 1.2f;
+    [ObservableProperty] float _windowHeight = 2.2f;
+    [ObservableProperty] float _windowSillHeight = 1.0f;
 
     [ObservableProperty] MultiRoomEnvironment? _currentEnvironment;
     [ObservableProperty] string _statusMessage = "Click and drag to select tiles, then click 'Create Room'.";
@@ -219,12 +222,23 @@ public partial class MainWindowViewModel : ViewModelBase
 
     /// <summary>
     /// Toggle a doorway at the active anchor on the selected wall (D hotkey).
-    /// If an opening already exists at the active anchor (within ½ door-width),
-    /// remove it. Otherwise, add one — preserving any other openings already on
-    /// the wall, so multiple doorways can be placed on a single wall.
+    /// If a door already exists at the active anchor, remove it. Otherwise, add
+    /// one — preserving any other openings on the wall.
     /// </summary>
     [RelayCommand]
-    void ToggleDoorOnSelectedWall()
+    void ToggleDoorOnSelectedWall() => ToggleOpeningOnSelectedWall(isWindow: false);
+
+    /// <summary>
+    /// Toggle a window at the active anchor on the selected wall (W hotkey).
+    /// If a window already exists at the active anchor, remove it. Otherwise,
+    /// add one and merge with any window directly adjacent on either side
+    /// (matching sill / head heights) so consecutive windows form a single
+    /// wider opening.
+    /// </summary>
+    [RelayCommand]
+    void ToggleWindowOnSelectedWall() => ToggleOpeningOnSelectedWall(isWindow: true);
+
+    void ToggleOpeningOnSelectedWall(bool isWindow)
     {
         if (SelectedAdjacency is null)
         {
@@ -234,38 +248,44 @@ public partial class MainWindowViewModel : ViewModelBase
 
         var adj = SelectedAdjacency;
         float segLen = adj.SharedSegment.Length;
-        float w = System.Math.Min(DoorWidth, segLen);
+        float reqWidth = isWindow ? WindowWidth : DoorWidth;
+        float reqHeight = isWindow ? WindowHeight : DoorHeight;
+        float reqSill = isWindow ? WindowSillHeight : 0f;
+        float w = System.Math.Min(reqWidth, segLen);
         float anchor = _selectedClickAlong > 0f ? _selectedClickAlong : segLen * 0.5f;
+        string label = isWindow ? "window" : "door";
 
-        // Existing openings on the wall (empty for Closed / Open / fresh Doorway).
         var openings = adj.Passage is Passage.Doorway dw
             ? new List<Opening>(dw.Openings)
             : new List<Opening>();
 
-        // Does an opening already cover the active anchor? Use the opening's center
-        // to compare; tolerance = half a door width so adjacent anchors don't conflict.
-        int existingIdx = -1;
+        // Does an opening of the SAME kind already cover the active anchor?
+        // Tolerance = half the requested width so adjacent anchors don't false-match.
+        int sameKindIdx = -1;
+        int otherKindIdx = -1;
         for (int i = 0; i < openings.Count; i++)
         {
             float center = openings[i].OffsetAlongEdge + openings[i].Width * 0.5f;
-            if (System.Math.Abs(center - anchor) < w * 0.5f)
-            {
-                existingIdx = i;
-                break;
-            }
+            if (System.Math.Abs(center - anchor) >= w * 0.5f) continue;
+            if (openings[i].IsWindow == isWindow) sameKindIdx = i;
+            else otherKindIdx = i;
         }
 
-        if (existingIdx >= 0)
+        if (sameKindIdx >= 0)
         {
-            openings.RemoveAt(existingIdx);
+            openings.RemoveAt(sameKindIdx);
             StatusMessage = openings.Count > 0
-                ? $"Removed door — {openings.Count} remaining on wall."
-                : "Removed door — wall is now closed.";
+                ? $"Removed {label} — {openings.Count} opening(s) remaining."
+                : $"Removed {label} — wall is now closed.";
         }
         else
         {
+            if (otherKindIdx >= 0)
+            {
+                StatusMessage = $"Can't add {label} here — a {(isWindow ? "door" : "window")} already occupies this anchor.";
+                return;
+            }
             float offset = System.Math.Clamp(anchor - w * 0.5f, 0f, segLen - w);
-            // Reject if it would overlap an existing opening (e.g., rapid clicks).
             bool overlaps = false;
             foreach (var op in openings)
             {
@@ -277,11 +297,12 @@ public partial class MainWindowViewModel : ViewModelBase
             }
             if (overlaps)
             {
-                StatusMessage = "Can't add door here — would overlap an existing opening.";
+                StatusMessage = $"Can't add {label} here — would overlap an existing opening.";
                 return;
             }
-            openings.Add(new Opening(offset, w, DoorHeight));
-            StatusMessage = $"Added door at offset {offset:F2}m. {openings.Count} on this wall.";
+            openings.Add(new Opening(offset, w, reqHeight, reqSill));
+            if (isWindow) MergeAdjacentWindows(openings);
+            StatusMessage = $"Added {label} at offset {offset:F2}m. {openings.Count} opening(s) on this wall.";
         }
 
         adj.Passage = openings.Count > 0
@@ -289,6 +310,40 @@ public partial class MainWindowViewModel : ViewModelBase
             : Passage.Closed.Instance;
         RememberPassage(adj);
         EditVersion++;
+    }
+
+    /// <summary>
+    /// Merge windows that touch end-to-end (and share sill / head heights) into
+    /// single wider openings. Mutates <paramref name="openings"/> in place.
+    /// Doors are left alone — they always remain individual openings.
+    /// </summary>
+    static void MergeAdjacentWindows(List<Opening> openings)
+    {
+        const float EPS = 1e-3f;
+        bool merged;
+        do
+        {
+            openings.Sort((a, b) => a.OffsetAlongEdge.CompareTo(b.OffsetAlongEdge));
+            merged = false;
+            for (int i = 0; i < openings.Count - 1; i++)
+            {
+                var a = openings[i];
+                var b = openings[i + 1];
+                if (!a.IsWindow || !b.IsWindow) continue;
+                if (System.Math.Abs(a.Height - b.Height) > EPS) continue;
+                if (System.Math.Abs(a.SillHeight - b.SillHeight) > EPS) continue;
+                if (System.Math.Abs(a.OffsetAlongEdge + a.Width - b.OffsetAlongEdge) > EPS) continue;
+
+                openings[i] = new Opening(
+                    a.OffsetAlongEdge,
+                    a.Width + b.Width,
+                    a.Height,
+                    a.SillHeight);
+                openings.RemoveAt(i + 1);
+                merged = true;
+                break;
+            }
+        } while (merged);
     }
 
     /// <summary>Set the selected wall's passage to Open (no wall) — O hotkey.</summary>
@@ -518,6 +573,9 @@ public partial class MainWindowViewModel : ViewModelBase
     partial void OnWallHeightChanged(float value) => Rebuild();
     partial void OnDoorWidthChanged(float value) => Rebuild();
     partial void OnDoorHeightChanged(float value) => Rebuild();
+    partial void OnWindowWidthChanged(float value) => Rebuild();
+    partial void OnWindowHeightChanged(float value) => Rebuild();
+    partial void OnWindowSillHeightChanged(float value) => Rebuild();
 
     void OnGridDimensionChanged()
     {
