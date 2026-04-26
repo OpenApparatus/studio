@@ -1,0 +1,22 @@
+# .NET build outputs
+bin/
+**/obj/
+
+# IDE / editor
+*.user
+*.suo
+.vs/
+.vscode/
+.idea/
+*.DotSettings.user
+
+# Avalonia hot-reload
+*.axaml.g.cs
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temp
+*.tmp
+*.bak
