@@ -65,9 +65,10 @@
                 <Button Content="Reset All" Command="{Binding ResetAllCommand}"/>
                 <Button Content="Random Fill" Command="{Binding RandomFillCommand}"/>
                 <Separator Width="12"/>
-                <Button Content="Export OBJ…"
-                        Command="{Binding ExportObjCommand}"
-                        CommandParameter="{Binding $parent[Window]}"/>
+                <Button Content="Export glTF…"
+                        Command="{Binding ExportGltfCommand}"
+                        CommandParameter="{Binding $parent[Window]}"
+                        ToolTip.Tip="Export as glTF (.glb / .gltf) with per-room scene hierarchy"/>
                 <Button Content="Export JSON…"
                         Command="{Binding ExportJsonCommand}"
                         CommandParameter="{Binding $parent[Window]}"

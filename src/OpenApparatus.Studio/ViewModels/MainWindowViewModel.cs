@@ -486,55 +486,32 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    async Task ExportObjAsync(Window? owner)
+    async Task ExportGltfAsync(Window? owner)
     {
         if (owner is null || CurrentEnvironment is null) return;
         var file = await owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
-            Title = "Export geometry as OBJ",
-            SuggestedFileName = "environment.obj",
-            DefaultExtension = "obj",
-            FileTypeChoices = new[] { new FilePickerFileType("Wavefront OBJ") { Patterns = new[] { "*.obj" } } },
+            Title = "Export geometry as glTF",
+            SuggestedFileName = "environment.glb",
+            DefaultExtension = "glb",
+            FileTypeChoices = new[]
+            {
+                new FilePickerFileType("glTF Binary (*.glb)") { Patterns = new[] { "*.glb" } },
+                new FilePickerFileType("glTF JSON (*.gltf)")  { Patterns = new[] { "*.gltf" } },
+            },
         });
         if (file is null) return;
 
         try
         {
-            // Sidecar MTL lives next to the OBJ. Without `mtllib`+`usemtl`, Unity
-            // collapses each room into a single material slot per object.
-            var objPath = file.Path.LocalPath;
-            var mtlPath = System.IO.Path.ChangeExtension(objPath, ".mtl");
-            var mtlFileName = System.IO.Path.GetFileName(mtlPath);
-
-            // Combined .obj: one file with every room as its own group/object.
-            // Useful in Blender / Maya which honor `o`. Unity flattens it, so
-            // we also write per-room .obj files alongside.
-            IReadOnlyList<ObjExporter.MaterialSlot> slots;
-            await using (var stream = await file.OpenWriteAsync())
-            using (var writer = new StreamWriter(stream))
-            {
-                slots = ObjExporter.ExportCombined(
-                    writer, CurrentEnvironment, WallThickness, WallHeight, mtlFileName);
-            }
-
-            // Per-room .obj files in <stem>_rooms/ — one OBJ model per room is
-            // the only reliable way to get child GameObjects out of Unity's
-            // built-in OBJ importer. Each per-room file references the same
-            // sidecar .mtl two directories up, so the relative path resolves
-            // when both are dragged into the same Unity project folder.
-            var folder = System.IO.Path.GetDirectoryName(objPath) ?? ".";
-            var stem = System.IO.Path.GetFileNameWithoutExtension(objPath);
-            var roomsFolder = System.IO.Path.Combine(folder, $"{stem}_rooms");
-            ObjExporter.ExportPerRoom(
-                roomsFolder, stem, CurrentEnvironment, WallThickness, WallHeight,
-                $"../{mtlFileName}");
-
-            using (var mtlWriter = new StreamWriter(mtlPath))
-            {
-                ObjExporter.WriteMtl(mtlWriter, slots);
-            }
-
-            StatusMessage = $"Exported {file.Name} + per-room files → {stem}_rooms/";
+            // SharpGLTF picks GLB vs glTF+bin from the extension on Save —
+            // .glb is single-file binary; .gltf writes JSON + sidecar .bin.
+            // glTF natively supports scene hierarchy, so the per-room nesting
+            // (Root → Room_<id> → floor/ceiling/wall_<i>) survives import in
+            // Unity, Blender, Three.js, or any glTF-aware tool.
+            GltfExporter.Export(
+                file.Path.LocalPath, CurrentEnvironment, WallThickness, WallHeight);
+            StatusMessage = $"Exported glTF → {file.Name}";
         }
         catch (Exception ex)
         {
