@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -199,13 +200,30 @@ public class GridEditorView : Control
                         ctx.DrawLine(closedPen, p0, p1);
                         break;
                     case OpenApparatus.Topology.Passage.Doorway d:
-                        // Solid wall on either side of the door, plus orange door indicator.
-                        var dir = s.Direction;
-                        var doorStartW = s.Start + dir * d.OffsetAlongEdge;
-                        var doorEndW = s.Start + dir * (d.OffsetAlongEdge + d.Width);
-                        ctx.DrawLine(closedPen, p0, ToScreen(doorStartW));
-                        ctx.DrawLine(closedPen, ToScreen(doorEndW), p1);
-                        ctx.DrawLine(doorPen, ToScreen(doorStartW), ToScreen(doorEndW));
+                        {
+                            // For each opening: gap in the wall + orange door indicator
+                            // across the gap. Closed sections fill the spaces between/around.
+                            var dir = s.Direction;
+                            var ordered = d.Openings
+                                .OrderBy(o => o.OffsetAlongEdge)
+                                .ToList();
+                            float prev = 0f;
+                            foreach (var op in ordered)
+                            {
+                                if (op.OffsetAlongEdge > prev + 1e-4f)
+                                    ctx.DrawLine(closedPen,
+                                        ToScreen(s.Start + dir * prev),
+                                        ToScreen(s.Start + dir * op.OffsetAlongEdge));
+                                var doorStartW = s.Start + dir * op.OffsetAlongEdge;
+                                var doorEndW = s.Start + dir * (op.OffsetAlongEdge + op.Width);
+                                ctx.DrawLine(doorPen, ToScreen(doorStartW), ToScreen(doorEndW));
+                                prev = op.OffsetAlongEdge + op.Width;
+                            }
+                            if (s.Length > prev + 1e-4f)
+                                ctx.DrawLine(closedPen,
+                                    ToScreen(s.Start + dir * prev),
+                                    ToScreen(s.Start + dir * s.Length));
+                        }
                         break;
                     case OpenApparatus.Topology.Passage.Open _:
                         ctx.DrawLine(openPen, p0, p1);

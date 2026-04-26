@@ -40,6 +40,37 @@ public partial class MainWindowViewModel : ViewModelBase
 
     int _nextRoomId = 0;
 
+    /// <summary>
+    /// Per-adjacency passage overrides remembered across grid rebuilds. Without this,
+    /// every Rebuild() resets all walls to Closed (since FromGrid produces a fresh
+    /// MultiRoomEnvironment with default passages), losing user-placed doorways.
+    ///
+    /// Keys identify an adjacency by its participant rooms:
+    ///   • Internal: (min(roomA, roomB), max(roomA, roomB), 0, 0) — two rooms uniquely
+    ///     determine their adjacency in our model.
+    ///   • Outer:    (roomId, -1, midX_mm, midZ_mm) — a room can have multiple outer
+    ///     sides; the segment midpoint (rounded to mm) disambiguates.
+    /// </summary>
+    readonly Dictionary<(int, int, int, int), Passage> _passageOverrides = new();
+
+    static (int, int, int, int) PassageKey(Adjacency adj)
+    {
+        if (adj.RoomB is { } roomB)
+        {
+            int a = System.Math.Min(adj.RoomA.Id, roomB.Id);
+            int b = System.Math.Max(adj.RoomA.Id, roomB.Id);
+            return (a, b, 0, 0);
+        }
+        var mid = adj.SharedSegment.Midpoint;
+        return (
+            adj.RoomA.Id,
+            -1,
+            (int)System.Math.Round(mid.X * 1000),
+            (int)System.Math.Round(mid.Y * 1000));
+    }
+
+    void RememberPassage(Adjacency adj) => _passageOverrides[PassageKey(adj)] = adj.Passage;
+
     // ---- Visual / generation parameters ----
 
     [ObservableProperty] float _wallThickness = 0.2f;
@@ -194,7 +225,12 @@ public partial class MainWindowViewModel : ViewModelBase
         return true;
     }
 
-    /// <summary>Toggle a doorway on the currently selected wall (D hotkey).</summary>
+    /// <summary>
+    /// Toggle a doorway at the active anchor on the selected wall (D hotkey).
+    /// If an opening already exists at the active anchor (within ½ door-width),
+    /// remove it. Otherwise, add one — preserving any other openings already on
+    /// the wall, so multiple doorways can be placed on a single wall.
+    /// </summary>
     [RelayCommand]
     void ToggleDoorOnSelectedWall()
     {
@@ -203,13 +239,64 @@ public partial class MainWindowViewModel : ViewModelBase
             StatusMessage = "No wall selected. Click a wall first.";
             return;
         }
-        SelectedAdjacency.Passage = SelectedAdjacency.Passage switch
+
+        var adj = SelectedAdjacency;
+        float segLen = adj.SharedSegment.Length;
+        float w = System.Math.Min(DoorWidth, segLen);
+        float anchor = _selectedClickAlong > 0f ? _selectedClickAlong : segLen * 0.5f;
+
+        // Existing openings on the wall (empty for Closed / Open / fresh Doorway).
+        var openings = adj.Passage is Passage.Doorway dw
+            ? new List<Opening>(dw.Openings)
+            : new List<Opening>();
+
+        // Does an opening already cover the active anchor? Use the opening's center
+        // to compare; tolerance = half a door width so adjacent anchors don't conflict.
+        int existingIdx = -1;
+        for (int i = 0; i < openings.Count; i++)
         {
-            Passage.Doorway _ => Passage.Closed.Instance,
-            _ => MakeCenteredDoorway(SelectedAdjacency),
-        };
+            float center = openings[i].OffsetAlongEdge + openings[i].Width * 0.5f;
+            if (System.Math.Abs(center - anchor) < w * 0.5f)
+            {
+                existingIdx = i;
+                break;
+            }
+        }
+
+        if (existingIdx >= 0)
+        {
+            openings.RemoveAt(existingIdx);
+            StatusMessage = openings.Count > 0
+                ? $"Removed door — {openings.Count} remaining on wall."
+                : "Removed door — wall is now closed.";
+        }
+        else
+        {
+            float offset = System.Math.Clamp(anchor - w * 0.5f, 0f, segLen - w);
+            // Reject if it would overlap an existing opening (e.g., rapid clicks).
+            bool overlaps = false;
+            foreach (var op in openings)
+            {
+                if (offset + w > op.OffsetAlongEdge && offset < op.OffsetAlongEdge + op.Width)
+                {
+                    overlaps = true;
+                    break;
+                }
+            }
+            if (overlaps)
+            {
+                StatusMessage = "Can't add door here — would overlap an existing opening.";
+                return;
+            }
+            openings.Add(new Opening(offset, w, DoorHeight));
+            StatusMessage = $"Added door at offset {offset:F2}m. {openings.Count} on this wall.";
+        }
+
+        adj.Passage = openings.Count > 0
+            ? new Passage.Doorway(openings)
+            : Passage.Closed.Instance;
+        RememberPassage(adj);
         EditVersion++;
-        StatusMessage = $"Wall → {SelectedAdjacency.Passage.GetType().Name}.";
     }
 
     /// <summary>Set the selected wall's passage to Open (no wall) — O hotkey.</summary>
@@ -222,11 +309,12 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
         SelectedAdjacency.Passage = Passage.Open.Instance;
+        RememberPassage(SelectedAdjacency);
         EditVersion++;
         StatusMessage = "Wall → Open (no wall).";
     }
 
-    /// <summary>Set the selected wall's passage to Closed (solid wall) — C hotkey.</summary>
+    /// <summary>Set the selected wall's passage to Closed (solid wall, no doors) — C hotkey.</summary>
     [RelayCommand]
     void CloseSelectedWall()
     {
@@ -236,20 +324,9 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
         SelectedAdjacency.Passage = Passage.Closed.Instance;
+        RememberPassage(SelectedAdjacency);
         EditVersion++;
         StatusMessage = "Wall → Closed.";
-    }
-
-    Passage MakeCenteredDoorway(Adjacency adj)
-    {
-        float segLen = adj.SharedSegment.Length;
-        float w = System.Math.Min(DoorWidth, segLen);
-        // Center the door at the recorded click position (already snapped to a
-        // tile-pair-seam center or the whole-wall midpoint by TrySelectAdjacencyAtWorld).
-        // Fallback to whole-wall center when no click was recorded.
-        float center = _selectedClickAlong > 0f ? _selectedClickAlong : segLen * 0.5f;
-        float offset = System.Math.Clamp(center - w * 0.5f, 0f, segLen - w);
-        return new Passage.Doorway(offset, w, DoorHeight);
     }
 
     /// <summary>
@@ -382,6 +459,16 @@ public partial class MainWindowViewModel : ViewModelBase
         try
         {
             var env = MultiRoomEnvironmentBuilder.FromGrid(RoomGrid, TileSize);
+
+            // Re-apply any persisted passage choices. Doors / open passages set by
+            // the user need to survive grid edits that don't change the participating
+            // rooms (e.g., creating a brand-new room elsewhere on the grid).
+            foreach (var adj in env.Adjacencies)
+            {
+                if (_passageOverrides.TryGetValue(PassageKey(adj), out var passage))
+                    adj.Passage = passage;
+            }
+
             CurrentEnvironment = env;
             // The previous SelectedAdjacency points at a stale Adjacency from the previous
             // build; clear it so the editor doesn't try to mutate orphaned objects.
