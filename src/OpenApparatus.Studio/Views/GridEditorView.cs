@@ -541,12 +541,17 @@ public class GridEditorView : Control
             // anchoring isn't well-defined for multi-tile rooms.
             if (vm.ShowPaths)
             {
-                var pathPen = new Pen(new SolidColorBrush(Color.FromArgb(220, 32, 168, 96)), 2.5)
-                {
-                    LineCap = PenLineCap.Round,
-                };
-                var pathDot = new SolidColorBrush(Color.FromRgb(32, 168, 96));
+                var pc = vm.PathColor;
+                var pathColor = Color.FromRgb((byte)(pc.X * 255), (byte)(pc.Y * 255), (byte)(pc.Z * 255));
+                var pathBrush = new SolidColorBrush(pathColor);
+                var pathPen = new Pen(pathBrush, 2.5) { LineCap = PenLineCap.Round };
+                var nodePen = new Pen(pathBrush, 2.0);
+                var nodeFill = new SolidColorBrush(Color.FromRgb(255, 255, 255));
 
+                // Pass 1: lines + door midpoint dots. Lines drawn first so the
+                // room-centre circles can paint over their endpoints — that way
+                // the line never bleeds into the room number.
+                var roomCentres = new System.Collections.Generic.Dictionary<int, Point>();
                 foreach (var adj in env.Adjacencies)
                 {
                     if (!adj.IsInternal) continue;
@@ -556,6 +561,8 @@ public class GridEditorView : Control
                     var bWorld = RoomCenterWorld(adj.RoomB!);
                     var aScr = ToScreen(aWorld);
                     var bScr = ToScreen(bWorld);
+                    roomCentres[adj.RoomA.Id] = aScr;
+                    roomCentres[adj.RoomB!.Id] = bScr;
 
                     var seg = adj.SharedSegment;
                     var dir2 = seg.Direction;
@@ -575,11 +582,15 @@ public class GridEditorView : Control
                         var midScr = ToScreen(dp);
                         ctx.DrawLine(pathPen, aScr, midScr);
                         ctx.DrawLine(pathPen, midScr, bScr);
-                        ctx.DrawEllipse(pathDot, null, midScr, 3, 3);
+                        ctx.DrawEllipse(pathBrush, null, midScr, 3, 3);
                     }
-                    ctx.DrawEllipse(pathDot, null, aScr, 4, 4);
-                    ctx.DrawEllipse(pathDot, null, bScr, 4, 4);
                 }
+
+                // Pass 2: room-centre nodes. White fill + path-colour outline so
+                // the room-id label (drawn later in Render()) stays legible.
+                const double NodeRadius = 13.0;
+                foreach (var centre in roomCentres.Values)
+                    ctx.DrawEllipse(nodeFill, nodePen, centre, NodeRadius, NodeRadius);
             }
 
             // Selected wall: draw markers at every door-anchor candidate, with the

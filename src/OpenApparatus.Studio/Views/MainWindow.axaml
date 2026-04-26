@@ -194,7 +194,16 @@
                             <CheckBox Content="Show path(s)"
                                       IsChecked="{Binding ShowPaths}"
                                       VerticalAlignment="Center"
-                                      ToolTip.Tip="Draw a green polyline through every traversable wall (open or doorway) to visualize how rooms connect."/>
+                                      ToolTip.Tip="Draw a polyline through every traversable wall (open or doorway) to visualize how rooms connect."/>
+                            <Button x:Name="PathColorSwatch"
+                                    Width="20" Height="20"
+                                    Padding="0"
+                                    BorderBrush="#888"
+                                    BorderThickness="1"
+                                    Background="{Binding PathColor, Converter={x:Static converters:Vector3ToBrushConverter.Instance}}"
+                                    Click="OnPickPathColor"
+                                    VerticalAlignment="Center"
+                                    ToolTip.Tip="Path overlay colour"/>
                             <TextBlock Text="Wall border opacity" VerticalAlignment="Center" Foreground="#444"/>
                             <Slider Width="160" Minimum="0" Maximum="1"
                                     Value="{Binding WallBorderOpacity, Mode=TwoWay}"

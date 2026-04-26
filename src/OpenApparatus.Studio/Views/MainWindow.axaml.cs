@@ -26,6 +26,13 @@ public partial class MainWindow : Window
         if (picked.HasValue) vm.DefaultCeilingColor = picked.Value;
     }
 
+    async void OnPickPathColor(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        var vm = Vm; if (vm is null) return;
+        var picked = await PickColor("Path color", vm.PathColor);
+        if (picked.HasValue) vm.PathColor = picked.Value;
+    }
+
     /// <summary>
     /// Opens the wall color dialog repurposed as a generic color picker. Returns
     /// the selected color, or null if cancelled / reset (caller decides whether
