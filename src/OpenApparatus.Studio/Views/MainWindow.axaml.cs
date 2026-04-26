@@ -1,4 +1,6 @@
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using OpenApparatus.Studio.ViewModels;
 
 namespace OpenApparatus.Studio.Views;
@@ -8,6 +10,34 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        // Tunnel handler so we see the key before TextBox does, but we then
+        // bail out when a TextBox or other text-input has focus — that way
+        // typing a letter (e.g. 'O') in the room name field stays in the
+        // field instead of firing the OpenSelectedWall command.
+        AddHandler(KeyDownEvent, OnGlobalKey, RoutingStrategies.Tunnel);
+    }
+
+    void OnGlobalKey(object? sender, KeyEventArgs e)
+    {
+        var vm = Vm;
+        if (vm is null) return;
+        if (FocusedIsTextEntry()) return;
+
+        switch (e.Key)
+        {
+            case Key.R: vm.CreateRoomFromSelectionCommand.Execute(null); e.Handled = true; break;
+            case Key.D: vm.ToggleDoorOnSelectedWallCommand.Execute(null); e.Handled = true; break;
+            case Key.W: vm.ToggleWindowOnSelectedWallCommand.Execute(null); e.Handled = true; break;
+            case Key.O: vm.OpenSelectedWallCommand.Execute(null); e.Handled = true; break;
+            case Key.C: vm.CloseSelectedWallCommand.Execute(null); e.Handled = true; break;
+            case Key.Escape: vm.ClearSelectionCommand.Execute(null); e.Handled = true; break;
+        }
+    }
+
+    bool FocusedIsTextEntry()
+    {
+        var focused = FocusManager?.GetFocusedElement();
+        return focused is TextBox or AutoCompleteBox;
     }
 
     MainWindowViewModel? Vm => DataContext as MainWindowViewModel;

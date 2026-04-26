@@ -55,14 +55,11 @@
         <vm:MainWindowViewModel/>
     </Design.DataContext>
 
-    <Window.KeyBindings>
-        <KeyBinding Gesture="R" Command="{Binding CreateRoomFromSelectionCommand}"/>
-        <KeyBinding Gesture="D" Command="{Binding ToggleDoorOnSelectedWallCommand}"/>
-        <KeyBinding Gesture="W" Command="{Binding ToggleWindowOnSelectedWallCommand}"/>
-        <KeyBinding Gesture="O" Command="{Binding OpenSelectedWallCommand}"/>
-        <KeyBinding Gesture="C" Command="{Binding CloseSelectedWallCommand}"/>
-        <KeyBinding Gesture="Escape" Command="{Binding ClearSelectionCommand}"/>
-    </Window.KeyBindings>
+    <!-- Shortcuts are wired in code-behind (not Window.KeyBindings) so that
+         single-letter hotkeys (R / D / W / O / C / Escape) defer to any
+         focused text input — typing a letter into the room name field
+         shouldn't fire a wall command. -->
+
 
     <DockPanel LastChildFill="True">
         <!-- Top toolbar — light background so default Light-theme buttons are visible -->
