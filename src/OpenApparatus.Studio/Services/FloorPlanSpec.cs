@@ -1,4 +1,5 @@
 using OpenApparatus.Studio.ViewModels;
+using OpenApparatus.Topology.Generators;
 
 namespace OpenApparatus.Studio.Services;
 
@@ -12,13 +13,15 @@ public sealed class FloorPlanSpec
 {
     public int SchemaVersion { get; set; } = 1;
     public int FloorWidthCells { get; set; }
-    public int FloorHeightCells { get; set; }
+    public int FloorLengthCells { get; set; }
     public int RectangleRoomCount { get; set; }
+    public RectangleOrientation RectangleOrientation { get; set; } = RectangleOrientation.Random;
     public float TileSize { get; set; }
     public float WallThickness { get; set; }
     public float WallHeight { get; set; }
     public int Seed { get; set; }
     public bool IncludeOuterEntrance { get; set; }
+    public StartingRoomTypeChoice StartingRoomType { get; set; } = StartingRoomTypeChoice.NoPreference;
     public float DoorWidth { get; set; }
     public float DoorHeight { get; set; }
 
@@ -26,29 +29,31 @@ public sealed class FloorPlanSpec
     {
         SchemaVersion = 1,
         FloorWidthCells = vm.FloorWidthCells,
-        FloorHeightCells = vm.FloorHeightCells,
+        FloorLengthCells = vm.FloorLengthCells,
         RectangleRoomCount = vm.RectangleRoomCount,
+        RectangleOrientation = vm.RectangleOrientation,
         TileSize = vm.TileSize,
         WallThickness = vm.WallThickness,
         WallHeight = vm.WallHeight,
         Seed = vm.Seed,
         IncludeOuterEntrance = vm.IncludeOuterEntrance,
+        StartingRoomType = vm.StartingRoomType,
         DoorWidth = vm.DoorWidth,
         DoorHeight = vm.DoorHeight,
     };
 
     public void ApplyTo(MainWindowViewModel vm)
     {
-        // Note: setting these triggers OnXChanged → Regenerate(), but we do a final
-        // explicit Regenerate() in the caller to guarantee one consistent build.
         vm.FloorWidthCells = FloorWidthCells;
-        vm.FloorHeightCells = FloorHeightCells;
+        vm.FloorLengthCells = FloorLengthCells;
         vm.RectangleRoomCount = RectangleRoomCount;
+        vm.RectangleOrientation = RectangleOrientation;
         vm.TileSize = TileSize;
         vm.WallThickness = WallThickness;
         vm.WallHeight = WallHeight;
         vm.Seed = Seed;
         vm.IncludeOuterEntrance = IncludeOuterEntrance;
+        vm.StartingRoomType = StartingRoomType;
         vm.DoorWidth = DoorWidth;
         vm.DoorHeight = DoorHeight;
     }

@@ -59,7 +59,7 @@
                         <TextBlock Text="Total width (cells)"/>
                         <NumericUpDown Value="{Binding FloorWidthCells}" Minimum="1" Maximum="32" FormatString="0"/>
                         <TextBlock Text="Total length (cells)"/>
-                        <NumericUpDown Value="{Binding FloorHeightCells}" Minimum="1" Maximum="32" FormatString="0"/>
+                        <NumericUpDown Value="{Binding FloorLengthCells}" Minimum="1" Maximum="32" FormatString="0"/>
                         <TextBlock Text="Tile size (m)"/>
                         <NumericUpDown Value="{Binding TileSize}" Minimum="0.5" Maximum="10" Increment="0.5" FormatString="0.0"/>
                     </StackPanel>
@@ -68,6 +68,10 @@
                     <StackPanel Classes="section">
                         <TextBlock Text="Rectangle (1×2) rooms"/>
                         <NumericUpDown Value="{Binding RectangleRoomCount}" Minimum="0" Maximum="50" FormatString="0"/>
+                        <TextBlock Text="Rectangle orientation"/>
+                        <ComboBox ItemsSource="{Binding RectangleOrientationOptions}"
+                                  SelectedItem="{Binding RectangleOrientation}"
+                                  HorizontalAlignment="Stretch"/>
                     </StackPanel>
 
                     <TextBlock Classes="label" Text="Walls"/>
@@ -81,6 +85,10 @@
                     <TextBlock Classes="label" Text="Doorways"/>
                     <StackPanel Classes="section">
                         <CheckBox Content="Include outer entrance" IsChecked="{Binding IncludeOuterEntrance}"/>
+                        <TextBlock Text="Starting room type"/>
+                        <ComboBox ItemsSource="{Binding StartingRoomTypeOptions}"
+                                  SelectedItem="{Binding StartingRoomType}"
+                                  HorizontalAlignment="Stretch"/>
                         <TextBlock Text="Door width (m)"/>
                         <NumericUpDown Value="{Binding DoorWidth}" Minimum="0.5" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
                         <TextBlock Text="Door height (m)"/>
