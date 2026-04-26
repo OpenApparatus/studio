@@ -226,6 +226,49 @@ public class GridEditorView : Control
                 LineCap = PenLineCap.Round,
             };
 
+            // Interior wall borders — drawn FIRST so the wall outlines (and any
+            // door / window indicators on them) layer on top and stay visible.
+            // Square caps so wall ends look architectural rather than rounded;
+            // inset both ends by the offset distance so two perpendicular
+            // borders don't overlap at the inside corner of a room.
+            foreach (var adj in env.Adjacencies)
+            {
+                var seg = adj.SharedSegment;
+                var p0b = ToScreen(seg.Start);
+                var p1b = ToScreen(seg.End);
+                var nrmW = seg.Normal;
+                var nrmScreen = new Point(
+                    nrmW.X / vm.TileSize * tileSize,
+                    -nrmW.Y / vm.TileSize * tileSize);
+                double nrmLen = Math.Sqrt(nrmScreen.X * nrmScreen.X + nrmScreen.Y * nrmScreen.Y);
+                if (nrmLen < 1e-3) continue;
+                var nrmUnit = new Point(nrmScreen.X / nrmLen, nrmScreen.Y / nrmLen);
+
+                DrawSide(adj, isRoomA: true, p0b, p1b, nrmUnit, +1);
+                if (adj.IsInternal) DrawSide(adj, isRoomA: false, p0b, p1b, nrmUnit, -1);
+
+                void DrawSide(OpenApparatus.Topology.Adjacency a, bool isRoomA,
+                    Point pa, Point pb, Point nrm, int sign)
+                {
+                    int roomId = isRoomA ? a.RoomA.Id : a.RoomB!.Id;
+                    var off = new Point(nrm.X * sign * InteriorBorderOffsetPx, nrm.Y * sign * InteriorBorderOffsetPx);
+                    var ax = new Point(pa.X + off.X, pa.Y + off.Y);
+                    var bx = new Point(pb.X + off.X, pb.Y + off.Y);
+                    var inset = ShrinkSegment(ax, bx, InteriorBorderOffsetPx);
+
+                    var rgb = vm.EffectiveWallColor(roomId, a);
+                    var pen = new Pen(new SolidColorBrush(Color.FromRgb(
+                        (byte)(rgb.X * 255), (byte)(rgb.Y * 255), (byte)(rgb.Z * 255))),
+                        InteriorBorderThicknessPx)
+                    {
+                        LineCap = PenLineCap.Square,
+                    };
+                    ctx.DrawLine(pen, inset.A, inset.B);
+                }
+            }
+
+            // Wall outlines (closed sections, doorways, open passages) — drawn
+            // after the interior borders so they remain visible on top.
             foreach (var adj in env.Adjacencies)
             {
                 var s = adj.SharedSegment;
@@ -270,52 +313,6 @@ public class GridEditorView : Control
                     case OpenApparatus.Topology.Passage.Open _:
                         ctx.DrawLine(openPen, p0, p1);
                         break;
-                }
-            }
-
-            // Interior wall borders — one short line on each room's side of every
-            // wall, offset inward so it sits clearly inside the room and doesn't
-            // overlap the wall outline. Coloured with any per-(room, wall) override
-            // the user has set, otherwise a subtle neutral so the border still
-            // reads as clickable.
-            // Square caps so wall ends look architectural rather than rounded;
-            // inset both ends by the offset distance so two perpendicular
-            // borders don't overlap at the inside corner of a room.
-            foreach (var adj in env.Adjacencies)
-            {
-                var seg = adj.SharedSegment;
-                var p0 = ToScreen(seg.Start);
-                var p1 = ToScreen(seg.End);
-                var nrmW = seg.Normal;
-                var nrmScreen = new Point(
-                    nrmW.X / vm.TileSize * tileSize,
-                    -nrmW.Y / vm.TileSize * tileSize);
-                double nrmLen = Math.Sqrt(nrmScreen.X * nrmScreen.X + nrmScreen.Y * nrmScreen.Y);
-                if (nrmLen < 1e-3) continue;
-                var nrmUnit = new Point(nrmScreen.X / nrmLen, nrmScreen.Y / nrmLen);
-
-                DrawSide(adj, isRoomA: true, p0, p1, nrmUnit, +1);
-                if (adj.IsInternal) DrawSide(adj, isRoomA: false, p0, p1, nrmUnit, -1);
-
-                void DrawSide(OpenApparatus.Topology.Adjacency a, bool isRoomA,
-                    Point pa, Point pb, Point nrm, int sign)
-                {
-                    int roomId = isRoomA ? a.RoomA.Id : a.RoomB!.Id;
-                    var off = new Point(nrm.X * sign * InteriorBorderOffsetPx, nrm.Y * sign * InteriorBorderOffsetPx);
-                    var ax = new Point(pa.X + off.X, pa.Y + off.Y);
-                    var bx = new Point(pb.X + off.X, pb.Y + off.Y);
-                    // Inset by the offset distance so a perpendicular neighbour's
-                    // border ends right at the same point — no crossing.
-                    var inset = ShrinkSegment(ax, bx, InteriorBorderOffsetPx);
-
-                    var rgb = vm.EffectiveWallColor(roomId, a);
-                    var pen = new Pen(new SolidColorBrush(Color.FromRgb(
-                        (byte)(rgb.X * 255), (byte)(rgb.Y * 255), (byte)(rgb.Z * 255))),
-                        InteriorBorderThicknessPx)
-                    {
-                        LineCap = PenLineCap.Square,
-                    };
-                    ctx.DrawLine(pen, inset.A, inset.B);
                 }
             }
 
