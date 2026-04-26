@@ -91,8 +91,11 @@
             <TextBlock Text="{Binding StatusMessage}" Foreground="#cccccc"/>
         </Border>
 
-        <!-- Main split: parameter panel + interactive grid editor + per-room editor -->
-        <Grid ColumnDefinitions="280,*,Auto">
+        <!-- Main split: parameter panel + interactive grid editor + per-room editor.
+             The right column is a fixed width so the editor area doesn't reflow
+             every time a room or opening is selected — auto-fit layout would
+             otherwise shift the grid every time the panel toggled visibility. -->
+        <Grid ColumnDefinitions="280,*,260">
             <ScrollViewer Grid.Column="0" Background="#f4f4f7">
                 <StackPanel Margin="12" Spacing="0">
 
@@ -233,17 +236,12 @@
                 <views:LegendBar Grid.Row="2"/>
             </Grid>
 
-            <!-- Right-side editor: rooms when a room is selected, doors / windows
-                 when an opening is selected. Hidden otherwise so the column
-                 collapses. -->
-            <views:RoomEditorPanel Grid.Column="2">
-                <views:RoomEditorPanel.IsVisible>
-                    <MultiBinding Converter="{x:Static converters:AnyTrueConverter.Instance}">
-                        <Binding Path="HasSelectedRoom"/>
-                        <Binding Path="HasSelectedOpening"/>
-                    </MultiBinding>
-                </views:RoomEditorPanel.IsVisible>
-            </views:RoomEditorPanel>
+            <!-- Right-side editor: rooms when a room is selected, doors /
+                 windows when an opening is selected, otherwise an empty
+                 placeholder. Always rendered so the column width never
+                 changes — the editor area's reserved space stays constant
+                 regardless of selection state. -->
+            <views:RoomEditorPanel Grid.Column="2"/>
         </Grid>
     </DockPanel>
 </Window>

@@ -67,8 +67,31 @@ public partial class RoomEditorPanel : UserControl
             BuildOpeningEditor();
             return;
         }
-        if (_vm.SelectedRoomId < 0) return;
+        if (_vm.SelectedRoomId < 0)
+        {
+            BuildPlaceholder();
+            return;
+        }
         BuildRoomEditor();
+    }
+
+    void BuildPlaceholder()
+    {
+        BodyPanel.Children.Add(new TextBlock
+        {
+            Text = "No selection",
+            FontWeight = FontWeight.SemiBold,
+            FontSize = 14,
+            Foreground = new SolidColorBrush(Color.FromRgb(120, 120, 130)),
+            Margin = new Thickness(0, 8, 0, 8),
+        });
+        BodyPanel.Children.Add(new TextBlock
+        {
+            Text = "Click a tile in a room to edit its appearance, or click a wall and add a door / window to edit it.",
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = new SolidColorBrush(Color.FromRgb(110, 110, 120)),
+            FontSize = 12,
+        });
     }
 
     void BuildRoomEditor()
