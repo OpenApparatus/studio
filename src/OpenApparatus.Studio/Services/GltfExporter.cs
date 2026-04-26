@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using OpenApparatus.Geometry;
 using OpenApparatus.Topology;
@@ -36,10 +37,15 @@ public static class GltfExporter
         MultiRoomEnvironment plan,
         float wallThickness,
         float wallHeight,
-        bool multiMeshWalls = false,
-        IReadOnlyDictionary<(int RoomId, int MidX, int MidZ), Vector3>? wallColors = null)
+        IReadOnlyCollection<int>? multiColorRoomIds = null,
+        IReadOnlyDictionary<int, Vector3>? roomFloorColors = null,
+        IReadOnlyDictionary<int, Vector3>? roomCeilingColors = null,
+        IReadOnlyDictionary<int, Vector3>? roomSingleWallColors = null,
+        IReadOnlyDictionary<(int RoomId, int MidX, int MidZ), Vector3>? perWallColors = null)
     {
-        var model = BuildModel(plan, wallThickness, wallHeight, multiMeshWalls, wallColors);
+        var model = BuildModel(plan, wallThickness, wallHeight,
+            multiColorRoomIds, roomFloorColors, roomCeilingColors,
+            roomSingleWallColors, perWallColors);
         // SharpGLTF picks GLB vs glTF+bin from the extension on Save.
         model.Save(path);
     }
@@ -48,8 +54,11 @@ public static class GltfExporter
         MultiRoomEnvironment plan,
         float wallThickness,
         float wallHeight,
-        bool multiMeshWalls = false,
-        IReadOnlyDictionary<(int RoomId, int MidX, int MidZ), Vector3>? wallColors = null)
+        IReadOnlyCollection<int>? multiColorRoomIds = null,
+        IReadOnlyDictionary<int, Vector3>? roomFloorColors = null,
+        IReadOnlyDictionary<int, Vector3>? roomCeilingColors = null,
+        IReadOnlyDictionary<int, Vector3>? roomSingleWallColors = null,
+        IReadOnlyDictionary<(int RoomId, int MidX, int MidZ), Vector3>? perWallColors = null)
     {
         var interiorBuilder = new RectangleInteriorBuilder();
         var wallBuilder = new BoundaryWallBuilder();
@@ -73,9 +82,11 @@ public static class GltfExporter
             var roomNode = rootNode.CreateNode($"Room_{room.Id}");
 
             // -------- Floor --------
+            var floorColor = roomFloorColors != null && roomFloorColors.TryGetValue(room.Id, out var fc)
+                ? (fc.X, fc.Y, fc.Z) : FloorColor;
             var floorMb = NewMesh($"room_{room.Id}_floor");
             var floorPrim = floorMb.UsePrimitive(MakeMaterial(
-                $"{ObjExporter.FloorMaterialPrefix}_Room{room.Id}", FloorColor));
+                $"{ObjExporter.FloorMaterialPrefix}_Room{room.Id}", floorColor));
             AddSubmeshTriangles(floorPrim, interior, SubmeshIndex.Floor);
             foreach (var adj in roomAdjacencies)
             {
@@ -85,17 +96,19 @@ public static class GltfExporter
             AddMeshIfNonEmpty(scene, roomNode, floorMb, $"room_{room.Id}_floor");
 
             // -------- Ceiling --------
+            var ceilingColor = roomCeilingColors != null && roomCeilingColors.TryGetValue(room.Id, out var cc)
+                ? (cc.X, cc.Y, cc.Z) : CeilingColor;
             var ceilingMb = NewMesh($"room_{room.Id}_ceiling");
             var ceilingPrim = ceilingMb.UsePrimitive(MakeMaterial(
-                $"{ObjExporter.CeilingMaterialPrefix}_Room{room.Id}", CeilingColor));
+                $"{ObjExporter.CeilingMaterialPrefix}_Room{room.Id}", ceilingColor));
             AddSubmeshTriangles(ceilingPrim, interior, SubmeshIndex.Ceiling);
             AddMeshIfNonEmpty(scene, roomNode, ceilingMb, $"room_{room.Id}_ceiling");
 
             // -------- Walls --------
-            if (multiMeshWalls)
+            bool roomMulti = multiColorRoomIds != null && multiColorRoomIds.Contains(room.Id);
+            if (roomMulti)
             {
-                // One mesh per adjacency the room touches — each wall carries
-                // its own material, so per-wall colors apply independently.
+                // Per-wall meshes so each adjacency carries its own material.
                 for (int i = 0; i < roomAdjacencies.Count; i++)
                 {
                     var adj = roomAdjacencies[i];
@@ -106,7 +119,7 @@ public static class GltfExporter
                     bool isLowerOwner = LowerIdOwner(adj).Id == room.Id;
 
                     int wallNum = i + 1;
-                    var color = ResolveWallColor(wallColors, room.Id, adj);
+                    var color = ResolveWallColor(perWallColors, roomSingleWallColors, room.Id, adj);
                     var wallMb = NewMesh($"room_{room.Id}_wall_{wallNum}");
                     var wallPrim = wallMb.UsePrimitive(MakeMaterial(
                         $"{ObjExporter.WallsMaterialPrefix}{wallNum}_Room{room.Id}", color));
@@ -120,14 +133,13 @@ public static class GltfExporter
             }
             else
             {
-                // One wall mesh for the whole room — fewer draw calls. Per-wall
-                // colors collapse to a single material; we pick the colors of
-                // any wall that has been overridden, or the default if none.
+                // Single combined walls mesh for the room. Use the room's chosen
+                // single-wall color, falling back to the neutral default.
+                var singleColor = roomSingleWallColors != null && roomSingleWallColors.TryGetValue(room.Id, out var sw)
+                    ? (sw.X, sw.Y, sw.Z) : WallsColor;
                 var wallsMb = NewMesh($"room_{room.Id}_walls");
-                var firstOverride = FirstWallColor(wallColors, room.Id, roomAdjacencies);
                 var wallsPrim = wallsMb.UsePrimitive(MakeMaterial(
-                    $"{ObjExporter.WallsMaterialPrefix}_Room{room.Id}",
-                    firstOverride ?? WallsColor));
+                    $"{ObjExporter.WallsMaterialPrefix}_Room{room.Id}", singleColor));
 
                 foreach (var adj in roomAdjacencies)
                 {
@@ -236,28 +248,18 @@ public static class GltfExporter
         return adj.RoomA.Id < adj.RoomB!.Id ? adj.RoomA : adj.RoomB;
     }
 
-    /// <summary>Looks up a per-wall color override by (room, segment-midpoint).</summary>
+    /// <summary>Per-wall color resolution order: per-wall override → room's single
+    /// wall color → neutral default.</summary>
     static (float r, float g, float b) ResolveWallColor(
-        IReadOnlyDictionary<(int RoomId, int MidX, int MidZ), Vector3>? overrides,
+        IReadOnlyDictionary<(int RoomId, int MidX, int MidZ), Vector3>? perWall,
+        IReadOnlyDictionary<int, Vector3>? roomSingle,
         int roomId, Adjacency adj)
     {
-        if (overrides is null) return WallsColor;
-        var key = WallColorKey(roomId, adj);
-        if (!overrides.TryGetValue(key, out var v)) return WallsColor;
-        return (v.X, v.Y, v.Z);
-    }
-
-    static (float r, float g, float b)? FirstWallColor(
-        IReadOnlyDictionary<(int RoomId, int MidX, int MidZ), Vector3>? overrides,
-        int roomId, IEnumerable<Adjacency> adjacencies)
-    {
-        if (overrides is null) return null;
-        foreach (var adj in adjacencies)
-        {
-            if (overrides.TryGetValue(WallColorKey(roomId, adj), out var v))
-                return (v.X, v.Y, v.Z);
-        }
-        return null;
+        if (perWall != null && perWall.TryGetValue(WallColorKey(roomId, adj), out var v))
+            return (v.X, v.Y, v.Z);
+        if (roomSingle != null && roomSingle.TryGetValue(roomId, out var s))
+            return (s.X, s.Y, s.Z);
+        return WallsColor;
     }
 
     public static (int RoomId, int MidX, int MidZ) WallColorKey(int roomId, Adjacency adj)

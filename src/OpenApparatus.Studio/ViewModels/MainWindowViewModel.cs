@@ -73,6 +73,37 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>Read-only access to per-wall color overrides (for view rendering).</summary>
     public IReadOnlyDictionary<(int RoomId, int MidX, int MidZ), System.Numerics.Vector3> WallColors => _wallColors;
 
+    /// <summary>
+    /// Adjacencies the currently selected room participates in, in build order.
+    /// Empty when no room is selected (or when CurrentEnvironment hasn't been
+    /// rebuilt for the selected id).
+    /// </summary>
+    public IReadOnlyList<Adjacency> SelectedRoomAdjacencies
+    {
+        get
+        {
+            var list = new List<Adjacency>();
+            if (CurrentEnvironment is null || SelectedRoomId < 0) return list;
+            foreach (var adj in CurrentEnvironment.Adjacencies)
+                if (adj.RoomA.Id == SelectedRoomId || (adj.RoomB?.Id == SelectedRoomId))
+                    list.Add(adj);
+            return list;
+        }
+    }
+
+    /// <summary>Effective wall color for a room's side of an adjacency, accounting for
+    /// the room's multi-color toggle. Falls back to the default neutral when nothing
+    /// has been set.</summary>
+    public System.Numerics.Vector3 EffectiveWallColor(int roomId, Adjacency adj)
+    {
+        var key = GltfExporter.WallColorKey(roomId, adj);
+        if (IsRoomMultiColor(roomId) && _wallColors.TryGetValue(key, out var perWall))
+            return perWall;
+        if (_roomSingleWallColors.TryGetValue(roomId, out var single))
+            return single;
+        return new System.Numerics.Vector3(0.78f, 0.78f, 0.80f);
+    }
+
     /// <summary>Sets the color for one room's side of the given wall. RGB in 0..1.</summary>
     public void SetWallColor(int roomId, Adjacency adj, System.Numerics.Vector3 rgb)
     {
@@ -98,12 +129,73 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] float _windowSillHeight = 1.0f;
 
     /// <summary>
-    /// When true, every wall of every room exports as its own mesh (one per
-    /// adjacency) so each can carry a distinct material. When false (default),
-    /// a room's walls merge into a single mesh — fewer draw calls, but every
-    /// wall in a room shares the same material.
+    /// id of the currently selected room (-1 = none). Set when the user clicks a
+    /// tile that already belongs to a room, or right after a fresh CreateRoom.
+    /// Drives the right-side room editor panel.
     /// </summary>
-    [ObservableProperty] bool _multiMeshWalls;
+    [ObservableProperty] int _selectedRoomId = -1;
+
+    public bool HasSelectedRoom => SelectedRoomId >= 0;
+    public string SelectedRoomTitle => SelectedRoomId >= 0 ? $"Room {SelectedRoomId}" : "";
+
+    partial void OnSelectedRoomIdChanged(int value)
+    {
+        OnPropertyChanged(nameof(HasSelectedRoom));
+        OnPropertyChanged(nameof(SelectedRoomTitle));
+    }
+
+    // ---- Per-room appearance state ----
+    // Storage is keyed by roomId, never by Room object — rebuilds throw away the
+    // Room instances but keep the same ids, so user selections survive grid edits.
+
+    readonly Dictionary<int, System.Numerics.Vector3> _roomFloorColors = new();
+    readonly Dictionary<int, System.Numerics.Vector3> _roomCeilingColors = new();
+    readonly Dictionary<int, System.Numerics.Vector3> _roomSingleWallColors = new();
+    readonly HashSet<int> _multiColorRoomIds = new();
+
+    public IReadOnlyDictionary<int, System.Numerics.Vector3> RoomFloorColors => _roomFloorColors;
+    public IReadOnlyDictionary<int, System.Numerics.Vector3> RoomCeilingColors => _roomCeilingColors;
+    public IReadOnlyDictionary<int, System.Numerics.Vector3> RoomSingleWallColors => _roomSingleWallColors;
+    public IReadOnlyCollection<int> MultiColorRoomIds => _multiColorRoomIds;
+
+    public bool IsRoomMultiColor(int roomId) => _multiColorRoomIds.Contains(roomId);
+
+    public void SetRoomMultiColor(int roomId, bool on)
+    {
+        if (on) _multiColorRoomIds.Add(roomId);
+        else _multiColorRoomIds.Remove(roomId);
+        EditVersion++;
+    }
+
+    public void SetRoomFloorColor(int roomId, System.Numerics.Vector3 rgb)
+    {
+        _roomFloorColors[roomId] = rgb; EditVersion++;
+    }
+
+    public void ClearRoomFloorColor(int roomId)
+    {
+        _roomFloorColors.Remove(roomId); EditVersion++;
+    }
+
+    public void SetRoomCeilingColor(int roomId, System.Numerics.Vector3 rgb)
+    {
+        _roomCeilingColors[roomId] = rgb; EditVersion++;
+    }
+
+    public void ClearRoomCeilingColor(int roomId)
+    {
+        _roomCeilingColors.Remove(roomId); EditVersion++;
+    }
+
+    public void SetRoomSingleWallColor(int roomId, System.Numerics.Vector3 rgb)
+    {
+        _roomSingleWallColors[roomId] = rgb; EditVersion++;
+    }
+
+    public void ClearRoomSingleWallColor(int roomId)
+    {
+        _roomSingleWallColors.Remove(roomId); EditVersion++;
+    }
 
     [ObservableProperty] MultiRoomEnvironment? _currentEnvironment;
     [ObservableProperty] string _statusMessage = "Click and drag to select tiles, then click 'Create Room'.";
@@ -172,9 +264,26 @@ public partial class MainWindowViewModel : ViewModelBase
             RoomGrid[x, z] = id;
 
         SelectedTiles.Clear();
+        SelectedRoomId = id; // auto-select the new room so its editor panel appears
         EditVersion++;
         Rebuild();
         StatusMessage = $"Created room #{id} ({xMax - xMin + 1}×{zMax - zMin + 1} tiles).";
+    }
+
+    /// <summary>
+    /// Click handler for the editor view — if the tile belongs to a room, select
+    /// that room (opens the right-side editor panel). Returns true if the click
+    /// hit a room and should NOT fall through to drag-select.
+    /// </summary>
+    public bool TrySelectRoomAtTile(int x, int z)
+    {
+        if (x < 0 || x >= GridWidth || z < 0 || z >= GridLength) return false;
+        int id = RoomGrid[x, z];
+        if (id < 0) return false;
+        SelectedRoomId = id;
+        SelectedAdjacency = null;
+        StatusMessage = $"Selected Room {id}.";
+        return true;
     }
 
     [RelayCommand]
@@ -543,7 +652,9 @@ public partial class MainWindowViewModel : ViewModelBase
             // Unity, Blender, Three.js, or any glTF-aware tool.
             GltfExporter.Export(
                 file.Path.LocalPath, CurrentEnvironment, WallThickness, WallHeight,
-                MultiMeshWalls, _wallColors);
+                _multiColorRoomIds,
+                _roomFloorColors, _roomCeilingColors,
+                _roomSingleWallColors, _wallColors);
             StatusMessage = $"Exported glTF → {file.Name}";
         }
         catch (Exception ex)

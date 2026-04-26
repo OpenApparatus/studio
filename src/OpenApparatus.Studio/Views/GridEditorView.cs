@@ -44,12 +44,13 @@ public class GridEditorView : Control
 
     MainWindowViewModel? Vm => DataContext as MainWindowViewModel;
 
-    /// <summary>How far the interior wall border sits from the actual wall, in screen
-    /// pixels. Big enough to be clearly distinct from the wall's clickable region;
-    /// small enough that the border still reads as belonging to its room.</summary>
-    const double InteriorBorderOffsetPx = 16.0;
-    const double InteriorBorderHitTolerancePx = 12.0;
+    /// <summary>Width of the interior wall border in screen pixels.</summary>
     const double InteriorBorderThicknessPx = 7.0;
+    /// <summary>Distance from the wall outline to the border's centerline. Set to
+    /// half the thickness so the border's outer edge sits flush with the wall —
+    /// the borders are no longer clickable, so the gap that used to keep them
+    /// distinct from the wall hit zone is unnecessary.</summary>
+    const double InteriorBorderOffsetPx = InteriorBorderThicknessPx * 0.5;
 
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
@@ -61,20 +62,8 @@ public class GridEditorView : Control
         var (origin, tilePxSize) = ComputeLayout(vm);
         if (tilePxSize <= 0) return;
 
-        // 1. Interior wall border hit — opens the color picker for that
-        // (room, wall) side. Checked before wall selection so the inner border
-        // is reachable even though the wall is right next to it.
-        if (TryHitInteriorBorder(pos, vm, origin, tilePxSize, out var hit))
-        {
-            vm.StatusMessage = $"Wall border hit: room {hit.RoomId} — opening colour picker…";
-            _ = ShowWallColorDialogSafe(vm, hit);
-            e.Handled = true;
-            return;
-        }
-
-        // 2. Wall hit — clicking a wall outline selects it for door / window edits.
+        // 1. Wall hit — clicking a wall outline selects it for door / window edits.
         var worldPos = ScreenToWorld(pos, origin, tilePxSize, vm);
-        // Tolerance: ~10px in world coords, given the current zoom.
         float toleranceWorld = (float)(10.0 * vm.TileSize / tilePxSize);
         if (vm.TrySelectAdjacencyAtWorld(worldPos, toleranceWorld))
         {
@@ -82,77 +71,22 @@ public class GridEditorView : Control
             return;
         }
 
-        // 3. Otherwise tile click → drag-select.
+        // 2. Tile click — if the tile belongs to a room, select that room and
+        // open the appearance panel; otherwise begin a drag-select for room
+        // creation.
         if (TryHitTest(pos, vm, out int x, out int z))
         {
+            if (vm.TrySelectRoomAtTile(x, z))
+            {
+                e.Handled = true;
+                return;
+            }
             bool wasSelected = vm.SelectedTiles.Contains((x, z));
             _dragging = true;
             _dragMode = wasSelected ? DragMode.Deselect : DragMode.Select;
             ApplyDrag(vm, x, z);
             e.Handled = true;
         }
-    }
-
-    bool TryHitInteriorBorder(
-        Point pos, MainWindowViewModel vm, Point origin, double tilePxSize,
-        out (int RoomId, OpenApparatus.Topology.Adjacency Adj) hit)
-    {
-        hit = default;
-        if (vm.CurrentEnvironment is null) return false;
-
-        Point ToScreen(System.Numerics.Vector2 worldXz)
-        {
-            double xTile = worldXz.X / vm.TileSize;
-            double zTile = worldXz.Y / vm.TileSize;
-            return new Point(
-                origin.X + xTile * tilePxSize,
-                origin.Y + (vm.GridLength - zTile) * tilePxSize);
-        }
-
-        foreach (var adj in vm.CurrentEnvironment.Adjacencies)
-        {
-            // Each side of the wall has its own interior border. RoomA on +N,
-            // RoomB on -N (only if the adjacency is internal).
-            var seg = adj.SharedSegment;
-            var p0 = ToScreen(seg.Start);
-            var p1 = ToScreen(seg.End);
-            // Screen-space perpendicular = (-dy, dx) of the on-screen segment
-            // direction. RoomA-side is the perpendicular pointing the same way
-            // as the world +N normal projected to screen — recompute via the
-            // world normal.
-            var nrmW = seg.Normal;
-            var nrmScreen = new Point(
-                nrmW.X / vm.TileSize * tilePxSize,
-                -nrmW.Y / vm.TileSize * tilePxSize);
-            double nrmLen = System.Math.Sqrt(nrmScreen.X * nrmScreen.X + nrmScreen.Y * nrmScreen.Y);
-            if (nrmLen < 1e-3) continue;
-            var nrmUnit = new Point(nrmScreen.X / nrmLen, nrmScreen.Y / nrmLen);
-
-            // RoomA side
-            if (HitsSide(p0, p1, nrmUnit, +1, pos))
-            {
-                hit = (adj.RoomA.Id, adj);
-                return true;
-            }
-            // RoomB side (internal only)
-            if (adj.IsInternal && HitsSide(p0, p1, nrmUnit, -1, pos))
-            {
-                hit = (adj.RoomB!.Id, adj);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    static bool HitsSide(Point a, Point b, Point nrm, int sign, Point pos)
-    {
-        var off = new Point(nrm.X * sign * InteriorBorderOffsetPx, nrm.Y * sign * InteriorBorderOffsetPx);
-        var ax = new Point(a.X + off.X, a.Y + off.Y);
-        var bx = new Point(b.X + off.X, b.Y + off.Y);
-        // Inset the ends slightly so the border is shorter than the wall and
-        // doesn't overlap a neighbour's border at room corners.
-        var inset = ShrinkSegment(ax, bx, 6.0);
-        return DistancePointToSegment(pos, inset.A, inset.B) <= InteriorBorderHitTolerancePx;
     }
 
     static (Point A, Point B) ShrinkSegment(Point a, Point b, double pixels)
@@ -164,61 +98,6 @@ public class GridEditorView : Control
         return (
             new Point(a.X + dx * t, a.Y + dy * t),
             new Point(b.X - dx * t, b.Y - dy * t));
-    }
-
-    static double DistancePointToSegment(Point p, Point a, Point b)
-    {
-        double dx = b.X - a.X, dy = b.Y - a.Y;
-        double len2 = dx * dx + dy * dy;
-        if (len2 < 1e-9) return System.Math.Sqrt((p.X - a.X) * (p.X - a.X) + (p.Y - a.Y) * (p.Y - a.Y));
-        double t = ((p.X - a.X) * dx + (p.Y - a.Y) * dy) / len2;
-        t = System.Math.Clamp(t, 0, 1);
-        double cx = a.X + t * dx, cy = a.Y + t * dy;
-        return System.Math.Sqrt((p.X - cx) * (p.X - cx) + (p.Y - cy) * (p.Y - cy));
-    }
-
-    async System.Threading.Tasks.Task ShowWallColorDialogSafe(
-        MainWindowViewModel vm, (int RoomId, OpenApparatus.Topology.Adjacency Adj) hit)
-    {
-        try
-        {
-            var owner = TopLevel.GetTopLevel(this) as Window;
-            if (owner is null)
-            {
-                vm.StatusMessage = "Couldn't find owner window for colour picker.";
-                return;
-            }
-
-            System.Numerics.Vector3? current = null;
-            if (vm.WallColors.TryGetValue(
-                OpenApparatus.Studio.Services.GltfExporter.WallColorKey(hit.RoomId, hit.Adj),
-                out var existing))
-            {
-                current = existing;
-            }
-
-            var dlg = new WallColorDialog();
-            dlg.Configure($"Room {hit.RoomId} — wall", current);
-            await dlg.ShowDialog(owner);
-            switch (dlg.ChosenOutcome)
-            {
-                case WallColorDialog.Outcome.Set:
-                    vm.SetWallColor(hit.RoomId, hit.Adj, dlg.ChosenColor);
-                    vm.StatusMessage = $"Set wall colour for room {hit.RoomId}.";
-                    break;
-                case WallColorDialog.Outcome.Reset:
-                    vm.ClearWallColor(hit.RoomId, hit.Adj);
-                    vm.StatusMessage = $"Reset wall colour for room {hit.RoomId} to default.";
-                    break;
-                default:
-                    vm.StatusMessage = "Colour picker cancelled.";
-                    break;
-            }
-        }
-        catch (System.Exception ex)
-        {
-            vm.StatusMessage = $"Colour picker failed: {ex.Message}";
-        }
     }
 
     static System.Numerics.Vector2 ScreenToWorld(Point pos, Point origin, double tilePxSize, MainWindowViewModel vm)
@@ -388,10 +267,9 @@ public class GridEditorView : Control
             // overlap the wall outline. Coloured with any per-(room, wall) override
             // the user has set, otherwise a subtle neutral so the border still
             // reads as clickable.
-            var defaultBorderPen = new Pen(new SolidColorBrush(Color.FromArgb(180, 60, 60, 70)), InteriorBorderThicknessPx)
-            {
-                LineCap = PenLineCap.Round,
-            };
+            // Square caps so wall ends look architectural rather than rounded;
+            // inset both ends by the offset distance so two perpendicular
+            // borders don't overlap at the inside corner of a room.
             foreach (var adj in env.Adjacencies)
             {
                 var seg = adj.SharedSegment;
@@ -415,23 +293,18 @@ public class GridEditorView : Control
                     var off = new Point(nrm.X * sign * InteriorBorderOffsetPx, nrm.Y * sign * InteriorBorderOffsetPx);
                     var ax = new Point(pa.X + off.X, pa.Y + off.Y);
                     var bx = new Point(pb.X + off.X, pb.Y + off.Y);
-                    var inset = ShrinkSegment(ax, bx, 6.0);
+                    // Inset by the offset distance so a perpendicular neighbour's
+                    // border ends right at the same point — no crossing.
+                    var inset = ShrinkSegment(ax, bx, InteriorBorderOffsetPx);
 
-                    var key = OpenApparatus.Studio.Services.GltfExporter.WallColorKey(roomId, a);
-                    if (vm.WallColors.TryGetValue(key, out var rgb))
+                    var rgb = vm.EffectiveWallColor(roomId, a);
+                    var pen = new Pen(new SolidColorBrush(Color.FromRgb(
+                        (byte)(rgb.X * 255), (byte)(rgb.Y * 255), (byte)(rgb.Z * 255))),
+                        InteriorBorderThicknessPx)
                     {
-                        var pen = new Pen(new SolidColorBrush(Color.FromRgb(
-                            (byte)(rgb.X * 255), (byte)(rgb.Y * 255), (byte)(rgb.Z * 255))),
-                            InteriorBorderThicknessPx)
-                        {
-                            LineCap = PenLineCap.Round,
-                        };
-                        ctx.DrawLine(pen, inset.A, inset.B);
-                    }
-                    else
-                    {
-                        ctx.DrawLine(defaultBorderPen, inset.A, inset.B);
-                    }
+                        LineCap = PenLineCap.Square,
+                    };
+                    ctx.DrawLine(pen, inset.A, inset.B);
                 }
             }
 

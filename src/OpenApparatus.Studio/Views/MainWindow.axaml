@@ -81,8 +81,8 @@
             <TextBlock Text="{Binding StatusMessage}" Foreground="#cccccc"/>
         </Border>
 
-        <!-- Main split: parameter panel + interactive grid editor -->
-        <Grid ColumnDefinitions="280,*">
+        <!-- Main split: parameter panel + interactive grid editor + per-room editor -->
+        <Grid ColumnDefinitions="280,*,Auto">
             <ScrollViewer Grid.Column="0" Background="#f4f4f7">
                 <StackPanel Margin="12" Spacing="0">
 
@@ -115,10 +115,6 @@
                         <NumericUpDown Value="{Binding WallThickness}" Minimum="0.05" Maximum="2.0" Increment="0.05" FormatString="0.00"/>
                         <TextBlock Text="Wall height (m)"/>
                         <NumericUpDown Value="{Binding WallHeight}" Minimum="0.5" Maximum="6.0" Increment="0.5" FormatString="0.0"/>
-                        <CheckBox Content="Multi Mesh Walls"
-                                  IsChecked="{Binding MultiMeshWalls}"
-                                  Margin="0 6 0 0"
-                                  ToolTip.Tip="When on, every wall exports as its own mesh with a unique material. When off (default), a room's walls merge into one mesh."/>
                     </StackPanel>
 
                     <TextBlock Classes="label" Text="Doorways"/>
@@ -159,6 +155,12 @@
             <Border Grid.Column="1" Background="#1a1a1f">
                 <views:GridEditorView EditVersion="{Binding EditVersion}" Margin="8"/>
             </Border>
+
+            <!-- Right-side per-room appearance editor. Visibility is controlled by
+                 the panel's own IsVisible binding (HasSelectedRoom) so the column
+                 width collapses when no room is selected. -->
+            <views:RoomEditorPanel Grid.Column="2"
+                                   IsVisible="{Binding HasSelectedRoom}"/>
         </Grid>
     </DockPanel>
 </Window>

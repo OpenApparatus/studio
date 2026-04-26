@@ -1,0 +1,14 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OpenApparatus.Studio.ViewModels"
+             x:Class="OpenApparatus.Studio.Views.RoomEditorPanel"
+             x:DataType="vm:MainWindowViewModel"
+             Width="260">
+    <Border Background="#f4f4f7" BorderBrush="#c8c8cf" BorderThickness="1 0 0 0">
+        <ScrollViewer>
+            <StackPanel Margin="14" Spacing="0" x:Name="Body" IsVisible="{Binding HasSelectedRoom}">
+                <!-- Populated by code-behind on SelectedRoomId / EditVersion changes. -->
+            </StackPanel>
+        </ScrollViewer>
+    </Border>
+</UserControl>
