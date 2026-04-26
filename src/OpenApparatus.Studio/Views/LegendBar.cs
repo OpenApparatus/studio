@@ -15,7 +15,9 @@ public sealed class LegendBar : Control
 {
     public LegendBar()
     {
-        Height = 36;
+        // Tall enough that the door's swing arc (which extends ~0.7 × symbolW
+        // above the hinge) doesn't get clipped at the top edge.
+        Height = 64;
         ClipToBounds = true;
     }
 

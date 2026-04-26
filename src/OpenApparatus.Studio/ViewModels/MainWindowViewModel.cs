@@ -154,6 +154,76 @@ public partial class MainWindowViewModel : ViewModelBase
 
     partial void OnWallBorderOpacityChanged(double value) => EditVersion++;
 
+    /// <summary>Editor zoom factor. 1.0 = fit-to-view; >1 zooms in, &lt;1 zooms out.
+    /// The viewport renders ZoomFactor× the auto-fit tile size.</summary>
+    [ObservableProperty] double _zoomFactor = 1.0;
+    /// <summary>Pan offset added to the viewport origin in screen pixels.</summary>
+    [ObservableProperty] double _panOffsetX;
+    [ObservableProperty] double _panOffsetY;
+
+    public const double MinZoom = 0.5;
+    public const double MaxZoom = 8.0;
+
+    partial void OnZoomFactorChanged(double value) => EditVersion++;
+    partial void OnPanOffsetXChanged(double value) => EditVersion++;
+    partial void OnPanOffsetYChanged(double value) => EditVersion++;
+
+    /// <summary>Reset zoom + pan to the default fit-to-view layout.</summary>
+    [RelayCommand]
+    void ResetView()
+    {
+        ZoomFactor = 1.0;
+        PanOffsetX = 0;
+        PanOffsetY = 0;
+    }
+
+    /// <summary>
+    /// Compute zoom + pan so the given room fits centered in the viewport with a
+    /// small empty buffer of tiles on each side. Width / height are the editor's
+    /// available pixel area minus its padding (16 px on each side).
+    /// </summary>
+    public void FocusOnRoom(int roomId, double availW, double availH)
+    {
+        if (availW <= 0 || availH <= 0 || GridWidth <= 0 || GridLength <= 0) return;
+
+        int xMin = int.MaxValue, xMax = int.MinValue, zMin = int.MaxValue, zMax = int.MinValue;
+        bool any = false;
+        for (int x = 0; x < GridWidth; x++)
+            for (int z = 0; z < GridLength; z++)
+                if (RoomGrid[x, z] == roomId)
+                {
+                    any = true;
+                    if (x < xMin) xMin = x;
+                    if (x > xMax) xMax = x;
+                    if (z < zMin) zMin = z;
+                    if (z > zMax) zMax = z;
+                }
+        if (!any) return;
+
+        const double Buffer = 1.5; // tiles of empty space around the room
+        double bufferedW = (xMax - xMin + 1) + Buffer * 2;
+        double bufferedD = (zMax - zMin + 1) + Buffer * 2;
+
+        // Fit-to-view tile size for the WHOLE grid (matches ComputeLayout).
+        double autoFit = System.Math.Min(availW / GridWidth, availH / GridLength);
+        if (autoFit <= 0) return;
+
+        // Tile size that makes the buffered room fit exactly.
+        double targetTile = System.Math.Min(availW / bufferedW, availH / bufferedD);
+        double zoom = System.Math.Clamp(targetTile / autoFit, MinZoom, MaxZoom);
+
+        // Pan so the room's center sits in the viewport center. With zoom in
+        // place, the actual tile size is autoFit * zoom; the math mirrors what
+        // ComputeLayout does so the result is exactly the room-centered layout.
+        double tile = autoFit * zoom;
+        double cx = (xMin + xMax + 1) * 0.5;
+        double cz = (zMin + zMax + 1) * 0.5;
+
+        ZoomFactor = zoom;
+        PanOffsetX = tile * (GridWidth * 0.5 - cx);
+        PanOffsetY = tile * (cz - GridLength * 0.5);
+    }
+
     partial void OnViewModeChanged(ViewSurface value) => EditVersion++;
 
     /// <summary>Auto-generated room color used as both the visible tile fill and

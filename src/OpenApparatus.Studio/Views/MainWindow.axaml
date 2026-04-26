@@ -199,9 +199,26 @@
                         </StackPanel>
                     </Grid>
                 </Border>
-                <Border Grid.Row="1" Background="#1a1a1f">
-                    <views:GridEditorView EditVersion="{Binding EditVersion}" Margin="8"/>
-                </Border>
+                <Grid Grid.Row="1" ColumnDefinitions="*,Auto">
+                    <Border Grid.Column="0" Background="#1a1a1f">
+                        <views:GridEditorView EditVersion="{Binding EditVersion}" Margin="8"/>
+                    </Border>
+                    <Border Grid.Column="1" Background="#e6e6ea" BorderBrush="#c8c8cf" BorderThickness="1 0 0 0" Padding="6 10" Width="48">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Top" Text="Zoom" HorizontalAlignment="Center" Foreground="#444" FontSize="11"/>
+                            <Button DockPanel.Dock="Bottom" Content="Reset" FontSize="10" Padding="4 2"
+                                    HorizontalAlignment="Stretch"
+                                    Command="{Binding ResetViewCommand}"
+                                    ToolTip.Tip="Reset zoom and pan to the default fit-to-view layout"/>
+                            <Slider Orientation="Vertical"
+                                    Minimum="0.5" Maximum="8.0"
+                                    Value="{Binding ZoomFactor, Mode=TwoWay}"
+                                    HorizontalAlignment="Center"
+                                    Margin="0 6"
+                                    ToolTip.Tip="Zoom in / out. Scroll over the editor or drag with middle / right mouse to pan."/>
+                        </DockPanel>
+                    </Border>
+                </Grid>
                 <!-- Legend strip below the grid, never overlapping the editor. -->
                 <views:LegendBar Grid.Row="2"/>
             </Grid>

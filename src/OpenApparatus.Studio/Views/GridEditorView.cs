@@ -41,6 +41,10 @@ public class GridEditorView : Control
     }
 
     bool _dragging;
+    bool _panning;
+    Point _panStartPos;
+    double _panStartOffsetX;
+    double _panStartOffsetY;
 
     MainWindowViewModel? Vm => DataContext as MainWindowViewModel;
 
@@ -58,9 +62,36 @@ public class GridEditorView : Control
         var vm = Vm;
         if (vm is null) return;
         var pos = e.GetPosition(this);
+        var props = e.GetCurrentPoint(this).Properties;
+
+        // Middle / right mouse button drag = pan.
+        if (props.IsMiddleButtonPressed || props.IsRightButtonPressed)
+        {
+            _panning = true;
+            _panStartPos = pos;
+            _panStartOffsetX = vm.PanOffsetX;
+            _panStartOffsetY = vm.PanOffsetY;
+            e.Pointer.Capture(this);
+            e.Handled = true;
+            return;
+        }
 
         var (origin, tilePxSize) = ComputeLayout(vm);
         if (tilePxSize <= 0) return;
+
+        // Double-click on a room tile → focus that room.
+        if (e.ClickCount == 2 && TryHitTest(pos, vm, out int dcX, out int dcZ))
+        {
+            int dcId = vm.RoomGrid[dcX, dcZ];
+            if (dcId >= 0)
+            {
+                var (availW, availH) = GetAvailableArea();
+                vm.FocusOnRoom(dcId, availW, availH);
+                vm.TrySelectRoomAtTile(dcX, dcZ);
+                e.Handled = true;
+                return;
+            }
+        }
 
         // 1. Wall hit — clicking a wall outline selects it for door / window edits.
         var worldPos = ScreenToWorld(pos, origin, tilePxSize, vm);
@@ -76,6 +107,10 @@ public class GridEditorView : Control
         // creation.
         if (TryHitTest(pos, vm, out int x, out int z))
         {
+            // A click on the grid means we've left the wall context — clear any
+            // wall selection so the door-anchor markers disappear.
+            vm.SelectedAdjacency = null;
+
             if (vm.TrySelectRoomAtTile(x, z))
             {
                 e.Handled = true;
@@ -87,6 +122,41 @@ public class GridEditorView : Control
             ApplyDrag(vm, x, z);
             e.Handled = true;
         }
+    }
+
+    protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
+    {
+        base.OnPointerWheelChanged(e);
+        var vm = Vm;
+        if (vm is null) return;
+
+        // Zoom centered on the cursor: figure out which world point sits under
+        // the cursor before changing zoom, then adjust pan so that point still
+        // sits under the cursor afterwards.
+        var pos = e.GetPosition(this);
+        var (origin, tilePxSize) = ComputeLayout(vm);
+        if (tilePxSize <= 0) return;
+        var worldBefore = ScreenToWorld(pos, origin, tilePxSize, vm);
+
+        double step = e.Delta.Y > 0 ? 1.15 : 1.0 / 1.15;
+        double newZoom = System.Math.Clamp(
+            vm.ZoomFactor * step,
+            MainWindowViewModel.MinZoom, MainWindowViewModel.MaxZoom);
+        if (System.Math.Abs(newZoom - vm.ZoomFactor) < 1e-4) { e.Handled = true; return; }
+        vm.ZoomFactor = newZoom;
+
+        var (origin2, tile2) = ComputeLayout(vm);
+        if (tile2 <= 0) { e.Handled = true; return; }
+        // Where would worldBefore land on screen now?
+        double xTileNew = worldBefore.X / vm.TileSize;
+        double zTileNew = worldBefore.Y / vm.TileSize;
+        var screenAfter = new Point(
+            origin2.X + xTileNew * tile2,
+            origin2.Y + (vm.GridLength - zTileNew) * tile2);
+        // Shift pan so it lands on the original cursor again.
+        vm.PanOffsetX += pos.X - screenAfter.X;
+        vm.PanOffsetY += pos.Y - screenAfter.Y;
+        e.Handled = true;
     }
 
     static (Point A, Point B) ShrinkSegment(Point a, Point b, double pixels)
@@ -110,10 +180,18 @@ public class GridEditorView : Control
     protected override void OnPointerMoved(PointerEventArgs e)
     {
         base.OnPointerMoved(e);
-        if (!_dragging) return;
         var vm = Vm;
         if (vm is null) return;
         var pos = e.GetPosition(this);
+
+        if (_panning)
+        {
+            vm.PanOffsetX = _panStartOffsetX + (pos.X - _panStartPos.X);
+            vm.PanOffsetY = _panStartOffsetY + (pos.Y - _panStartPos.Y);
+            return;
+        }
+
+        if (!_dragging) return;
         if (TryHitTest(pos, vm, out int x, out int z))
             ApplyDrag(vm, x, z);
     }
@@ -122,6 +200,11 @@ public class GridEditorView : Control
     {
         base.OnPointerReleased(e);
         _dragging = false;
+        if (_panning)
+        {
+            _panning = false;
+            e.Pointer.Capture(null);
+        }
     }
 
     void ApplyDrag(MainWindowViewModel vm, int x, int z)
@@ -556,20 +639,32 @@ public class GridEditorView : Control
         return new Rect(left, top, tileSize, tileSize);
     }
 
+    public const double EditorPadding = 16.0;
+
+    /// <summary>
+    /// Returns the viewport's available content area (the box the grid is laid
+    /// out into, after subtracting padding). Used by FocusOnRoom on the VM to
+    /// compute the right zoom + pan target.
+    /// </summary>
+    public (double availW, double availH) GetAvailableArea()
+    {
+        var size = Bounds.Size;
+        return (size.Width - EditorPadding * 2, size.Height - EditorPadding * 2);
+    }
+
     (Point origin, double tileSize) ComputeLayout(MainWindowViewModel vm)
     {
         var size = Bounds.Size;
-        const double padding = 16.0;
-        double availW = size.Width - padding * 2;
-        double availH = size.Height - padding * 2;
+        double availW = size.Width - EditorPadding * 2;
+        double availH = size.Height - EditorPadding * 2;
         if (availW <= 0 || availH <= 0 || vm.GridWidth <= 0 || vm.GridLength <= 0)
-            return (new Point(padding, padding), 0);
+            return (new Point(EditorPadding, EditorPadding), 0);
 
         double sx = availW / vm.GridWidth;
         double sy = availH / vm.GridLength;
-        double tile = System.Math.Min(sx, sy);
-        double offsetX = padding + (availW - tile * vm.GridWidth) * 0.5;
-        double offsetY = padding + (availH - tile * vm.GridLength) * 0.5;
+        double tile = System.Math.Min(sx, sy) * vm.ZoomFactor;
+        double offsetX = EditorPadding + (availW - tile * vm.GridWidth) * 0.5 + vm.PanOffsetX;
+        double offsetY = EditorPadding + (availH - tile * vm.GridLength) * 0.5 + vm.PanOffsetY;
         return (new Point(offsetX, offsetY), tile);
     }
 
