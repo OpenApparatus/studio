@@ -259,15 +259,18 @@ public partial class MainWindowViewModel : ViewModelBase
             ? new List<Opening>(dw.Openings)
             : new List<Opening>();
 
-        // Does an opening of the SAME kind already cover the active anchor?
-        // Tolerance = half the requested width so adjacent anchors don't false-match.
+        // Does an opening already cover the active anchor (i.e., the anchor sits
+        // inside the opening's span)? Use containment rather than center-distance
+        // so merged wide openings still toggle off correctly.
+        const float ANCHOR_EPS = 1e-3f;
         int sameKindIdx = -1;
         int otherKindIdx = -1;
         for (int i = 0; i < openings.Count; i++)
         {
-            float center = openings[i].OffsetAlongEdge + openings[i].Width * 0.5f;
-            if (System.Math.Abs(center - anchor) >= w * 0.5f) continue;
-            if (openings[i].IsWindow == isWindow) sameKindIdx = i;
+            var op = openings[i];
+            if (anchor < op.OffsetAlongEdge - ANCHOR_EPS) continue;
+            if (anchor > op.OffsetAlongEdge + op.Width + ANCHOR_EPS) continue;
+            if (op.IsWindow == isWindow) sameKindIdx = i;
             else otherKindIdx = i;
         }
 
@@ -280,28 +283,30 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         else
         {
-            if (otherKindIdx >= 0)
-            {
-                StatusMessage = $"Can't add {label} here — a {(isWindow ? "door" : "window")} already occupies this anchor.";
-                return;
-            }
             float offset = System.Math.Clamp(anchor - w * 0.5f, 0f, segLen - w);
-            bool overlaps = false;
+            float endOff = offset + w;
+
+            // Reject if the new opening would clash with a *different-kind* opening
+            // (a door cannot share space with a window). Same-kind clashes fall
+            // through to the merge step below.
+            bool blocked = false;
             foreach (var op in openings)
             {
-                if (offset + w > op.OffsetAlongEdge && offset < op.OffsetAlongEdge + op.Width)
+                if (op.IsWindow == isWindow) continue;
+                if (endOff > op.OffsetAlongEdge && offset < op.OffsetAlongEdge + op.Width)
                 {
-                    overlaps = true;
+                    blocked = true;
                     break;
                 }
             }
-            if (overlaps)
+            if (blocked)
             {
-                StatusMessage = $"Can't add {label} here — would overlap an existing opening.";
+                StatusMessage = $"Can't add {label} here — would overlap a {(isWindow ? "door" : "window")}.";
                 return;
             }
+
             openings.Add(new Opening(offset, w, reqHeight, reqSill));
-            if (isWindow) MergeAdjacentWindows(openings);
+            MergeOverlappingSameKind(openings);
             StatusMessage = $"Added {label} at offset {offset:F2}m. {openings.Count} opening(s) on this wall.";
         }
 
@@ -313,11 +318,11 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Merge windows that touch end-to-end (and share sill / head heights) into
-    /// single wider openings. Mutates <paramref name="openings"/> in place.
-    /// Doors are left alone — they always remain individual openings.
+    /// Merge same-kind openings (door+door or window+window) that touch or
+    /// overlap into a single wider opening. Heights / sill must match.
+    /// Mutates <paramref name="openings"/> in place.
     /// </summary>
-    static void MergeAdjacentWindows(List<Opening> openings)
+    static void MergeOverlappingSameKind(List<Opening> openings)
     {
         const float EPS = 1e-3f;
         bool merged;
@@ -329,14 +334,19 @@ public partial class MainWindowViewModel : ViewModelBase
             {
                 var a = openings[i];
                 var b = openings[i + 1];
-                if (!a.IsWindow || !b.IsWindow) continue;
+                if (a.IsWindow != b.IsWindow) continue;
                 if (System.Math.Abs(a.Height - b.Height) > EPS) continue;
                 if (System.Math.Abs(a.SillHeight - b.SillHeight) > EPS) continue;
-                if (System.Math.Abs(a.OffsetAlongEdge + a.Width - b.OffsetAlongEdge) > EPS) continue;
+                // Touching or overlapping: b starts at or before a's right edge.
+                if (b.OffsetAlongEdge > a.OffsetAlongEdge + a.Width + EPS) continue;
 
+                float newStart = a.OffsetAlongEdge;
+                float newEnd = System.Math.Max(
+                    a.OffsetAlongEdge + a.Width,
+                    b.OffsetAlongEdge + b.Width);
                 openings[i] = new Opening(
-                    a.OffsetAlongEdge,
-                    a.Width + b.Width,
+                    newStart,
+                    newEnd - newStart,
                     a.Height,
                     a.SillHeight);
                 openings.RemoveAt(i + 1);
