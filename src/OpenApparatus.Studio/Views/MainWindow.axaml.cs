@@ -23,6 +23,39 @@ public partial class MainWindow : Window
         if (vm is null) return;
         if (FocusedIsTextEntry()) return;
 
+        // Objects-mode shortcuts: 1..9 place an object at the selected sub-cell;
+        // Delete removes the selected object. We test these first so a digit
+        // key in Objects mode never collides with a future room/door letter
+        // mapping.
+        if (vm.IsObjectsMode)
+        {
+            int? slot = e.Key switch
+            {
+                Key.D1 or Key.NumPad1 => 1,
+                Key.D2 or Key.NumPad2 => 2,
+                Key.D3 or Key.NumPad3 => 3,
+                Key.D4 or Key.NumPad4 => 4,
+                Key.D5 or Key.NumPad5 => 5,
+                Key.D6 or Key.NumPad6 => 6,
+                Key.D7 or Key.NumPad7 => 7,
+                Key.D8 or Key.NumPad8 => 8,
+                Key.D9 or Key.NumPad9 => 9,
+                _ => null,
+            };
+            if (slot is int s)
+            {
+                vm.PlaceObjectAtSelectedSubCell(s);
+                e.Handled = true;
+                return;
+            }
+            if (e.Key is Key.Delete or Key.Back)
+            {
+                vm.DeleteSelectedObjectCommand.Execute(null);
+                e.Handled = true;
+                return;
+            }
+        }
+
         switch (e.Key)
         {
             case Key.R: vm.CreateRoomFromSelectionCommand.Execute(null); e.Handled = true; break;

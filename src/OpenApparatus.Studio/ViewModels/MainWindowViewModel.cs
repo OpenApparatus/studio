@@ -209,10 +209,171 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] System.Numerics.Vector3 _defaultFloorColor   = new(0.92f, 0.92f, 0.93f);
     [ObservableProperty] System.Numerics.Vector3 _defaultCeilingColor = new(0.92f, 0.92f, 0.90f);
 
-    /// <summary>Which surface the editor view recolors tiles by — "Floor" shows
-    /// each room's floor color, "Ceiling" shows each room's ceiling color.</summary>
-    public enum ViewSurface { Floor, Ceiling }
+    /// <summary>Which surface the editor view recolors tiles by — Floor shows
+    /// each room's floor colour, Ceiling shows each room's ceiling colour, and
+    /// Objects switches the editor into the object-placement mode.</summary>
+    public enum ViewSurface { Floor, Ceiling, Objects }
     [ObservableProperty] ViewSurface _viewMode = ViewSurface.Floor;
+
+    public bool IsObjectsMode => ViewMode == ViewSurface.Objects;
+
+    /// <summary>Global subdivision: every tile is divided into N×N sub-cells
+    /// when placing or snapping objects. 1 = no subdivision (objects sit at
+    /// tile centres), 2 = 2×2 per tile, …, up to 8.</summary>
+    [ObservableProperty] int _gridSubdivision = 1;
+    partial void OnGridSubdivisionChanged(int value) => EditVersion++;
+
+    /// <summary>Default Y coordinate (metres above the floor) used when an
+    /// object is first placed. The 3D viewer will let users edit Y per-object;
+    /// for now, every new object starts here.</summary>
+    [ObservableProperty] float _defaultObjectY = 0.5f;
+
+    /// <summary>The selected sub-cell in Objects mode, or null. fineX / fineZ
+    /// run 0..GridSubdivision-1 within the parent tile.</summary>
+    [ObservableProperty] (int TileX, int TileZ, int FineX, int FineZ)? _selectedSubCell;
+    partial void OnSelectedSubCellChanged((int TileX, int TileZ, int FineX, int FineZ)? value) => EditVersion++;
+
+    /// <summary>Index of the currently selected RoomObject in <see cref="Objects"/>,
+    /// or -1 when nothing is selected.</summary>
+    [ObservableProperty] int _selectedObjectIndex = -1;
+    partial void OnSelectedObjectIndexChanged(int value)
+    {
+        OnPropertyChanged(nameof(SelectedObject));
+        EditVersion++;
+    }
+
+    public RoomObject? SelectedObject =>
+        SelectedObjectIndex >= 0 && SelectedObjectIndex < _objects.Count
+            ? _objects[SelectedObjectIndex] : null;
+
+    readonly List<RoomObject> _objects = new();
+    public IReadOnlyList<RoomObject> Objects => _objects;
+
+    /// <summary>Sub-cell side length in metres at the current subdivision.</summary>
+    public float SubCellSize => TileSize / System.Math.Max(1, GridSubdivision);
+
+    /// <summary>World position of the centre of a sub-cell.</summary>
+    public System.Numerics.Vector2 SubCellCenter(int tileX, int tileZ, int fineX, int fineZ)
+    {
+        float s = SubCellSize;
+        return new System.Numerics.Vector2(
+            tileX * TileSize + (fineX + 0.5f) * s,
+            tileZ * TileSize + (fineZ + 0.5f) * s);
+    }
+
+    /// <summary>The room id at <paramref name="worldPos"/>, or -1 if no tile
+    /// owns that point. Used to assign owning rooms when objects are placed
+    /// or snapped.</summary>
+    public int RoomIdAtWorld(System.Numerics.Vector2 worldPos)
+    {
+        int tx = (int)System.Math.Floor(worldPos.X / TileSize);
+        int tz = (int)System.Math.Floor(worldPos.Y / TileSize);
+        if (tx < 0 || tx >= GridWidth || tz < 0 || tz >= GridLength) return -1;
+        return RoomGrid[tx, tz];
+    }
+
+    /// <summary>
+    /// Place an object of <paramref name="slot"/> at the centre of
+    /// <see cref="SelectedSubCell"/>, owned by the room that contains that
+    /// sub-cell. No-ops when no sub-cell is selected, the slot is out of
+    /// range, the cell sits in empty space, or an object of the same slot is
+    /// already at this sub-cell centre.
+    /// </summary>
+    public void PlaceObjectAtSelectedSubCell(int slot)
+    {
+        if (ObjectSlots.Get(slot) is null) return;
+        if (SelectedSubCell is not { } sc) return;
+        var center2 = SubCellCenter(sc.TileX, sc.TileZ, sc.FineX, sc.FineZ);
+        int roomId = RoomIdAtWorld(center2);
+        if (roomId < 0)
+        {
+            StatusMessage = "Pick a sub-cell that belongs to a room first.";
+            return;
+        }
+        // No-op if the same slot is already at the same sub-cell centre.
+        const float EPS = 1e-3f;
+        foreach (var o in _objects)
+        {
+            if (o.Slot != slot) continue;
+            if (System.Math.Abs(o.Position.X - center2.X) < EPS &&
+                System.Math.Abs(o.Position.Z - center2.Y) < EPS)
+            {
+                StatusMessage = $"Slot {slot} already placed at this sub-cell.";
+                return;
+            }
+        }
+        var obj = new RoomObject
+        {
+            OwningRoomId = roomId,
+            Slot = slot,
+            Position = new System.Numerics.Vector3(center2.X, DefaultObjectY, center2.Y),
+            Rotation = 0f,
+        };
+        _objects.Add(obj);
+        SelectedObjectIndex = _objects.Count - 1;
+        StatusMessage = $"Placed slot {slot} ({ObjectSlots.Get(slot)!.DisplayName}) in Room {roomId}.";
+        EditVersion++;
+    }
+
+    /// <summary>Called from the inspector after an in-place mutation of the
+    /// selected RoomObject (X/Y/Z/rotation spinners) so the editor view
+    /// repaints. We can't use ObservableProperty on RoomObject because it's a
+    /// reference type held by index in a list — bumping EditVersion is the
+    /// signal everything else listens to.</summary>
+    public void OnEditedSelectedObject()
+    {
+        EditVersion++;
+        OnPropertyChanged(nameof(SelectedObject));
+    }
+
+    /// <summary>Delete the currently selected object.</summary>
+    [RelayCommand]
+    void DeleteSelectedObject()
+    {
+        if (SelectedObjectIndex < 0 || SelectedObjectIndex >= _objects.Count) return;
+        _objects.RemoveAt(SelectedObjectIndex);
+        SelectedObjectIndex = -1;
+        StatusMessage = "Object deleted.";
+        EditVersion++;
+    }
+
+    /// <summary>
+    /// Snap every object's X/Z position to the centre of its containing
+    /// sub-cell at the current <see cref="GridSubdivision"/>. Y is preserved
+    /// — height is independent of the grid. Useful after changing the
+    /// subdivision so older objects align with the new grain.
+    /// </summary>
+    [RelayCommand]
+    void SnapObjectsToGrid()
+    {
+        if (_objects.Count == 0)
+        {
+            StatusMessage = "No objects to snap.";
+            return;
+        }
+        float s = SubCellSize;
+        int touched = 0;
+        foreach (var o in _objects)
+        {
+            float fx = o.Position.X / s;
+            float fz = o.Position.Z / s;
+            float snappedX = (System.MathF.Floor(fx) + 0.5f) * s;
+            float snappedZ = (System.MathF.Floor(fz) + 0.5f) * s;
+            if (System.MathF.Abs(snappedX - o.Position.X) > 1e-4f ||
+                System.MathF.Abs(snappedZ - o.Position.Z) > 1e-4f)
+            {
+                o.Position = new System.Numerics.Vector3(snappedX, o.Position.Y, snappedZ);
+                touched++;
+            }
+            // Reassign owning room based on the new position.
+            int rid = RoomIdAtWorld(new System.Numerics.Vector2(snappedX, snappedZ));
+            if (rid >= 0) o.OwningRoomId = rid;
+        }
+        StatusMessage = touched > 0
+            ? $"Snapped {touched} object(s) to the {GridSubdivision}× sub-grid."
+            : "Objects already aligned to the current sub-grid.";
+        EditVersion++;
+    }
 
     /// <summary>When on, the editor draws a path overlay through every
     /// traversable passage (open or doorway), anchoring each leg to the
@@ -303,7 +464,18 @@ public partial class MainWindowViewModel : ViewModelBase
         PanOffsetY = tile * (cz - GridLength * 0.5);
     }
 
-    partial void OnViewModeChanged(ViewSurface value) => EditVersion++;
+    partial void OnViewModeChanged(ViewSurface value)
+    {
+        // Leaving Objects mode clears any active sub-cell / object selection
+        // so the right panel collapses cleanly back to the room editor.
+        if (value != ViewSurface.Objects)
+        {
+            SelectedSubCell = null;
+            SelectedObjectIndex = -1;
+        }
+        EditVersion++;
+        OnPropertyChanged(nameof(IsObjectsMode));
+    }
 
     /// <summary>Auto-generated room color used as both the visible tile fill and
     /// the seed for the room's wall color when it is first created. The same
@@ -1095,7 +1267,8 @@ public partial class MainWindowViewModel : ViewModelBase
                 file.Path.LocalPath, CurrentEnvironment, WallThickness, WallHeight,
                 _multiColorRoomIds,
                 _roomFloorColors, _roomCeilingColors,
-                _roomSingleWallColors, _wallColors);
+                _roomSingleWallColors, _wallColors,
+                _objects);
             StatusMessage = $"Exported glTF → {file.Name}";
         }
         catch (Exception ex)
@@ -1125,7 +1298,10 @@ public partial class MainWindowViewModel : ViewModelBase
                 WallThickness, WallHeight,
                 DoorWidth, DoorHeight,
                 WindowWidth, WindowHeight, WindowSillHeight,
-                CurrentEnvironment);
+                CurrentEnvironment,
+                GridSubdivision,
+                DefaultObjectY,
+                _objects);
 
             await using var stream = await file.OpenWriteAsync();
             using var writer = new StreamWriter(stream);

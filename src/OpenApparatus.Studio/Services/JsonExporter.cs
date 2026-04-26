@@ -3,6 +3,7 @@ using System.IO;
 using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using OpenApparatus.Studio.ViewModels;
 using OpenApparatus.Topology;
 
 namespace OpenApparatus.Studio.Services;
@@ -16,7 +17,7 @@ namespace OpenApparatus.Studio.Services;
 /// </summary>
 public static class JsonExporter
 {
-    public const int SchemaVersion = 2;
+    public const int SchemaVersion = 3;
 
     public static void Export(TextWriter w, EnvironmentDocument doc)
     {
@@ -38,7 +39,10 @@ public static class JsonExporter
         float windowWidth,
         float windowHeight,
         float windowSillHeight,
-        MultiRoomEnvironment? environment)
+        MultiRoomEnvironment? environment,
+        int gridSubdivision = 1,
+        float defaultObjectY = 0f,
+        IReadOnlyList<RoomObject>? objects = null)
     {
         int gridW = roomGrid.GetLength(0);
         int gridL = roomGrid.GetLength(1);
@@ -63,6 +67,8 @@ public static class JsonExporter
                 WindowWidth = windowWidth,
                 WindowHeight = windowHeight,
                 WindowSillHeight = windowSillHeight,
+                GridSubdivision = gridSubdivision,
+                DefaultObjectY = defaultObjectY,
             },
             Grid = new GridSection
             {
@@ -70,6 +76,7 @@ public static class JsonExporter
                 Length = gridL,
                 Tiles = tiles,
             },
+            ObjectSlots = BuildSlotDefinitions(),
         };
 
         if (environment is null) return doc;
@@ -122,10 +129,48 @@ public static class JsonExporter
                 entry.Walls.Add(wall);
             }
 
+            // Per-room object instances. Rooms without objects emit an empty
+            // list (omitted by JsonIgnoreCondition.WhenWritingNull when the
+            // collection itself is null — we leave it null to keep small docs
+            // tidy).
+            if (objects != null)
+            {
+                List<ObjectInstanceEntry>? objList = null;
+                foreach (var o in objects)
+                {
+                    if (o.OwningRoomId != room.Id) continue;
+                    objList ??= new List<ObjectInstanceEntry>();
+                    objList.Add(new ObjectInstanceEntry
+                    {
+                        Slot = o.Slot,
+                        Position = new[] { o.Position.X, o.Position.Y, o.Position.Z },
+                        Rotation = o.Rotation,
+                    });
+                }
+                entry.Objects = objList;
+            }
+
             doc.Rooms.Add(entry);
         }
 
         return doc;
+    }
+
+    static List<ObjectSlotEntry> BuildSlotDefinitions()
+    {
+        var list = new List<ObjectSlotEntry>(ObjectSlots.All.Length);
+        foreach (var s in ObjectSlots.All)
+        {
+            list.Add(new ObjectSlotEntry
+            {
+                Id = s.Id,
+                Shape = s.Shape.ToString().ToLowerInvariant(),
+                Color = new[] { s.Color.X, s.Color.Y, s.Color.Z },
+                Size = s.Size,
+                DisplayName = s.DisplayName,
+            });
+        }
+        return list;
     }
 
     static ShapeSection ShapeFor(Room room) => room.Shape switch
@@ -181,6 +226,7 @@ public static class JsonExporter
         public int Version { get; set; }
         public ParametersSection Parameters { get; set; } = new();
         public GridSection Grid { get; set; } = new();
+        public List<ObjectSlotEntry> ObjectSlots { get; set; } = new();
         public List<RoomEntry> Rooms { get; set; } = new();
     }
 
@@ -194,6 +240,8 @@ public static class JsonExporter
         public float WindowWidth { get; set; }
         public float WindowHeight { get; set; }
         public float WindowSillHeight { get; set; }
+        public int GridSubdivision { get; set; } = 1;
+        public float DefaultObjectY { get; set; }
     }
 
     public sealed class GridSection
@@ -210,6 +258,23 @@ public static class JsonExporter
         public float[] Position { get; set; } = System.Array.Empty<float>();
         public List<int[]> Tiles { get; set; } = new();
         public List<WallEntry> Walls { get; set; } = new();
+        public List<ObjectInstanceEntry>? Objects { get; set; }
+    }
+
+    public sealed class ObjectSlotEntry
+    {
+        public int Id { get; set; }
+        public string Shape { get; set; } = "";
+        public float[] Color { get; set; } = System.Array.Empty<float>();
+        public float Size { get; set; }
+        public string DisplayName { get; set; } = "";
+    }
+
+    public sealed class ObjectInstanceEntry
+    {
+        public int Slot { get; set; }
+        public float[] Position { get; set; } = System.Array.Empty<float>();
+        public float Rotation { get; set; }
     }
 
     public sealed class ShapeSection

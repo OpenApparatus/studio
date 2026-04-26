@@ -90,10 +90,17 @@ public class GridEditorView : Control
             {
                 var (availW, availH) = GetAvailableArea();
                 vm.FocusOnRoom(dcId, availW, availH);
-                vm.TrySelectRoomAtTile(dcX, dcZ);
+                if (!vm.IsObjectsMode) vm.TrySelectRoomAtTile(dcX, dcZ);
                 e.Handled = true;
                 return;
             }
+        }
+
+        if (vm.IsObjectsMode)
+        {
+            HandleObjectsModeClick(vm, pos, origin, tilePxSize);
+            e.Handled = true;
+            return;
         }
 
         // 1. Wall hit — clicking a wall outline selects it for door / window edits.
@@ -168,6 +175,74 @@ public class GridEditorView : Control
         return new System.Numerics.Vector2(
             (b.Min.X + b.Max.X) * 0.5f,
             (b.Min.Y + b.Max.Y) * 0.5f);
+    }
+
+    /// <summary>
+    /// Click handling while ViewMode == Objects: an object hit takes priority
+    /// over a sub-cell hit (so the user can click an object to select it even
+    /// if the sub-cell underneath is also a valid placement target). Falling
+    /// off both clears the selection.
+    /// </summary>
+    void HandleObjectsModeClick(MainWindowViewModel vm, Point pos, Point origin, double tilePxSize)
+    {
+        // 1. Object hit-test. Use a small screen-space radius around the
+        //    object's projected centre.
+        const double ObjHitRadiusPx = 10.0;
+        for (int i = 0; i < vm.Objects.Count; i++)
+        {
+            var o = vm.Objects[i];
+            var screen = WorldXzToScreen(
+                new System.Numerics.Vector2(o.Position.X, o.Position.Z),
+                origin, tilePxSize, vm);
+            double dx = screen.X - pos.X, dy = screen.Y - pos.Y;
+            if (dx * dx + dy * dy <= ObjHitRadiusPx * ObjHitRadiusPx)
+            {
+                vm.SelectedObjectIndex = i;
+                vm.SelectedSubCell = null;
+                return;
+            }
+        }
+
+        // 2. Sub-cell hit-test.
+        if (TryHitSubCell(vm, pos, origin, tilePxSize, out var sc))
+        {
+            vm.SelectedSubCell = sc;
+            vm.SelectedObjectIndex = -1;
+            return;
+        }
+
+        // 3. Empty space → clear selection.
+        vm.SelectedSubCell = null;
+        vm.SelectedObjectIndex = -1;
+    }
+
+    static bool TryHitSubCell(
+        MainWindowViewModel vm, Point pos, Point origin, double tilePxSize,
+        out (int TileX, int TileZ, int FineX, int FineZ) sc)
+    {
+        sc = default;
+        int n = System.Math.Max(1, vm.GridSubdivision);
+        // Convert screen → tile-space; floor to int gives tile + sub-cell.
+        double localX = pos.X - origin.X;
+        double localY = origin.Y + vm.GridLength * tilePxSize - pos.Y;
+        if (localX < 0 || localY < 0) return false;
+        double subPx = tilePxSize / n;
+        int subX = (int)(localX / subPx);
+        int subZ = (int)(localY / subPx);
+        int tileX = subX / n;
+        int tileZ = subZ / n;
+        if (tileX < 0 || tileX >= vm.GridWidth || tileZ < 0 || tileZ >= vm.GridLength) return false;
+        sc = (tileX, tileZ, subX % n, subZ % n);
+        return true;
+    }
+
+    static Point WorldXzToScreen(System.Numerics.Vector2 worldXz, Point origin, double tilePxSize, MainWindowViewModel vm)
+    {
+        double xTile = worldXz.X / vm.TileSize;
+        double zTile = worldXz.Y / vm.TileSize;
+        return new Point(
+            origin.X + xTile * tilePxSize,
+            origin.Y + (vm.GridLength - zTile) * tilePxSize);
     }
 
     static (Point A, Point B) ShrinkSegment(Point a, Point b, double pixels)
@@ -285,6 +360,49 @@ public class GridEditorView : Control
                 ctx.FillRectangle(fill, rect);
                 ctx.DrawRectangle(null, gridStroke, rect);
             }
+
+        // Objects-mode overlays: subdivision grid + selected-subcell highlight.
+        // Drawn here (after tiles, before walls) so walls always render on top
+        // of the sub-grid lines.
+        if (vm.IsObjectsMode && vm.GridSubdivision > 1)
+        {
+            var subStroke = new Pen(new SolidColorBrush(Color.FromArgb(120, 110, 110, 130)), 0.6);
+            int n = vm.GridSubdivision;
+            double subPx = tileSize / n;
+            for (int x = 0; x < vm.GridWidth; x++)
+                for (int z = 0; z < vm.GridLength; z++)
+                {
+                    if (vm.RoomGrid[x, z] < 0) continue;
+                    var tileRect = TileRect(origin, tileSize, x, z, vm.GridLength);
+                    for (int k = 1; k < n; k++)
+                    {
+                        double offset = k * subPx;
+                        ctx.DrawLine(subStroke,
+                            new Point(tileRect.X + offset, tileRect.Y),
+                            new Point(tileRect.X + offset, tileRect.Y + tileSize));
+                        ctx.DrawLine(subStroke,
+                            new Point(tileRect.X, tileRect.Y + offset),
+                            new Point(tileRect.X + tileSize, tileRect.Y + offset));
+                    }
+                }
+        }
+        if (vm.IsObjectsMode && vm.SelectedSubCell is { } sub)
+        {
+            int n = System.Math.Max(1, vm.GridSubdivision);
+            double subPx = tileSize / n;
+            var tileRect = TileRect(origin, tileSize, sub.TileX, sub.TileZ, vm.GridLength);
+            // Y in screen grows down but tile Z grows up — subZ=0 sits at the
+            // BOTTOM of the tile in world space, which is the BOTTOM of the
+            // tile rect on screen too. So the highlight Y is measured from
+            // tileRect.Bottom upward.
+            double left = tileRect.X + sub.FineX * subPx;
+            double bottom = tileRect.Y + tileSize - sub.FineZ * subPx;
+            double top = bottom - subPx;
+            var hiRect = new Rect(left, top, subPx, subPx);
+            ctx.FillRectangle(new SolidColorBrush(Color.FromArgb(140, 255, 220, 80)), hiRect);
+            ctx.DrawRectangle(null,
+                new Pen(new SolidColorBrush(Color.FromRgb(220, 160, 30)), 1.5), hiRect);
+        }
 
         // Wall segments from the materialized environment, drawn over the grid. World
         // coords are in meters; convert to tile units (÷ vm.TileSize) then to pixels.
@@ -661,6 +779,102 @@ public class GridEditorView : Control
             }
         }
 
+        // Object icons — drawn last so they sit on top of room labels in
+        // Objects mode. In Floor / Ceiling mode they still render, dimmed,
+        // so the user always sees what's been placed.
+        DrawObjects(ctx, vm, origin, tileSize);
+    }
+
+    static void DrawObjects(DrawingContext ctx, MainWindowViewModel vm, Point origin, double tileSize)
+    {
+        if (vm.Objects.Count == 0) return;
+        bool dim = !vm.IsObjectsMode;
+        for (int i = 0; i < vm.Objects.Count; i++)
+        {
+            var o = vm.Objects[i];
+            var slot = ObjectSlots.Get(o.Slot);
+            if (slot is null) continue;
+            var screen = WorldXzToScreen(
+                new System.Numerics.Vector2(o.Position.X, o.Position.Z),
+                origin, tileSize, vm);
+            byte alpha = (byte)(dim ? 110 : 255);
+            var fill = new SolidColorBrush(Color.FromArgb(alpha,
+                (byte)(slot.Color.X * 255), (byte)(slot.Color.Y * 255), (byte)(slot.Color.Z * 255)));
+            var border = new Pen(new SolidColorBrush(Color.FromArgb(alpha, 30, 30, 40)), 1.2);
+            bool selected = vm.IsObjectsMode && i == vm.SelectedObjectIndex;
+            // 2D icon footprint: roughly 1/3 of a tile, capped at 16 px.
+            double iconR = System.Math.Min(16.0, System.Math.Max(6.0, tileSize * 0.25));
+            DrawObjectIcon(ctx, slot.Shape, screen, iconR, fill, border);
+            if (selected)
+            {
+                ctx.DrawEllipse(null,
+                    new Pen(new SolidColorBrush(Color.FromRgb(255, 200, 30)), 2.0)
+                    {
+                        DashStyle = new DashStyle(new[] { 2.5, 1.5 }, 0),
+                    },
+                    screen, iconR + 5, iconR + 5);
+            }
+        }
+    }
+
+    static void DrawObjectIcon(DrawingContext ctx, ObjectShape shape, Point centre, double r, IBrush fill, Pen border)
+    {
+        switch (shape)
+        {
+            case ObjectShape.Sphere:
+                ctx.DrawEllipse(fill, border, centre, r, r);
+                break;
+            case ObjectShape.Cylinder:
+                ctx.DrawEllipse(fill, border, centre, r, r * 0.7);
+                break;
+            case ObjectShape.Cone:
+                ctx.DrawGeometry(fill, border, BuildTriangle(centre, r));
+                break;
+            case ObjectShape.Pyramid:
+                ctx.DrawGeometry(fill, border, BuildDiamond(centre, r));
+                break;
+            case ObjectShape.SquatCylinder:
+                ctx.DrawEllipse(fill, border, centre, r * 1.1, r * 0.55);
+                break;
+            case ObjectShape.Capsule:
+                {
+                    var rect = new Rect(centre.X - r * 0.55, centre.Y - r, r * 1.1, r * 2);
+                    ctx.DrawRectangle(fill, border, rect, r * 0.55, r * 0.55);
+                    break;
+                }
+            case ObjectShape.Cube:
+            default:
+                ctx.DrawRectangle(fill, border,
+                    new Rect(centre.X - r, centre.Y - r, r * 2, r * 2));
+                break;
+        }
+    }
+
+    static Avalonia.Media.Geometry BuildTriangle(Point centre, double r)
+    {
+        var g = new StreamGeometry();
+        using (var c = g.Open())
+        {
+            c.BeginFigure(new Point(centre.X, centre.Y - r), isFilled: true);
+            c.LineTo(new Point(centre.X + r, centre.Y + r));
+            c.LineTo(new Point(centre.X - r, centre.Y + r));
+            c.EndFigure(true);
+        }
+        return g;
+    }
+
+    static Avalonia.Media.Geometry BuildDiamond(Point centre, double r)
+    {
+        var g = new StreamGeometry();
+        using (var c = g.Open())
+        {
+            c.BeginFigure(new Point(centre.X, centre.Y - r), isFilled: true);
+            c.LineTo(new Point(centre.X + r, centre.Y));
+            c.LineTo(new Point(centre.X, centre.Y + r));
+            c.LineTo(new Point(centre.X - r, centre.Y));
+            c.EndFigure(true);
+        }
+        return g;
     }
 
     /// <summary>Draws a single legend symbol; exposed so a separate legend control

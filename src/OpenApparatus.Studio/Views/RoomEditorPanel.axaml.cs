@@ -49,7 +49,10 @@ public partial class RoomEditorPanel : UserControl
         if (e.PropertyName is nameof(MainWindowViewModel.SelectedRoomId)
                           or nameof(MainWindowViewModel.SelectedOpeningIndex)
                           or nameof(MainWindowViewModel.HasSelectedOpening)
-                          or nameof(MainWindowViewModel.CurrentEnvironment))
+                          or nameof(MainWindowViewModel.CurrentEnvironment)
+                          or nameof(MainWindowViewModel.ViewMode)
+                          or nameof(MainWindowViewModel.IsObjectsMode)
+                          or nameof(MainWindowViewModel.SelectedObjectIndex))
         {
             Rebuild();
         }
@@ -59,6 +62,14 @@ public partial class RoomEditorPanel : UserControl
     {
         BodyPanel.Children.Clear();
         if (_vm is null) return;
+
+        // In Objects mode the panel is always object-related; everything else
+        // (room appearance, opening edits) is gated by the floor/ceiling tabs.
+        if (_vm.IsObjectsMode)
+        {
+            BuildObjectsEditor();
+            return;
+        }
 
         // Opening edits take precedence — when an opening is selected the user
         // is in 'tweak this door / window' context; the room panel can wait.
@@ -73,6 +84,146 @@ public partial class RoomEditorPanel : UserControl
             return;
         }
         BuildRoomEditor();
+    }
+
+    void BuildObjectsEditor()
+    {
+        BodyPanel.Children.Add(new TextBlock
+        {
+            Text = "Objects",
+            FontWeight = FontWeight.SemiBold,
+            FontSize = 16,
+            Margin = new Thickness(0, 0, 0, 12),
+        });
+
+        // Subdivision (global). Spinner 1..8.
+        BodyPanel.Children.Add(SectionHeader("Sub-grid"));
+        var subBox = new NumericUpDown
+        {
+            Minimum = 1,
+            Maximum = 8,
+            Increment = 1,
+            FormatString = "0",
+            Value = _vm!.GridSubdivision,
+            Margin = new Thickness(0, 0, 0, 4),
+        };
+        subBox.ValueChanged += (_, e) =>
+        {
+            if (e.NewValue.HasValue) _vm.GridSubdivision = (int)e.NewValue.Value;
+        };
+        BodyPanel.Children.Add(subBox);
+        BodyPanel.Children.Add(new TextBlock
+        {
+            Text = "Each tile is divided into N×N sub-cells.",
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = new SolidColorBrush(Color.FromRgb(120, 120, 130)),
+            FontSize = 11,
+            Margin = new Thickness(0, 0, 0, 6),
+        });
+
+        var snapBtn = new Button
+        {
+            Content = "Snap objects to grid",
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(0, 0, 0, 14),
+        };
+        ToolTip.SetTip(snapBtn,
+            "Round every object's X / Z to the nearest sub-cell centre at the current sub-grid. " +
+            "Y is preserved.");
+        snapBtn.Click += (_, _) => _vm.SnapObjectsToGridCommand.Execute(null);
+        BodyPanel.Children.Add(snapBtn);
+
+        // Slot palette. Just a reference — clicking a swatch doesn't place,
+        // the user still presses 1..9 with a sub-cell selected.
+        BodyPanel.Children.Add(SectionHeader("Slot palette"));
+        BodyPanel.Children.Add(new TextBlock
+        {
+            Text = "Select a sub-cell, then press 1–9 to place that slot.",
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = new SolidColorBrush(Color.FromRgb(120, 120, 130)),
+            FontSize = 11,
+            Margin = new Thickness(0, 0, 0, 6),
+        });
+        foreach (var slot in OpenApparatus.Studio.ViewModels.ObjectSlots.All)
+            BodyPanel.Children.Add(SlotRow(slot));
+
+        // Selected object editor.
+        var sel = _vm.SelectedObject;
+        if (sel is null) return;
+
+        BodyPanel.Children.Add(SectionHeader("Selected object", topMargin: 16));
+        var slotInfo = OpenApparatus.Studio.ViewModels.ObjectSlots.Get(sel.Slot);
+        BodyPanel.Children.Add(new TextBlock
+        {
+            Text = slotInfo is null ? $"Slot {sel.Slot}" : $"Slot {sel.Slot} — {slotInfo.DisplayName}",
+            FontWeight = FontWeight.SemiBold,
+            Margin = new Thickness(0, 0, 0, 4),
+        });
+        BodyPanel.Children.Add(new TextBlock
+        {
+            Text = $"Owning room: {sel.OwningRoomId}",
+            Foreground = new SolidColorBrush(Color.FromRgb(110, 110, 120)),
+            FontSize = 11,
+            Margin = new Thickness(0, 0, 0, 6),
+        });
+
+        BodyPanel.Children.Add(NumericRow("X (m)", sel.Position.X, -100, 100, 0.05,
+            v => MutateSelectedObject(o => o.Position = new System.Numerics.Vector3((float)v, o.Position.Y, o.Position.Z))));
+        BodyPanel.Children.Add(NumericRow("Y (m)", sel.Position.Y, 0, 5, 0.05,
+            v => MutateSelectedObject(o => o.Position = new System.Numerics.Vector3(o.Position.X, (float)v, o.Position.Z))));
+        BodyPanel.Children.Add(NumericRow("Z (m)", sel.Position.Z, -100, 100, 0.05,
+            v => MutateSelectedObject(o => o.Position = new System.Numerics.Vector3(o.Position.X, o.Position.Y, (float)v))));
+        BodyPanel.Children.Add(NumericRow("Rotation (°)", sel.Rotation * (180.0 / System.Math.PI), -360, 360, 5,
+            v => MutateSelectedObject(o => o.Rotation = (float)(v * System.Math.PI / 180.0))));
+
+        var deleteBtn = new Button
+        {
+            Content = "Delete object",
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(0, 8, 0, 0),
+        };
+        deleteBtn.Click += (_, _) => _vm.DeleteSelectedObjectCommand.Execute(null);
+        BodyPanel.Children.Add(deleteBtn);
+    }
+
+    /// <summary>Apply a side-effecting change to the selected object's mutable
+    /// fields, then bump EditVersion so the editor view repaints.</summary>
+    void MutateSelectedObject(System.Action<OpenApparatus.Studio.ViewModels.RoomObject> change)
+    {
+        var sel = _vm?.SelectedObject;
+        if (sel is null) return;
+        change(sel);
+        _vm!.OnEditedSelectedObject();
+    }
+
+    Control SlotRow(OpenApparatus.Studio.ViewModels.ObjectSlot slot)
+    {
+        var swatch = new Border
+        {
+            Width = 22,
+            Height = 22,
+            Background = new SolidColorBrush(Color.FromRgb(
+                (byte)(slot.Color.X * 255), (byte)(slot.Color.Y * 255), (byte)(slot.Color.Z * 255))),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(60, 60, 70)),
+            BorderThickness = new Thickness(1),
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        var label = new TextBlock
+        {
+            Text = $"{slot.Id}.  {slot.DisplayName}",
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(8, 0, 0, 0),
+        };
+        var stack = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Margin = new Thickness(0, 0, 0, 3),
+        };
+        stack.Children.Add(swatch);
+        stack.Children.Add(label);
+        return stack;
     }
 
     void BuildPlaceholder()

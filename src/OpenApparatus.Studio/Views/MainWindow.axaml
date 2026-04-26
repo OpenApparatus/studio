@@ -132,6 +132,15 @@
                                 ToolTip.Tip="Used as the ceiling color when a new room is created."/>
                     </StackPanel>
 
+                    <TextBlock Classes="label" Text="Defaults for new objects"/>
+                    <StackPanel Classes="section">
+                        <TextBlock Text="Default Y (m above floor)"/>
+                        <NumericUpDown Value="{Binding DefaultObjectY}"
+                                       Minimum="0" Maximum="3.0" Increment="0.05"
+                                       FormatString="0.00"
+                                       ToolTip.Tip="Initial height for newly placed objects."/>
+                    </StackPanel>
+
                     <TextBlock Classes="label" Text="Walls"/>
                     <StackPanel Classes="section">
                         <TextBlock Text="Wall thickness (m)"/>
@@ -188,6 +197,10 @@
                             <RadioButton GroupName="ViewMode"
                                          Content="Ceiling"
                                          IsChecked="{Binding ViewMode, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=Ceiling}"
+                                         Classes="tab" Padding="14 4"/>
+                            <RadioButton GroupName="ViewMode"
+                                         Content="Objects"
+                                         IsChecked="{Binding ViewMode, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=Objects}"
                                          Classes="tab" Padding="14 4"/>
                         </StackPanel>
                         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
