@@ -42,14 +42,21 @@
         <vm:MainWindowViewModel/>
     </Design.DataContext>
 
+    <Window.KeyBindings>
+        <KeyBinding Gesture="R" Command="{Binding CreateRoomFromSelectionCommand}"/>
+        <KeyBinding Gesture="Escape" Command="{Binding ClearSelectionCommand}"/>
+    </Window.KeyBindings>
+
     <DockPanel LastChildFill="True">
         <!-- Top toolbar — light background so default Light-theme buttons are visible -->
         <Border DockPanel.Dock="Top" Background="#e6e6ea" BorderBrush="#c8c8cf" BorderThickness="0 0 0 1" Padding="8">
             <StackPanel Orientation="Horizontal" Spacing="6">
-                <Button Content="Create Room" Classes="primary"
+                <Button Content="Create Room (R)" Classes="primary"
                         Command="{Binding CreateRoomFromSelectionCommand}"
-                        ToolTip.Tip="Turn the current tile selection into a room"/>
-                <Button Content="Clear Selection" Command="{Binding ClearSelectionCommand}"/>
+                        ToolTip.Tip="Turn the current tile selection into a room (hotkey: R)"/>
+                <Button Content="Clear Selection (Esc)"
+                        Command="{Binding ClearSelectionCommand}"
+                        ToolTip.Tip="Clear the current tile selection (hotkey: Escape)"/>
                 <Separator Width="12"/>
                 <Button Content="Reset All" Command="{Binding ResetAllCommand}"/>
                 <Button Content="Random Fill" Command="{Binding RandomFillCommand}"/>
@@ -73,9 +80,9 @@
                     <!-- Primary actions in the left panel for maximum discoverability -->
                     <TextBlock Classes="label" Text="Actions"/>
                     <StackPanel Classes="section" Spacing="4">
-                        <Button Content="Create Room from Selection" Classes="primary"
+                        <Button Content="Create Room from Selection (R)" Classes="primary"
                                 Command="{Binding CreateRoomFromSelectionCommand}"/>
-                        <Button Content="Clear Selection" Classes="action"
+                        <Button Content="Clear Selection (Esc)" Classes="action"
                                 Command="{Binding ClearSelectionCommand}"/>
                         <Button Content="Random Fill" Classes="action"
                                 Command="{Binding RandomFillCommand}"/>
