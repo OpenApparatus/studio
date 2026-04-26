@@ -2,8 +2,12 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="OpenApparatus.Studio.App"
              xmlns:local="using:OpenApparatus.Studio"
-             RequestedThemeVariant="Default">
-             <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+             RequestedThemeVariant="Light">
+             <!-- Forced Light theme: the studio's hardcoded panel colors (toolbar, status
+                  bar, left panel background) are tuned for a light surface. Following the
+                  system theme would put light text from the Fluent dark theme on a light
+                  panel background and vice versa. Consistent rendering across users also
+                  matters for screenshots used in papers / methods sections. -->
 
     <Application.DataTemplates>
         <local:ViewLocator/>

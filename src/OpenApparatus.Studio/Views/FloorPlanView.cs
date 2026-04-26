@@ -79,9 +79,14 @@ public class FloorPlanView : Control
             DrawCellInterior(ctx, cell, WorldToScreen, fill);
         }
 
-        // Draw walls / doors per adjacency.
+        // Draw walls / doors per adjacency. Doors use a vivid orange that
+        // contrasts both with the cell fills (gray / pale blue) and the black
+        // wall lines, plus a thicker stroke so they read as openings clearly.
         var wallPen = new Pen(Brushes.Black, 2.0);
-        var doorPen = new Pen(new SolidColorBrush(Color.FromRgb(40, 120, 60)), 3.0);
+        var doorPen = new Pen(new SolidColorBrush(Color.FromRgb(224, 96, 16)), 5.0)
+        {
+            LineCap = PenLineCap.Round,
+        };
         foreach (var adj in Plan.Adjacencies)
         {
             switch (adj.Passage)
