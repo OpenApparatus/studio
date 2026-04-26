@@ -56,9 +56,9 @@
 
                     <TextBlock Classes="label" Text="Floor dimensions"/>
                     <StackPanel Classes="section">
-                        <TextBlock Text="Width (cells)"/>
+                        <TextBlock Text="Total width (cells)"/>
                         <NumericUpDown Value="{Binding FloorWidthCells}" Minimum="1" Maximum="32" FormatString="0"/>
-                        <TextBlock Text="Height (cells)"/>
+                        <TextBlock Text="Total length (cells)"/>
                         <NumericUpDown Value="{Binding FloorHeightCells}" Minimum="1" Maximum="32" FormatString="0"/>
                         <TextBlock Text="Tile size (m)"/>
                         <NumericUpDown Value="{Binding TileSize}" Minimum="0.5" Maximum="10" Increment="0.5" FormatString="0.0"/>
