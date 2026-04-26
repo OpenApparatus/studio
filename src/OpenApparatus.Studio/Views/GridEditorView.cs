@@ -212,6 +212,21 @@ public class GridEditorView : Control
                         break;
                 }
             }
+
+            // Selected wall: draw small markers at every door-anchor candidate. Helps
+            // the user see where a door would snap to before pressing D.
+            if (vm.SelectedAdjacency is { } sel)
+            {
+                var seg = sel.SharedSegment;
+                var dirN = seg.Direction;
+                var anchorBrush = new SolidColorBrush(Color.FromArgb(220, 30, 30, 30));
+                foreach (var alongMeters in MainWindowViewModel.DoorAnchorsAlongWall(seg, vm.TileSize))
+                {
+                    var worldPos = seg.Start + dirN * alongMeters;
+                    var screenPos = ToScreen(worldPos);
+                    ctx.DrawEllipse(anchorBrush, null, screenPos, 4, 4);
+                }
+            }
         }
 
         // Room id labels.

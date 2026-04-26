@@ -89,7 +89,7 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (SelectedTiles.Count == 0)
         {
-            StatusMessage = "Nothing selected. Click+drag tiles first.";
+            StatusMessage = "Nothing selected. Click+drag empty tiles first.";
             return;
         }
 
@@ -133,6 +133,7 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         ResetGrid();
         Rebuild();
+        EditVersion++;
         StatusMessage = "Grid reset.";
     }
 
@@ -144,8 +145,17 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] Adjacency? _selectedAdjacency;
 
     /// <summary>
+    /// World-space distance along the selected wall (from segment Start) where the
+    /// user clicked. Used to position the door when D is pressed: clicks snap to
+    /// the nearest "nice" location (tile seam or tile center) within ~half a door
+    /// width, otherwise drop the door exactly at the click position.
+    /// </summary>
+    float _selectedClickAlong;
+
+    /// <summary>
     /// Selects the wall closest to the given world XZ point, if within tolerance.
-    /// Returns true if a wall was selected.
+    /// Returns true if a wall was selected. Also records where along the wall the
+    /// click landed so a subsequent door placement can snap to that spot.
     /// </summary>
     public bool TrySelectAdjacencyAtWorld(System.Numerics.Vector2 worldPos, float toleranceWorld)
     {
@@ -165,6 +175,16 @@ public partial class MainWindowViewModel : ViewModelBase
         if (hit is null) return false;
 
         SelectedAdjacency = hit;
+        // Project click onto wall direction → "along" coordinate in world units.
+        var seg = hit.SharedSegment;
+        var ap = worldPos - seg.Start;
+        var ab = seg.End - seg.Start;
+        float lenSq = ab.LengthSquared();
+        float along = lenSq > 1e-6f
+            ? System.Math.Clamp(System.Numerics.Vector2.Dot(ap, ab) / lenSq, 0f, 1f) * seg.Length
+            : 0f;
+        _selectedClickAlong = SnapAlongToCandidate(along, seg.Length, TileSize);
+
         EditVersion++;
         string b = hit.RoomB is null ? "outside" : $"#{hit.RoomB.Id}";
         StatusMessage = $"Selected wall #{hit.RoomA.Id} ↔ {b} ({hit.Passage.GetType().Name}). " +
@@ -222,7 +242,50 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         float segLen = adj.SharedSegment.Length;
         float w = System.Math.Min(DoorWidth, segLen);
-        return new Passage.Doorway((segLen - w) * 0.5f, w, DoorHeight);
+        // Center the door at the recorded click position (already snapped to a
+        // tile-pair-seam center or the whole-wall midpoint by TrySelectAdjacencyAtWorld).
+        // Fallback to whole-wall center when no click was recorded.
+        float center = _selectedClickAlong > 0f ? _selectedClickAlong : segLen * 0.5f;
+        float offset = System.Math.Clamp(center - w * 0.5f, 0f, segLen - w);
+        return new Passage.Doorway(offset, w, DoorHeight);
+    }
+
+    /// <summary>
+    /// Snap a click position along a wall to the nearest "nice" door anchor: either
+    /// the whole-wall midpoint, or the center of one of the shared tile-pair seams
+    /// (i.e., the center of an individual grid tile along the wall length). Both
+    /// kinds of anchor are explicitly requested by the editor design.
+    /// </summary>
+    static float SnapAlongToCandidate(float clickAlong, float segLen, float tileSize)
+    {
+        float best = segLen * 0.5f;            // whole-wall midpoint
+        float bestDist = System.Math.Abs(clickAlong - best);
+
+        int n = (int)System.Math.Max(1, System.Math.Round(segLen / tileSize));
+        for (int i = 0; i < n; i++)
+        {
+            float tileCenter = (i + 0.5f) * tileSize;
+            float d = System.Math.Abs(clickAlong - tileCenter);
+            if (d < bestDist)
+            {
+                bestDist = d;
+                best = tileCenter;
+            }
+        }
+        return best;
+    }
+
+    /// <summary>
+    /// All valid door anchors along the given wall (whole-wall midpoint + each
+    /// tile-pair-seam center), in world units along the segment. Used by the view
+    /// to render small markers showing where doors can be placed.
+    /// </summary>
+    public static IEnumerable<float> DoorAnchorsAlongWall(EdgeSegment segment, float tileSize)
+    {
+        yield return segment.Length * 0.5f;
+        int n = (int)System.Math.Max(1, System.Math.Round(segment.Length / tileSize));
+        for (int i = 0; i < n; i++)
+            yield return (i + 0.5f) * tileSize;
     }
 
     static float DistanceFromPointToSegment(System.Numerics.Vector2 p, EdgeSegment seg)
@@ -275,6 +338,7 @@ public partial class MainWindowViewModel : ViewModelBase
             _nextRoomId = maxId;
 
             Rebuild();
+            EditVersion++;
             StatusMessage = $"Random fill: {env.Rooms.Count} rooms (seed {seed}). Edit as needed.";
         }
         catch (Exception ex)
