@@ -213,18 +213,28 @@ public class GridEditorView : Control
                 }
             }
 
-            // Selected wall: draw small markers at every door-anchor candidate. Helps
-            // the user see where a door would snap to before pressing D.
+            // Selected wall: draw markers at every door-anchor candidate, with the
+            // currently-active anchor (where pressing D will place the door) drawn
+            // larger and in orange. Clicking another anchor moves the selection.
             if (vm.SelectedAdjacency is { } sel)
             {
                 var seg = sel.SharedSegment;
                 var dirN = seg.Direction;
                 var anchorBrush = new SolidColorBrush(Color.FromArgb(220, 30, 30, 30));
+                var anchorBorder = new Pen(Brushes.White, 1.5);
+                var activeBrush = new SolidColorBrush(Color.FromRgb(224, 96, 16));
+                var activePen = new Pen(Brushes.White, 2.0);
+                const float epsilon = 1e-3f;
+
                 foreach (var alongMeters in MainWindowViewModel.DoorAnchorsAlongWall(seg, vm.TileSize))
                 {
                     var worldPos = seg.Start + dirN * alongMeters;
                     var screenPos = ToScreen(worldPos);
-                    ctx.DrawEllipse(anchorBrush, null, screenPos, 4, 4);
+                    bool isActive = MathF.Abs(alongMeters - vm.SelectedClickAlong) < epsilon;
+                    if (isActive)
+                        ctx.DrawEllipse(activeBrush, activePen, screenPos, 7, 7);
+                    else
+                        ctx.DrawEllipse(anchorBrush, anchorBorder, screenPos, 4, 4);
                 }
             }
         }

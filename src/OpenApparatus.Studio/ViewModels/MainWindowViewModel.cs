@@ -146,10 +146,12 @@ public partial class MainWindowViewModel : ViewModelBase
 
     /// <summary>
     /// World-space distance along the selected wall (from segment Start) where the
-    /// user clicked. Used to position the door when D is pressed: clicks snap to
-    /// the nearest "nice" location (tile seam or tile center) within ~half a door
-    /// width, otherwise drop the door exactly at the click position.
+    /// user clicked, snapped to the nearest valid door anchor (whole-wall midpoint
+    /// or a tile-pair-seam center). Pressing D places the doorway centered here.
+    /// Exposed so the view can highlight the active anchor.
     /// </summary>
+    public float SelectedClickAlong => _selectedClickAlong;
+
     float _selectedClickAlong;
 
     /// <summary>
