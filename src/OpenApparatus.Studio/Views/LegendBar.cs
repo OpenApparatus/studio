@@ -47,17 +47,26 @@ public sealed class LegendBar : Control
             ("Open",   GridEditorView.DrawOpenSymbol),
         };
 
-        double y = size.Height * 0.5;
-        double x = 16;
-        foreach (var (label, draw) in entries)
+        // Pre-measure each label so we can centre the row as a whole.
+        var formats = new FormattedText[entries.Length];
+        double rowWidth = 0;
+        for (int i = 0; i < entries.Length; i++)
         {
-            draw(ctx, new Point(x, y), symbolW);
-            x += symbolW + labelGap;
-            var fmt = new FormattedText(label,
+            formats[i] = new FormattedText(entries[i].Label,
                 System.Globalization.CultureInfo.InvariantCulture,
                 FlowDirection.LeftToRight, typeface, 12, labelBrush);
-            ctx.DrawText(fmt, new Point(x, y - fmt.Height * 0.5));
-            x += fmt.Width + cellSpacing;
+            rowWidth += symbolW + labelGap + formats[i].Width;
+            if (i < entries.Length - 1) rowWidth += cellSpacing;
+        }
+
+        double y = size.Height * 0.5;
+        double x = System.Math.Max(0, (size.Width - rowWidth) * 0.5);
+        for (int i = 0; i < entries.Length; i++)
+        {
+            entries[i].Draw(ctx, new Point(x, y), symbolW);
+            x += symbolW + labelGap;
+            ctx.DrawText(formats[i], new Point(x, y - formats[i].Height * 0.5));
+            x += formats[i].Width + (i < entries.Length - 1 ? cellSpacing : 0);
         }
     }
 }
