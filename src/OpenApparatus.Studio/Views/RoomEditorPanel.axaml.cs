@@ -96,8 +96,24 @@ public partial class RoomEditorPanel : UserControl
             BodyPanel.Children.Add(markBtn);
         }
 
+        // Name input.
+        BodyPanel.Children.Add(SectionHeader("Name"));
+        var nameBox = new TextBox
+        {
+            Watermark = "Optional",
+            Text = _vm.GetRoomName(roomId),
+            Margin = new Thickness(0, 0, 0, 6),
+        };
+        nameBox.TextChanged += (_, _) =>
+        {
+            // Update on every keystroke; cheap because the dict + EditVersion bump
+            // are O(1) and the editor view is the only consumer that re-renders.
+            _vm.SetRoomName(roomId, nameBox.Text);
+        };
+        BodyPanel.Children.Add(nameBox);
+
         // Floor section.
-        BodyPanel.Children.Add(SectionHeader("Floor"));
+        BodyPanel.Children.Add(SectionHeader("Floor", topMargin: 14));
         BodyPanel.Children.Add(ColorRow(
             label: "Floor color",
             current: _vm.RoomFloorColors.TryGetValue(roomId, out var fc) ? (System.Numerics.Vector3?)fc : null,

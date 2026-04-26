@@ -642,6 +642,23 @@ public class GridEditorView : Control
             var fmt = new FormattedText(rId.ToString(), System.Globalization.CultureInfo.InvariantCulture,
                 FlowDirection.LeftToRight, typeface, 13, labelBrush);
             ctx.DrawText(fmt, new Point(cx - fmt.Width * 0.5, cy - fmt.Height * 0.5));
+
+            // Optional room name beneath the id. Positioned far enough below
+            // the centre that the path overlay's 13-px node circle (when
+            // visible) doesn't overlap it; padded a few extra pixels so the
+            // gap reads cleanly even without the circle.
+            string roomName = vm.GetRoomName(rId);
+            if (!string.IsNullOrEmpty(roomName))
+            {
+                var nameFmt = new FormattedText(roomName,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    FlowDirection.LeftToRight, typeface, 11,
+                    new SolidColorBrush(Color.FromRgb(50, 50, 60)));
+                const double nodeRadius = 13.0;
+                const double nameGap = 5.0;
+                ctx.DrawText(nameFmt,
+                    new Point(cx - nameFmt.Width * 0.5, cy + nodeRadius + nameGap));
+            }
         }
 
     }

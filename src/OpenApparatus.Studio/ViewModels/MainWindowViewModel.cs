@@ -344,6 +344,18 @@ public partial class MainWindowViewModel : ViewModelBase
     // Storage is keyed by roomId, never by Room object — rebuilds throw away the
     // Room instances but keep the same ids, so user selections survive grid edits.
 
+    readonly Dictionary<int, string> _roomNames = new();
+    public IReadOnlyDictionary<int, string> RoomNames => _roomNames;
+    public string GetRoomName(int roomId)
+        => _roomNames.TryGetValue(roomId, out var n) ? n : string.Empty;
+    public void SetRoomName(int roomId, string? name)
+    {
+        var trimmed = (name ?? string.Empty).Trim();
+        if (trimmed.Length == 0) _roomNames.Remove(roomId);
+        else _roomNames[roomId] = trimmed;
+        EditVersion++;
+    }
+
     readonly Dictionary<int, System.Numerics.Vector3> _roomFloorColors = new();
     readonly Dictionary<int, System.Numerics.Vector3> _roomCeilingColors = new();
     readonly Dictionary<int, System.Numerics.Vector3> _roomSingleWallColors = new();
@@ -569,6 +581,7 @@ public partial class MainWindowViewModel : ViewModelBase
         RemapKeys(_roomFloorColors, oldToNew);
         RemapKeys(_roomCeilingColors, oldToNew);
         RemapKeys(_roomSingleWallColors, oldToNew);
+        RemapKeys(_roomNames, oldToNew);
 
         var newMulti = new HashSet<int>();
         foreach (var id in _multiColorRoomIds)
