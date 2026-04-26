@@ -203,12 +203,12 @@ public class GridEditorView : Control
             {
                 LineCap = PenLineCap.Round,
             };
-            // Windows: light blue, dashed-thin so they read as a different opening type
-            // than doors (which are a solid orange line) when both share a wall.
-            var windowPen = new Pen(new SolidColorBrush(Color.FromRgb(60, 140, 220)), 5.0)
+            // Windows: standard architectural symbol — two thin parallel solid
+            // lines (inside + outside glass faces) straddling the wall, in light
+            // blue so they're distinguishable from black walls.
+            var windowPen = new Pen(new SolidColorBrush(Color.FromRgb(60, 140, 220)), 2.0)
             {
-                LineCap = PenLineCap.Round,
-                DashStyle = new DashStyle(new[] { 1.6, 1.0 }, 0),
+                LineCap = PenLineCap.Square,
             };
             var openPen = new Pen(new SolidColorBrush(Color.FromRgb(120, 180, 120)), 1.5)
             {
@@ -324,15 +324,28 @@ public class GridEditorView : Control
 
                                 if (op.IsWindow)
                                 {
-                                    // Two thin sill lines straddling the wall — the
-                                    // standard top-down window symbol.
-                                    var pInner = new Point(nrmU.X * WindowSillOffsetPx, nrmU.Y * WindowSillOffsetPx);
-                                    ctx.DrawLine(windowPen,
-                                        new Point(startScr.X + pInner.X, startScr.Y + pInner.Y),
-                                        new Point(endScr.X + pInner.X, endScr.Y + pInner.Y));
-                                    ctx.DrawLine(windowPen,
-                                        new Point(startScr.X - pInner.X, startScr.Y - pInner.Y),
-                                        new Point(endScr.X - pInner.X, endScr.Y - pInner.Y));
+                                    // Architectural window symbol: two parallel
+                                    // thin lines (inside + outside glass faces)
+                                    // straddling the wall, plus perpendicular jamb
+                                    // tick marks at each end where the wall stops.
+                                    if (nrmLen2 >= 1e-3)
+                                    {
+                                        var pInner = new Point(nrmU.X * WindowSillOffsetPx, nrmU.Y * WindowSillOffsetPx);
+                                        ctx.DrawLine(windowPen,
+                                            new Point(startScr.X + pInner.X, startScr.Y + pInner.Y),
+                                            new Point(endScr.X + pInner.X, endScr.Y + pInner.Y));
+                                        ctx.DrawLine(windowPen,
+                                            new Point(startScr.X - pInner.X, startScr.Y - pInner.Y),
+                                            new Point(endScr.X - pInner.X, endScr.Y - pInner.Y));
+
+                                        var off = new Point(nrmU.X * JambHalfPx, nrmU.Y * JambHalfPx);
+                                        ctx.DrawLine(jambPen,
+                                            new Point(startScr.X - off.X, startScr.Y - off.Y),
+                                            new Point(startScr.X + off.X, startScr.Y + off.Y));
+                                        ctx.DrawLine(jambPen,
+                                            new Point(endScr.X - off.X, endScr.Y - off.Y),
+                                            new Point(endScr.X + off.X, endScr.Y + off.Y));
+                                    }
                                 }
                                 else
                                 {
