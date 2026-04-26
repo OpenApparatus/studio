@@ -28,18 +28,14 @@
         <!-- Top toolbar -->
         <Border DockPanel.Dock="Top" Background="#202028" Padding="8">
             <StackPanel Orientation="Horizontal" Spacing="6">
-                <Button Content="Regenerate" Command="{Binding RegenerateCommand}"/>
-                <Button Content="Reseed" Command="{Binding ReseedCommand}"/>
+                <Button Content="Create Room" Command="{Binding CreateRoomFromSelectionCommand}"/>
+                <Button Content="Clear Selection" Command="{Binding ClearSelectionCommand}"/>
                 <Separator Width="12"/>
-                <Button Content="Save…"
-                        Command="{Binding SaveCommand}"
-                        CommandParameter="{Binding $parent[Window]}"/>
-                <Button Content="Load…"
-                        Command="{Binding LoadCommand}"
-                        CommandParameter="{Binding $parent[Window]}"/>
+                <Button Content="Reset All" Command="{Binding ResetAllCommand}"/>
+                <Button Content="Random Fill" Command="{Binding RandomFillCommand}"/>
                 <Separator Width="12"/>
                 <Button Content="Export OBJ…"
-                        Command="{Binding ExportObjCommand}"
+                        Command="{Binding ExportObjAsyncCommand}"
                         CommandParameter="{Binding $parent[Window]}"/>
             </StackPanel>
         </Border>
@@ -49,29 +45,19 @@
             <TextBlock Text="{Binding StatusMessage}" Foreground="#cccccc"/>
         </Border>
 
-        <!-- Main split: parameter panel + viewer -->
+        <!-- Main split: parameter panel + interactive grid editor -->
         <Grid ColumnDefinitions="280,*">
             <ScrollViewer Grid.Column="0" Background="#f4f4f7">
                 <StackPanel Margin="12" Spacing="0">
 
-                    <TextBlock Classes="label" Text="Floor dimensions"/>
+                    <TextBlock Classes="label" Text="Grid"/>
                     <StackPanel Classes="section">
-                        <TextBlock Text="Total width (tiles)"/>
-                        <NumericUpDown Value="{Binding FloorWidthCells}" Minimum="1" Maximum="32" FormatString="0"/>
-                        <TextBlock Text="Total length (tiles)"/>
-                        <NumericUpDown Value="{Binding FloorLengthCells}" Minimum="1" Maximum="32" FormatString="0"/>
+                        <TextBlock Text="Width (tiles)"/>
+                        <NumericUpDown Value="{Binding GridWidth}" Minimum="1" Maximum="64" FormatString="0"/>
+                        <TextBlock Text="Length (tiles)"/>
+                        <NumericUpDown Value="{Binding GridLength}" Minimum="1" Maximum="64" FormatString="0"/>
                         <TextBlock Text="Tile size (m)"/>
                         <NumericUpDown Value="{Binding TileSize}" Minimum="0.5" Maximum="10" Increment="0.5" FormatString="0.0"/>
-                    </StackPanel>
-
-                    <TextBlock Classes="label" Text="Rooms"/>
-                    <StackPanel Classes="section">
-                        <TextBlock Text="Rectangle (1×2) rooms"/>
-                        <NumericUpDown Value="{Binding RectangleRoomCount}" Minimum="0" Maximum="50" FormatString="0"/>
-                        <TextBlock Text="Rectangle orientation"/>
-                        <ComboBox ItemsSource="{Binding RectangleOrientationOptions}"
-                                  SelectedItem="{Binding RectangleOrientation}"
-                                  HorizontalAlignment="Stretch"/>
                     </StackPanel>
 
                     <TextBlock Classes="label" Text="Walls"/>
@@ -84,30 +70,27 @@
 
                     <TextBlock Classes="label" Text="Doorways"/>
                     <StackPanel Classes="section">
-                        <CheckBox Content="Include outer entrance" IsChecked="{Binding IncludeOuterEntrance}"/>
-                        <TextBlock Text="Starting room type"/>
-                        <ComboBox ItemsSource="{Binding StartingRoomTypeOptions}"
-                                  SelectedItem="{Binding StartingRoomType}"
-                                  HorizontalAlignment="Stretch"/>
                         <TextBlock Text="Door width (m)"/>
                         <NumericUpDown Value="{Binding DoorWidth}" Minimum="0.5" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
                         <TextBlock Text="Door height (m)"/>
                         <NumericUpDown Value="{Binding DoorHeight}" Minimum="1.5" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
                     </StackPanel>
 
-                    <TextBlock Classes="label" Text="Determinism"/>
-                    <StackPanel Classes="section">
-                        <TextBlock Text="Seed"/>
-                        <NumericUpDown Value="{Binding Seed}" Minimum="0" Maximum="2147483647" FormatString="0"/>
-                    </StackPanel>
+                    <TextBlock Classes="label" Text="How to use"/>
+                    <TextBlock TextWrapping="Wrap" Foreground="#444" Margin="0 0 0 8"
+                               Text="• Click+drag empty tiles to select. Click+drag selected tiles to deselect."/>
+                    <TextBlock TextWrapping="Wrap" Foreground="#444" Margin="0 0 0 8"
+                               Text="• When you have a rectangular selection, hit 'Create Room'."/>
+                    <TextBlock TextWrapping="Wrap" Foreground="#444" Margin="0 0 0 8"
+                               Text="• 'Random Fill' generates a starter layout you can edit."/>
+                    <TextBlock TextWrapping="Wrap" Foreground="#444"
+                               Text="• Wall click-cycling for doorways comes next."/>
 
                 </StackPanel>
             </ScrollViewer>
 
-            <Border Grid.Column="1" Background="#202028">
-                <views:MultiRoomEnvironmentView Plan="{Binding CurrentEnvironment}"
-                                     WallThickness="{Binding WallThickness}"
-                                     Margin="8"/>
+            <Border Grid.Column="1" Background="#1a1a1f">
+                <views:GridEditorView EditVersion="{Binding EditVersion}" Margin="8"/>
             </Border>
         </Grid>
     </DockPanel>
