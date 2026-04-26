@@ -138,7 +138,7 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>Defaults applied to every new room's floor / ceiling. Editing them
     /// does NOT retroactively change existing rooms — those keep whatever colors
     /// they had at creation (or after manual override).</summary>
-    [ObservableProperty] System.Numerics.Vector3 _defaultFloorColor   = new(0.55f, 0.42f, 0.30f);
+    [ObservableProperty] System.Numerics.Vector3 _defaultFloorColor   = new(0.92f, 0.92f, 0.93f);
     [ObservableProperty] System.Numerics.Vector3 _defaultCeilingColor = new(0.92f, 0.92f, 0.90f);
 
     /// <summary>Which surface the editor view recolors tiles by — "Floor" shows
