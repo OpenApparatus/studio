@@ -18,6 +18,24 @@
         <Style Selector="StackPanel.section">
             <Setter Property="Margin" Value="0 0 0 8"/>
         </Style>
+        <!-- Primary action: Create Room. High-contrast so users find it immediately. -->
+        <Style Selector="Button.primary">
+            <Setter Property="Background" Value="#1f6feb"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="Padding" Value="10 6"/>
+        </Style>
+        <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#1c5fc7"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        <Style Selector="Button.action">
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="Padding" Value="8 6"/>
+        </Style>
     </Window.Styles>
 
     <Design.DataContext>
@@ -25,10 +43,12 @@
     </Design.DataContext>
 
     <DockPanel LastChildFill="True">
-        <!-- Top toolbar -->
-        <Border DockPanel.Dock="Top" Background="#202028" Padding="8">
+        <!-- Top toolbar — light background so default Light-theme buttons are visible -->
+        <Border DockPanel.Dock="Top" Background="#e6e6ea" BorderBrush="#c8c8cf" BorderThickness="0 0 0 1" Padding="8">
             <StackPanel Orientation="Horizontal" Spacing="6">
-                <Button Content="Create Room" Command="{Binding CreateRoomFromSelectionCommand}"/>
+                <Button Content="Create Room" Classes="primary"
+                        Command="{Binding CreateRoomFromSelectionCommand}"
+                        ToolTip.Tip="Turn the current tile selection into a room"/>
                 <Button Content="Clear Selection" Command="{Binding ClearSelectionCommand}"/>
                 <Separator Width="12"/>
                 <Button Content="Reset All" Command="{Binding ResetAllCommand}"/>
@@ -49,6 +69,19 @@
         <Grid ColumnDefinitions="280,*">
             <ScrollViewer Grid.Column="0" Background="#f4f4f7">
                 <StackPanel Margin="12" Spacing="0">
+
+                    <!-- Primary actions in the left panel for maximum discoverability -->
+                    <TextBlock Classes="label" Text="Actions"/>
+                    <StackPanel Classes="section" Spacing="4">
+                        <Button Content="Create Room from Selection" Classes="primary"
+                                Command="{Binding CreateRoomFromSelectionCommand}"/>
+                        <Button Content="Clear Selection" Classes="action"
+                                Command="{Binding ClearSelectionCommand}"/>
+                        <Button Content="Random Fill" Classes="action"
+                                Command="{Binding RandomFillCommand}"/>
+                        <Button Content="Reset All" Classes="action"
+                                Command="{Binding ResetAllCommand}"/>
+                    </StackPanel>
 
                     <TextBlock Classes="label" Text="Grid"/>
                     <StackPanel Classes="section">
@@ -77,14 +110,14 @@
                     </StackPanel>
 
                     <TextBlock Classes="label" Text="How to use"/>
-                    <TextBlock TextWrapping="Wrap" Foreground="#444" Margin="0 0 0 8"
+                    <TextBlock TextWrapping="Wrap" Foreground="#444" Margin="0 0 0 6"
                                Text="• Click+drag empty tiles to select. Click+drag selected tiles to deselect."/>
-                    <TextBlock TextWrapping="Wrap" Foreground="#444" Margin="0 0 0 8"
-                               Text="• When you have a rectangular selection, hit 'Create Room'."/>
-                    <TextBlock TextWrapping="Wrap" Foreground="#444" Margin="0 0 0 8"
-                               Text="• 'Random Fill' generates a starter layout you can edit."/>
+                    <TextBlock TextWrapping="Wrap" Foreground="#444" Margin="0 0 0 6"
+                               Text="• When you have a rectangular selection, hit Create Room."/>
+                    <TextBlock TextWrapping="Wrap" Foreground="#444" Margin="0 0 0 6"
+                               Text="• Click on a wall between rooms (or between a room and the outside) to cycle: Closed → Doorway → Open."/>
                     <TextBlock TextWrapping="Wrap" Foreground="#444"
-                               Text="• Wall click-cycling for doorways comes next."/>
+                               Text="• Random Fill generates a starter layout you can edit."/>
 
                 </StackPanel>
             </ScrollViewer>

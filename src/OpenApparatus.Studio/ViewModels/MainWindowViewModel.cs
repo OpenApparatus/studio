@@ -136,6 +136,55 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// Cycles the passage type of the wall closest to the given world XZ point,
+    /// if within <paramref name="toleranceWorld"/>. Cycle order: Closed → Doorway → Open → Closed.
+    /// Returns true if a wall was clicked.
+    /// </summary>
+    public bool TryCyclePassageAtWorld(System.Numerics.Vector2 worldPos, float toleranceWorld)
+    {
+        if (CurrentEnvironment is null) return false;
+
+        Adjacency? hit = null;
+        float minDist = toleranceWorld;
+        foreach (var adj in CurrentEnvironment.Adjacencies)
+        {
+            float d = DistanceFromPointToSegment(worldPos, adj.SharedSegment);
+            if (d < minDist)
+            {
+                minDist = d;
+                hit = adj;
+            }
+        }
+        if (hit is null) return false;
+
+        hit.Passage = hit.Passage switch
+        {
+            Passage.Closed _ => new Passage.Doorway(
+                (hit.SharedSegment.Length - System.Math.Min(DoorWidth, hit.SharedSegment.Length)) * 0.5f,
+                System.Math.Min(DoorWidth, hit.SharedSegment.Length),
+                DoorHeight),
+            Passage.Doorway _ => Passage.Open.Instance,
+            _ => Passage.Closed.Instance,
+        };
+        EditVersion++;
+        StatusMessage = $"Wall {hit.RoomA.Id}↔" +
+                        (hit.RoomB is null ? "outside" : $"{hit.RoomB.Id}") +
+                        $" → {hit.Passage.GetType().Name}";
+        return true;
+    }
+
+    static float DistanceFromPointToSegment(System.Numerics.Vector2 p, EdgeSegment seg)
+    {
+        var ab = seg.End - seg.Start;
+        var ap = p - seg.Start;
+        float abLenSq = ab.LengthSquared();
+        if (abLenSq < 1e-6f) return (p - seg.Start).Length();
+        float t = System.Math.Clamp(System.Numerics.Vector2.Dot(ap, ab) / abLenSq, 0f, 1f);
+        var closest = seg.Start + ab * t;
+        return (p - closest).Length();
+    }
+
+    /// <summary>
     /// Generates a random GridDomino layout into the authored grid as a starting point
     /// (D4: keeps the parametric generator available without coupling the UI to it).
     /// </summary>

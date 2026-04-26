@@ -49,15 +49,37 @@ public class GridEditorView : Control
         var vm = Vm;
         if (vm is null) return;
         var pos = e.GetPosition(this);
+
+        // 1. Try wall hit first — clicking a wall cycles its passage type.
+        var (origin, tilePxSize) = ComputeLayout(vm);
+        if (tilePxSize > 0)
+        {
+            var worldPos = ScreenToWorld(pos, origin, tilePxSize, vm);
+            // Tolerance: ~10px in world coords, given the current zoom.
+            float toleranceWorld = (float)(10.0 * vm.TileSize / tilePxSize);
+            if (vm.TryCyclePassageAtWorld(worldPos, toleranceWorld))
+            {
+                e.Handled = true;
+                return;
+            }
+        }
+
+        // 2. Otherwise tile click → drag-select.
         if (TryHitTest(pos, vm, out int x, out int z))
         {
-            // Toggle: if tile already in selection, drag will deselect; otherwise select.
             bool wasSelected = vm.SelectedTiles.Contains((x, z));
             _dragging = true;
             _dragMode = wasSelected ? DragMode.Deselect : DragMode.Select;
             ApplyDrag(vm, x, z);
             e.Handled = true;
         }
+    }
+
+    static System.Numerics.Vector2 ScreenToWorld(Point pos, Point origin, double tilePxSize, MainWindowViewModel vm)
+    {
+        double xTile = (pos.X - origin.X) / tilePxSize;
+        double zTile = (origin.Y + vm.GridLength * tilePxSize - pos.Y) / tilePxSize;
+        return new System.Numerics.Vector2((float)(xTile * vm.TileSize), (float)(zTile * vm.TileSize));
     }
 
     protected override void OnPointerMoved(PointerEventArgs e)
@@ -138,7 +160,15 @@ public class GridEditorView : Control
         // coords are in meters; convert to tile units (÷ vm.TileSize) then to pixels.
         if (vm.CurrentEnvironment is { } env)
         {
-            var wallPen = new Pen(Brushes.Black, 2.0);
+            var closedPen = new Pen(Brushes.Black, 2.5);
+            var doorPen = new Pen(new SolidColorBrush(Color.FromRgb(224, 96, 16)), 5.0)
+            {
+                LineCap = PenLineCap.Round,
+            };
+            var openPen = new Pen(new SolidColorBrush(Color.FromRgb(120, 180, 120)), 1.5)
+            {
+                DashStyle = DashStyle.Dash,
+            };
             Point ToScreen(System.Numerics.Vector2 worldXz)
             {
                 double xTile = worldXz.X / vm.TileSize;
@@ -149,9 +179,27 @@ public class GridEditorView : Control
             }
             foreach (var adj in env.Adjacencies)
             {
-                if (adj.Passage is not OpenApparatus.Topology.Passage.Closed) continue;
                 var s = adj.SharedSegment;
-                ctx.DrawLine(wallPen, ToScreen(s.Start), ToScreen(s.End));
+                var p0 = ToScreen(s.Start);
+                var p1 = ToScreen(s.End);
+                switch (adj.Passage)
+                {
+                    case OpenApparatus.Topology.Passage.Closed _:
+                        ctx.DrawLine(closedPen, p0, p1);
+                        break;
+                    case OpenApparatus.Topology.Passage.Doorway d:
+                        // Solid wall on either side of the door, plus orange door indicator.
+                        var dir = s.Direction;
+                        var doorStartW = s.Start + dir * d.OffsetAlongEdge;
+                        var doorEndW = s.Start + dir * (d.OffsetAlongEdge + d.Width);
+                        ctx.DrawLine(closedPen, p0, ToScreen(doorStartW));
+                        ctx.DrawLine(closedPen, ToScreen(doorEndW), p1);
+                        ctx.DrawLine(doorPen, ToScreen(doorStartW), ToScreen(doorEndW));
+                        break;
+                    case OpenApparatus.Topology.Passage.Open _:
+                        ctx.DrawLine(openPen, p0, p1);
+                        break;
+                }
             }
         }
 
