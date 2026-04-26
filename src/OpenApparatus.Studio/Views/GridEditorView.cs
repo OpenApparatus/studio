@@ -322,6 +322,13 @@ public class GridEditorView : Control
                                 var startScr = ToScreen(doorStartW);
                                 var endScr = ToScreen(doorEndW);
 
+                                // Compute screen-space wall direction once per opening; used by
+                                // both the door swing arc and the window symbol below.
+                                var dirVec = new Point(endScr.X - startScr.X, endScr.Y - startScr.Y);
+                                double dirLen = Math.Sqrt(dirVec.X * dirVec.X + dirVec.Y * dirVec.Y);
+                                var dirU = dirLen < 1e-3 ? new Point(1, 0)
+                                    : new Point(dirVec.X / dirLen, dirVec.Y / dirLen);
+
                                 if (op.IsWindow)
                                 {
                                     // Architectural window symbol: two parallel
@@ -349,11 +356,48 @@ public class GridEditorView : Control
                                 }
                                 else
                                 {
-                                    // Threshold line + perpendicular jamb tick marks
-                                    // at each end.
-                                    ctx.DrawLine(doorPen, startScr, endScr);
-                                    if (nrmLen2 >= 1e-3)
+                                    // Architectural door symbol: door panel +
+                                    // 90° swing arc + jamb tick marks. The
+                                    // panel hinges at the start of the opening
+                                    // and swings into the +N side (RoomA's
+                                    // interior — for outer walls there's no
+                                    // RoomB, so this is always inside).
+                                    if (nrmLen2 >= 1e-3 && dirLen > 1e-3)
                                     {
+                                        var hinge = startScr;
+                                        var openTip = new Point(
+                                            hinge.X + nrmU.X * dirLen,
+                                            hinge.Y + nrmU.Y * dirLen);
+                                        var doorPanelPen = new Pen(
+                                            new SolidColorBrush(Color.FromRgb(224, 96, 16)), 2.5)
+                                        {
+                                            LineCap = PenLineCap.Square,
+                                        };
+                                        var swingPen = new Pen(
+                                            new SolidColorBrush(Color.FromRgb(224, 96, 16)), 1.5);
+
+                                        ctx.DrawLine(doorPanelPen, hinge, openTip);
+
+                                        // 90° arc from openTip to endScr (closed
+                                        // position) sampled as line segments —
+                                        // simpler than wrangling StreamGeometry
+                                        // sweep direction for either orientation.
+                                        const int Steps = 16;
+                                        var prevArc = openTip;
+                                        for (int si = 1; si <= Steps; si++)
+                                        {
+                                            double t = si / (double)Steps;
+                                            double ang = t * Math.PI / 2;
+                                            double dx = nrmU.X * Math.Cos(ang) + dirU.X * Math.Sin(ang);
+                                            double dy = nrmU.Y * Math.Cos(ang) + dirU.Y * Math.Sin(ang);
+                                            var pt = new Point(
+                                                hinge.X + dx * dirLen,
+                                                hinge.Y + dy * dirLen);
+                                            ctx.DrawLine(swingPen, prevArc, pt);
+                                            prevArc = pt;
+                                        }
+
+                                        // Jamb tick marks at both ends.
                                         var off = new Point(nrmU.X * JambHalfPx, nrmU.Y * JambHalfPx);
                                         ctx.DrawLine(jambPen,
                                             new Point(startScr.X - off.X, startScr.Y - off.Y),
@@ -427,6 +471,119 @@ public class GridEditorView : Control
                 FlowDirection.LeftToRight, typeface, 13, labelBrush);
             ctx.DrawText(fmt, new Point(cx - fmt.Width * 0.5, cy - fmt.Height * 0.5));
         }
+
+        // Legend in the bottom-right corner — drawn last so nothing else can
+        // sit on top of it.
+        DrawLegend(ctx, size, typeface);
+    }
+
+    static void DrawLegend(DrawingContext ctx, Size canvasSize, Typeface typeface)
+    {
+        const double rowH = 26;
+        const double padX = 12;
+        const double padY = 10;
+        const double symbolW = 44;
+        const double labelGap = 10;
+        const double boxW = 170;
+        var entries = new (string Label, System.Action<DrawingContext, Point, double> Draw)[]
+        {
+            ("Wall",   DrawWallSymbol),
+            ("Door",   DrawDoorSymbol),
+            ("Window", DrawWindowSymbol),
+            ("Open",   DrawOpenSymbol),
+        };
+        double boxH = padY * 2 + rowH * entries.Length + 4;
+        var box = new Rect(canvasSize.Width - boxW - 12, canvasSize.Height - boxH - 12, boxW, boxH);
+
+        ctx.FillRectangle(new SolidColorBrush(Color.FromArgb(235, 250, 250, 252)), box, 6);
+        ctx.DrawRectangle(null, new Pen(new SolidColorBrush(Color.FromRgb(180, 180, 190)), 1), box, 6);
+
+        var titleBrush = new SolidColorBrush(Color.FromRgb(60, 60, 70));
+        var rowBrush = new SolidColorBrush(Color.FromRgb(40, 40, 50));
+
+        for (int i = 0; i < entries.Length; i++)
+        {
+            double rowY = box.Y + padY + i * rowH + rowH * 0.5;
+            var symbolStart = new Point(box.X + padX, rowY);
+            entries[i].Draw(ctx, symbolStart, symbolW);
+            var fmt = new FormattedText(entries[i].Label,
+                System.Globalization.CultureInfo.InvariantCulture,
+                FlowDirection.LeftToRight, typeface, 12, rowBrush);
+            ctx.DrawText(fmt,
+                new Point(symbolStart.X + symbolW + labelGap, rowY - fmt.Height * 0.5));
+        }
+    }
+
+    static void DrawWallSymbol(DrawingContext ctx, Point start, double width)
+    {
+        var pen = new Pen(Brushes.Black, 4) { LineCap = PenLineCap.Square };
+        ctx.DrawLine(pen, start, new Point(start.X + width, start.Y));
+    }
+
+    static void DrawDoorSymbol(DrawingContext ctx, Point start, double width)
+    {
+        // Hinge at left, opening to the right; arc swings up. Same vocabulary
+        // (panel + arc + jambs) used in the editor proper.
+        var orange = new SolidColorBrush(Color.FromRgb(224, 96, 16));
+        var jambPen = new Pen(Brushes.Black, 2) { LineCap = PenLineCap.Square };
+        var panelPen = new Pen(orange, 2) { LineCap = PenLineCap.Square };
+        var arcPen = new Pen(orange, 1.2);
+
+        var hinge = new Point(start.X, start.Y + 4);
+        var closedTip = new Point(hinge.X + width, hinge.Y);
+        var openTip = new Point(hinge.X, hinge.Y - width * 0.7);
+
+        // Panel (hinge → openTip)
+        ctx.DrawLine(panelPen, hinge, openTip);
+        // Approximated 90° arc from openTip to closedTip
+        const int Steps = 12;
+        var prev = openTip;
+        double r = width * 0.7;
+        for (int s = 1; s <= Steps; s++)
+        {
+            double t = s / (double)Steps;
+            double a = t * Math.PI / 2;
+            // Start angle: -Y (up), end angle: +X (right)
+            double dx = -Math.Sin(-a);
+            double dy = -Math.Cos(a);
+            var pt = new Point(hinge.X + dx * r, hinge.Y + dy * r);
+            // Map x linearly so closed-tip lands at width
+            pt = new Point(hinge.X + Math.Sin(a) * width, hinge.Y - Math.Cos(a) * r);
+            ctx.DrawLine(arcPen, prev, pt);
+            prev = pt;
+        }
+        // Jambs
+        ctx.DrawLine(jambPen,
+            new Point(hinge.X, hinge.Y - 4), new Point(hinge.X, hinge.Y + 4));
+        ctx.DrawLine(jambPen,
+            new Point(closedTip.X, closedTip.Y - 4), new Point(closedTip.X, closedTip.Y + 4));
+    }
+
+    static void DrawWindowSymbol(DrawingContext ctx, Point start, double width)
+    {
+        var blue = new SolidColorBrush(Color.FromRgb(60, 140, 220));
+        var winPen = new Pen(blue, 2) { LineCap = PenLineCap.Square };
+        var jambPen = new Pen(Brushes.Black, 2) { LineCap = PenLineCap.Square };
+
+        // Two parallel sill lines
+        ctx.DrawLine(winPen,
+            new Point(start.X, start.Y - 3), new Point(start.X + width, start.Y - 3));
+        ctx.DrawLine(winPen,
+            new Point(start.X, start.Y + 3), new Point(start.X + width, start.Y + 3));
+        // Jambs
+        ctx.DrawLine(jambPen,
+            new Point(start.X, start.Y - 6), new Point(start.X, start.Y + 6));
+        ctx.DrawLine(jambPen,
+            new Point(start.X + width, start.Y - 6), new Point(start.X + width, start.Y + 6));
+    }
+
+    static void DrawOpenSymbol(DrawingContext ctx, Point start, double width)
+    {
+        var pen = new Pen(new SolidColorBrush(Color.FromRgb(120, 180, 120)), 1.5)
+        {
+            DashStyle = DashStyle.Dash,
+        };
+        ctx.DrawLine(pen, start, new Point(start.X + width, start.Y));
     }
 
     static Rect TileRect(Point origin, double tileSize, int x, int z, int gridLength)
