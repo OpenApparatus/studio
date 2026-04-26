@@ -517,6 +517,40 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
+    [RelayCommand]
+    async Task ExportJsonAsync(Window? owner)
+    {
+        if (owner is null) return;
+        var file = await owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Export environment as JSON",
+            SuggestedFileName = "environment.json",
+            DefaultExtension = "json",
+            FileTypeChoices = new[] { new FilePickerFileType("JSON") { Patterns = new[] { "*.json" } } },
+        });
+        if (file is null) return;
+
+        try
+        {
+            var doc = JsonExporter.BuildDocument(
+                RoomGrid,
+                TileSize,
+                WallThickness, WallHeight,
+                DoorWidth, DoorHeight,
+                WindowWidth, WindowHeight, WindowSillHeight,
+                CurrentEnvironment);
+
+            await using var stream = await file.OpenWriteAsync();
+            using var writer = new StreamWriter(stream);
+            JsonExporter.Export(writer, doc);
+            StatusMessage = $"Exported JSON → {file.Name}";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"JSON export failed: {ex.Message}";
+        }
+    }
+
     void Rebuild()
     {
         try

@@ -68,6 +68,10 @@
                 <Button Content="Export OBJ…"
                         Command="{Binding ExportObjCommand}"
                         CommandParameter="{Binding $parent[Window]}"/>
+                <Button Content="Export JSON…"
+                        Command="{Binding ExportJsonCommand}"
+                        CommandParameter="{Binding $parent[Window]}"
+                        ToolTip.Tip="Save the authored grid + passages as JSON"/>
             </StackPanel>
         </Border>
 
