@@ -42,7 +42,8 @@ public static class JsonExporter
         MultiRoomEnvironment? environment,
         int gridSubdivision = 1,
         float defaultObjectY = 0f,
-        IReadOnlyList<RoomObject>? objects = null)
+        IReadOnlyList<RoomObject>? objects = null,
+        IReadOnlyList<ObjectType>? objectTypes = null)
     {
         int gridW = roomGrid.GetLength(0);
         int gridL = roomGrid.GetLength(1);
@@ -76,7 +77,7 @@ public static class JsonExporter
                 Length = gridL,
                 Tiles = tiles,
             },
-            ObjectSlots = BuildSlotDefinitions(),
+            ObjectSlots = BuildSlotDefinitions(objectTypes),
         };
 
         if (environment is null) return doc;
@@ -153,21 +154,46 @@ public static class JsonExporter
             doc.Rooms.Add(entry);
         }
 
+        // Outside section: anything with OwningRoomId == -1 (or pointing at a
+        // room that doesn't exist in the env) gets bucketed here so importers
+        // can still find every object.
+        if (objects != null)
+        {
+            var validRoomIds = new HashSet<int>();
+            foreach (var r in environment.Rooms) validRoomIds.Add(r.Id);
+            List<ObjectInstanceEntry>? outsideList = null;
+            foreach (var o in objects)
+            {
+                if (validRoomIds.Contains(o.OwningRoomId)) continue;
+                outsideList ??= new List<ObjectInstanceEntry>();
+                outsideList.Add(new ObjectInstanceEntry
+                {
+                    Slot = o.Slot,
+                    Position = new[] { o.Position.X, o.Position.Y, o.Position.Z },
+                    Rotation = o.Rotation,
+                });
+            }
+            if (outsideList != null)
+                doc.Outside = new OutsideSection { Objects = outsideList };
+        }
+
         return doc;
     }
 
-    static List<ObjectSlotEntry> BuildSlotDefinitions()
+    static List<ObjectSlotEntry> BuildSlotDefinitions(IReadOnlyList<ObjectType>? types)
     {
-        var list = new List<ObjectSlotEntry>(ObjectSlots.All.Length);
-        foreach (var s in ObjectSlots.All)
+        var list = new List<ObjectSlotEntry>(types?.Count ?? 0);
+        if (types is null) return list;
+        for (int i = 0; i < types.Count; i++)
         {
+            var t = types[i];
             list.Add(new ObjectSlotEntry
             {
-                Id = s.Id,
-                Shape = s.Shape.ToString().ToLowerInvariant(),
-                Color = new[] { s.Color.X, s.Color.Y, s.Color.Z },
-                Size = s.Size,
-                DisplayName = s.DisplayName,
+                Id = i + 1,
+                Shape = t.Shape.ToString().ToLowerInvariant(),
+                Color = new[] { t.Color.X, t.Color.Y, t.Color.Z },
+                Size = t.Size,
+                DisplayName = t.Name,
             });
         }
         return list;
@@ -228,6 +254,14 @@ public static class JsonExporter
         public GridSection Grid { get; set; } = new();
         public List<ObjectSlotEntry> ObjectSlots { get; set; } = new();
         public List<RoomEntry> Rooms { get; set; } = new();
+        /// <summary>Objects placed outside any room (OwningRoomId == -1).
+        /// Null when there are none, so small documents stay tidy.</summary>
+        public OutsideSection? Outside { get; set; }
+    }
+
+    public sealed class OutsideSection
+    {
+        public List<ObjectInstanceEntry> Objects { get; set; } = new();
     }
 
     public sealed class ParametersSection

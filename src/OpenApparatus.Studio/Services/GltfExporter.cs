@@ -43,11 +43,12 @@ public static class GltfExporter
         IReadOnlyDictionary<int, Vector3>? roomCeilingColors = null,
         IReadOnlyDictionary<int, Vector3>? roomSingleWallColors = null,
         IReadOnlyDictionary<(int RoomId, int MidX, int MidZ), Vector3>? perWallColors = null,
-        IReadOnlyList<RoomObject>? objects = null)
+        IReadOnlyList<RoomObject>? objects = null,
+        IReadOnlyList<ObjectType>? objectTypes = null)
     {
         var model = BuildModel(plan, wallThickness, wallHeight,
             multiColorRoomIds, roomFloorColors, roomCeilingColors,
-            roomSingleWallColors, perWallColors, objects);
+            roomSingleWallColors, perWallColors, objects, objectTypes);
         // SharpGLTF picks GLB vs glTF+bin from the extension on Save.
         model.Save(path);
     }
@@ -61,8 +62,15 @@ public static class GltfExporter
         IReadOnlyDictionary<int, Vector3>? roomCeilingColors = null,
         IReadOnlyDictionary<int, Vector3>? roomSingleWallColors = null,
         IReadOnlyDictionary<(int RoomId, int MidX, int MidZ), Vector3>? perWallColors = null,
-        IReadOnlyList<RoomObject>? objects = null)
+        IReadOnlyList<RoomObject>? objects = null,
+        IReadOnlyList<ObjectType>? objectTypes = null)
     {
+        ObjectType? TypeAt(int slot1Based)
+        {
+            int idx = slot1Based - 1;
+            if (objectTypes is null || idx < 0 || idx >= objectTypes.Count) return null;
+            return objectTypes[idx];
+        }
         var interiorBuilder = new RectangleInteriorBuilder();
         var wallBuilder = new BoundaryWallBuilder();
 
@@ -171,7 +179,7 @@ public static class GltfExporter
                 {
                     var obj = objects[oi];
                     if (obj.OwningRoomId != room.Id) continue;
-                    var slot = ObjectSlots.Get(obj.Slot);
+                    var slot = TypeAt(obj.Slot);
                     if (slot is null) continue;
 
                     objectsParent ??= roomNode.CreateNode($"room_{room.Id}_objects");
@@ -187,6 +195,37 @@ public static class GltfExporter
                     scene.AddRigidMesh(mb, inst);
                     objCount++;
                 }
+            }
+        }
+
+        // Outside objects — anything whose owning room id doesn't match an
+        // existing room (typically -1) lands in a sibling 'Outside' node so
+        // importers don't drop it on the floor.
+        if (objects != null)
+        {
+            var validRoomIds = new HashSet<int>();
+            foreach (var r in plan.Rooms) validRoomIds.Add(r.Id);
+            int outsideCount = 0;
+            NodeBuilder? outsideParent = null;
+            for (int oi = 0; oi < objects.Count; oi++)
+            {
+                var obj = objects[oi];
+                if (validRoomIds.Contains(obj.OwningRoomId)) continue;
+                var slot = TypeAt(obj.Slot);
+                if (slot is null) continue;
+
+                outsideParent ??= rootNode.CreateNode("Outside");
+                var inst = outsideParent.CreateNode($"slot_{obj.Slot}_{outsideCount}");
+                inst = inst.WithLocalTranslation(obj.Position);
+                if (obj.Rotation != 0f)
+                    inst = inst.WithLocalRotation(Quaternion.CreateFromAxisAngle(Vector3.UnitY, obj.Rotation));
+
+                var mb = NewMesh($"outside_slot_{obj.Slot}_{outsideCount}_mesh");
+                var prim = mb.UsePrimitive(MakeMaterial(
+                    $"OpenApparatus_Slot{obj.Slot}", (slot.Color.X, slot.Color.Y, slot.Color.Z)));
+                AddPrimitiveShape(prim, slot.Shape, slot.Size);
+                scene.AddRigidMesh(mb, inst);
+                outsideCount++;
             }
         }
 

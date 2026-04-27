@@ -134,29 +134,39 @@ public partial class RoomEditorPanel : UserControl
         snapBtn.Click += (_, _) => _vm.SnapObjectsToGridCommand.Execute(null);
         BodyPanel.Children.Add(snapBtn);
 
-        // Slot palette. Just a reference — clicking a swatch doesn't place,
-        // the user still presses 1..9 with a sub-cell selected.
-        BodyPanel.Children.Add(SectionHeader("Slot palette"));
+        // Editable object type list.
+        BodyPanel.Children.Add(SectionHeader("Object types"));
         BodyPanel.Children.Add(new TextBlock
         {
-            Text = "Select a sub-cell, then press 1–9 to place that slot.",
+            Text = "Select a sub-cell, then press 1–" + System.Math.Min(_vm.ObjectTypes.Count, 9) +
+                   " to place the matching type. Click a type's swatch to edit its shape and colour.",
             TextWrapping = TextWrapping.Wrap,
             Foreground = new SolidColorBrush(Color.FromRgb(120, 120, 130)),
             FontSize = 11,
-            Margin = new Thickness(0, 0, 0, 6),
+            Margin = new Thickness(0, 0, 0, 8),
         });
-        foreach (var slot in OpenApparatus.Studio.ViewModels.ObjectSlots.All)
-            BodyPanel.Children.Add(SlotRow(slot));
+        for (int ti = 0; ti < _vm.ObjectTypes.Count; ti++)
+            BodyPanel.Children.Add(TypeRow(ti, _vm.ObjectTypes[ti]));
+
+        var addTypeBtn = new Button
+        {
+            Content = "+ Add object type",
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(0, 4, 0, 4),
+        };
+        addTypeBtn.Click += (_, _) => _vm.AddObjectTypeCommand.Execute(null);
+        BodyPanel.Children.Add(addTypeBtn);
 
         // Selected object editor.
         var sel = _vm.SelectedObject;
         if (sel is null) return;
 
         BodyPanel.Children.Add(SectionHeader("Selected object", topMargin: 16));
-        var slotInfo = OpenApparatus.Studio.ViewModels.ObjectSlots.Get(sel.Slot);
+        var slotInfo = _vm.GetObjectType(sel.Slot);
         BodyPanel.Children.Add(new TextBlock
         {
-            Text = slotInfo is null ? $"Slot {sel.Slot}" : $"Slot {sel.Slot} — {slotInfo.DisplayName}",
+            Text = slotInfo is null ? $"Slot {sel.Slot}" : $"Slot {sel.Slot} — {slotInfo.Name}",
             FontWeight = FontWeight.SemiBold,
             Margin = new Thickness(0, 0, 0, 4),
         });
@@ -198,32 +208,100 @@ public partial class RoomEditorPanel : UserControl
         _vm!.OnEditedSelectedObject();
     }
 
-    Control SlotRow(OpenApparatus.Studio.ViewModels.ObjectSlot slot)
+    Control TypeRow(int index, OpenApparatus.Studio.ViewModels.ObjectType type)
     {
-        var swatch = new Border
+        // 30×30 swatch button — clicking opens the shape/color picker.
+        var swatchBtn = new Button
         {
-            Width = 22,
-            Height = 22,
+            Width = 30,
+            Height = 30,
+            Padding = new Thickness(0),
             Background = new SolidColorBrush(Color.FromRgb(
-                (byte)(slot.Color.X * 255), (byte)(slot.Color.Y * 255), (byte)(slot.Color.Z * 255))),
+                (byte)(type.Color.X * 255), (byte)(type.Color.Y * 255), (byte)(type.Color.Z * 255))),
             BorderBrush = new SolidColorBrush(Color.FromRgb(60, 60, 70)),
             BorderThickness = new Thickness(1),
             VerticalAlignment = VerticalAlignment.Center,
         };
-        var label = new TextBlock
+        ToolTip.SetTip(swatchBtn, $"{type.Shape} — click to edit shape and colour.");
+        swatchBtn.Click += async (_, _) => await OnEditType(index);
+
+        var slotLabel = new TextBlock
         {
-            Text = $"{slot.Id}.  {slot.DisplayName}",
+            Text = $"{index + 1}.",
+            FontWeight = FontWeight.SemiBold,
             VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(8, 0, 0, 0),
+            Margin = new Thickness(6, 0, 6, 0),
+            MinWidth = 18,
         };
+
+        var nameBox = new TextBox
+        {
+            Text = type.Name,
+            Watermark = $"Object {index + 1}",
+            VerticalAlignment = VerticalAlignment.Center,
+            Width = 110,
+        };
+        // Mirror the room-name pattern: only commit changes that actually
+        // differ from the stored name, so Avalonia's tree-attach TextChanged
+        // doesn't loop through OnEditedObjectType.
+        string lastCommitted = type.Name;
+        nameBox.TextChanged += (_, _) =>
+        {
+            var t = (nameBox.Text ?? string.Empty).Trim();
+            if (t == lastCommitted) return;
+            lastCommitted = t;
+            type.Name = t.Length > 0 ? t : $"Object {index + 1}";
+            _vm!.OnEditedObjectType();
+        };
+
+        var delBtn = new Button
+        {
+            Content = "×",
+            FontSize = 13,
+            Width = 24,
+            Height = 24,
+            Padding = new Thickness(0),
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(6, 0, 0, 0),
+            IsEnabled = _vm!.ObjectTypes.Count > 1,
+        };
+        ToolTip.SetTip(delBtn, _vm.ObjectTypes.Count > 1
+            ? "Remove this object type."
+            : "At least one object type is required.");
+        delBtn.Click += (_, _) =>
+        {
+            _vm.RemoveObjectType(index);
+            Rebuild();
+        };
+
         var stack = new StackPanel
         {
             Orientation = Orientation.Horizontal,
-            Margin = new Thickness(0, 0, 0, 3),
+            Margin = new Thickness(0, 0, 0, 4),
         };
-        stack.Children.Add(swatch);
-        stack.Children.Add(label);
+        stack.Children.Add(swatchBtn);
+        stack.Children.Add(slotLabel);
+        stack.Children.Add(nameBox);
+        stack.Children.Add(delBtn);
         return stack;
+    }
+
+    async System.Threading.Tasks.Task OnEditType(int index)
+    {
+        if (_vm is null || index < 0 || index >= _vm.ObjectTypes.Count) return;
+        var owner = TopLevel.GetTopLevel(this) as Window;
+        if (owner is null) return;
+        var type = _vm.ObjectTypes[index];
+        var dlg = new ObjectTypePickerDialog();
+        dlg.Configure(type.Shape, type.Color);
+        await dlg.ShowDialog(owner);
+        if (dlg.Confirmed)
+        {
+            type.Shape = dlg.ChosenShape;
+            type.Color = dlg.ChosenColor;
+            _vm.OnEditedObjectType();
+            Rebuild();
+        }
     }
 
     void BuildPlaceholder()

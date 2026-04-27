@@ -249,6 +249,74 @@ public partial class MainWindowViewModel : ViewModelBase
     readonly List<RoomObject> _objects = new();
     public IReadOnlyList<RoomObject> Objects => _objects;
 
+    /// <summary>
+    /// Editable object types. The user starts with one default and uses
+    /// <see cref="AddObjectTypeCommand"/> to grow the list. Hotkey 1..N
+    /// places an instance of the matching type.
+    /// </summary>
+    readonly System.Collections.ObjectModel.ObservableCollection<ObjectType> _objectTypes = new();
+    public System.Collections.ObjectModel.ObservableCollection<ObjectType> ObjectTypes => _objectTypes;
+
+    /// <summary>1-based lookup matching <see cref="RoomObject.Slot"/>. Returns
+    /// null when the slot is out of range (e.g. hotkey 7 was pressed but only
+    /// 4 types exist).</summary>
+    public ObjectType? GetObjectType(int slot)
+    {
+        int idx = slot - 1;
+        if (idx < 0 || idx >= _objectTypes.Count) return null;
+        return _objectTypes[idx];
+    }
+
+    [RelayCommand]
+    void AddObjectType()
+    {
+        int id = _objectTypes.Count + 1;
+        var shape = (ObjectShape)((id - 1) % System.Enum.GetValues<ObjectShape>().Length);
+        // Pick a perceptually-distinct hue so consecutive Add presses don't
+        // produce visually similar swatches. Same HSV walk used for room hues.
+        var rgb = HsvToRgb((id * 137.5) % 360, 0.55f, 0.92f);
+        _objectTypes.Add(new ObjectType
+        {
+            Name = $"Object {id}",
+            Shape = shape,
+            Color = rgb,
+            Size = 0.30f,
+        });
+        StatusMessage = $"Added object type {id}.";
+        EditVersion++;
+    }
+
+    /// <summary>Remove the object type at index <paramref name="index"/> (0-based).
+    /// Refuses to remove the last remaining type. Any RoomObject pointing at the
+    /// removed type is dropped; later types shift down by one slot.</summary>
+    public void RemoveObjectType(int index)
+    {
+        if (index < 0 || index >= _objectTypes.Count) return;
+        if (_objectTypes.Count <= 1)
+        {
+            StatusMessage = "Need at least one object type.";
+            return;
+        }
+        int removedSlot = index + 1;
+        _objectTypes.RemoveAt(index);
+        // Drop instances using the removed type, decrement instances above it.
+        for (int i = _objects.Count - 1; i >= 0; i--)
+        {
+            if (_objects[i].Slot == removedSlot) _objects.RemoveAt(i);
+            else if (_objects[i].Slot > removedSlot) _objects[i].Slot--;
+        }
+        if (SelectedObjectIndex >= _objects.Count) SelectedObjectIndex = -1;
+        StatusMessage = $"Removed object type {removedSlot}.";
+        EditVersion++;
+    }
+
+    /// <summary>Called from the inspector after editing a type's name / shape /
+    /// color in place. Repaints the editor view to reflect the change.</summary>
+    public void OnEditedObjectType()
+    {
+        EditVersion++;
+    }
+
     /// <summary>Sub-cell side length in metres at the current subdivision.</summary>
     public float SubCellSize => TileSize / System.Math.Max(1, GridSubdivision);
 
@@ -281,15 +349,15 @@ public partial class MainWindowViewModel : ViewModelBase
     /// </summary>
     public void PlaceObjectAtSelectedSubCell(int slot)
     {
-        if (ObjectSlots.Get(slot) is null) return;
+        var typeForPlacement = GetObjectType(slot);
+        if (typeForPlacement is null) return;
         if (SelectedSubCell is not { } sc) return;
         var center2 = SubCellCenter(sc.TileX, sc.TileZ, sc.FineX, sc.FineZ);
+        // RoomIdAtWorld returns -1 when the sub-cell sits on empty space; we
+        // treat that as "outside any room" rather than refusing the placement
+        // — empty tiles are still valid object territory and the JSON / glTF
+        // exports group those objects under an Outside container.
         int roomId = RoomIdAtWorld(center2);
-        if (roomId < 0)
-        {
-            StatusMessage = "Pick a sub-cell that belongs to a room first.";
-            return;
-        }
         // No-op if the same slot is already at the same sub-cell centre.
         const float EPS = 1e-3f;
         foreach (var o in _objects)
@@ -311,7 +379,9 @@ public partial class MainWindowViewModel : ViewModelBase
         };
         _objects.Add(obj);
         SelectedObjectIndex = _objects.Count - 1;
-        StatusMessage = $"Placed slot {slot} ({ObjectSlots.Get(slot)!.DisplayName}) in Room {roomId}.";
+        StatusMessage = roomId >= 0
+            ? $"Placed {typeForPlacement.Name} in Room {roomId}."
+            : $"Placed {typeForPlacement.Name} (outside any room).";
         EditVersion++;
     }
 
@@ -365,9 +435,10 @@ public partial class MainWindowViewModel : ViewModelBase
                 o.Position = new System.Numerics.Vector3(snappedX, o.Position.Y, snappedZ);
                 touched++;
             }
-            // Reassign owning room based on the new position.
-            int rid = RoomIdAtWorld(new System.Numerics.Vector2(snappedX, snappedZ));
-            if (rid >= 0) o.OwningRoomId = rid;
+            // Reassign owning room based on the new position. -1 = outside any
+            // room, which is a valid state — the export groups these under an
+            // Outside container.
+            o.OwningRoomId = RoomIdAtWorld(new System.Numerics.Vector2(snappedX, snappedZ));
         }
         StatusMessage = touched > 0
             ? $"Snapped {touched} object(s) to the {GridSubdivision}× sub-grid."
@@ -587,6 +658,15 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         RoomGrid = new int[GridWidth, GridLength];
         ResetGrid();
+        // Seed one default object type so Objects mode has something to place
+        // out of the box. The user grows the list via 'Add object type'.
+        _objectTypes.Add(new ObjectType
+        {
+            Name = "Object 1",
+            Shape = ObjectShape.Cube,
+            Color = new System.Numerics.Vector3(0.85f, 0.30f, 0.30f),
+            Size = 0.30f,
+        });
         Rebuild();
     }
 
@@ -1268,7 +1348,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 _multiColorRoomIds,
                 _roomFloorColors, _roomCeilingColors,
                 _roomSingleWallColors, _wallColors,
-                _objects);
+                _objects, _objectTypes);
             StatusMessage = $"Exported glTF → {file.Name}";
         }
         catch (Exception ex)
@@ -1301,7 +1381,8 @@ public partial class MainWindowViewModel : ViewModelBase
                 CurrentEnvironment,
                 GridSubdivision,
                 DefaultObjectY,
-                _objects);
+                _objects,
+                _objectTypes);
 
             await using var stream = await file.OpenWriteAsync();
             using var writer = new StreamWriter(stream);

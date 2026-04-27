@@ -372,7 +372,9 @@ public class GridEditorView : Control
             for (int x = 0; x < vm.GridWidth; x++)
                 for (int z = 0; z < vm.GridLength; z++)
                 {
-                    if (vm.RoomGrid[x, z] < 0) continue;
+                    // Draw the sub-grid on every tile (including empty ones) —
+                    // objects can live outside any room, and the user needs to
+                    // see the placement targets there too.
                     var tileRect = TileRect(origin, tileSize, x, z, vm.GridLength);
                     for (int k = 1; k < n; k++)
                     {
@@ -792,19 +794,19 @@ public class GridEditorView : Control
         for (int i = 0; i < vm.Objects.Count; i++)
         {
             var o = vm.Objects[i];
-            var slot = ObjectSlots.Get(o.Slot);
-            if (slot is null) continue;
+            var type = vm.GetObjectType(o.Slot);
+            if (type is null) continue;
             var screen = WorldXzToScreen(
                 new System.Numerics.Vector2(o.Position.X, o.Position.Z),
                 origin, tileSize, vm);
             byte alpha = (byte)(dim ? 110 : 255);
             var fill = new SolidColorBrush(Color.FromArgb(alpha,
-                (byte)(slot.Color.X * 255), (byte)(slot.Color.Y * 255), (byte)(slot.Color.Z * 255)));
+                (byte)(type.Color.X * 255), (byte)(type.Color.Y * 255), (byte)(type.Color.Z * 255)));
             var border = new Pen(new SolidColorBrush(Color.FromArgb(alpha, 30, 30, 40)), 1.2);
             bool selected = vm.IsObjectsMode && i == vm.SelectedObjectIndex;
             // 2D icon footprint: roughly 1/3 of a tile, capped at 16 px.
             double iconR = System.Math.Min(16.0, System.Math.Max(6.0, tileSize * 0.25));
-            DrawObjectIcon(ctx, slot.Shape, screen, iconR, fill, border);
+            DrawObjectIcon(ctx, type.Shape, screen, iconR, fill, border);
             if (selected)
             {
                 ctx.DrawEllipse(null,
