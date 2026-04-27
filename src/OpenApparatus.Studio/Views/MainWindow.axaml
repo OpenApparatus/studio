@@ -20,7 +20,7 @@
             <Setter Property="Margin" Value="0 0 0 8"/>
         </Style>
         <Style Selector="Button.primary">
-            <Setter Property="Background" Value="#1f6feb"/>
+            <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
@@ -28,7 +28,7 @@
             <Setter Property="Padding" Value="10 6"/>
         </Style>
         <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#1c5fc7"/>
+            <Setter Property="Background" Value="{StaticResource AccentHoverBrush}"/>
             <Setter Property="Foreground" Value="White"/>
         </Style>
         <Style Selector="Button.action">
@@ -99,7 +99,7 @@
         </Style>
         <Style Selector="RadioButton.tab">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="#c8c8cf"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderHairlineBrush}"/>
             <Setter Property="BorderThickness" Value="1 1 1 0"/>
             <Setter Property="CornerRadius" Value="4 4 0 0"/>
             <Setter Property="Margin" Value="0 0 4 0"/>
@@ -112,21 +112,21 @@
         <Style Selector="TextBlock.sectionLabel">
             <Setter Property="FontSize" Value="9.5"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="#7a808c"/>
+            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="Margin" Value="0 0 8 0"/>
         </Style>
         <!-- Inline label for sliders ("Opacity", "Saturation", etc.). -->
         <Style Selector="TextBlock.sliderLabel">
             <Setter Property="FontSize" Value="11"/>
-            <Setter Property="Foreground" Value="#5a6270"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="Margin" Value="8 0 5 0"/>
         </Style>
         <!-- Vertical hairline divider between toolbar sections. -->
         <Style Selector="Border.vsep">
             <Setter Property="Width" Value="1"/>
-            <Setter Property="Background" Value="#d3d7df"/>
+            <Setter Property="Background" Value="{StaticResource BorderHairlineBrush}"/>
             <Setter Property="Margin" Value="10 2"/>
             <Setter Property="VerticalAlignment" Value="Stretch"/>
         </Style>
@@ -145,19 +145,19 @@
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
         <Style Selector="ToggleButton.pill:checked /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="#1f6feb"/>
+            <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
             <Setter Property="Foreground" Value="White"/>
         </Style>
         <Style Selector="ToggleButton.pill:checked">
-            <Setter Property="Background" Value="#1f6feb"/>
+            <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
             <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderBrush" Value="#1c5fc7"/>
+            <Setter Property="BorderBrush" Value="{StaticResource AccentHoverBrush}"/>
         </Style>
         <Style Selector="ToggleButton.pill:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="#eef2f7"/>
         </Style>
         <Style Selector="ToggleButton.pill:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="#1c5fc7"/>
+            <Setter Property="Background" Value="{StaticResource AccentHoverBrush}"/>
         </Style>
 
         <!-- Slim modern slider — full ControlTemplate replacement so we don't
@@ -166,7 +166,7 @@
              blue thumb with a white halo. -->
         <Style Selector="Slider">
             <Setter Property="Background" Value="#dde1e8"/>
-            <Setter Property="Foreground" Value="#1f6feb"/>
+            <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
         </Style>
         <Style Selector="Slider:horizontal">
             <Setter Property="MinHeight" Value="0"/>
@@ -184,7 +184,7 @@
                                 <RepeatButton Name="PART_DecreaseButton" Focusable="False">
                                     <RepeatButton.Template>
                                         <ControlTemplate>
-                                            <Border Height="3" CornerRadius="1.5" Background="#1f6feb" VerticalAlignment="Center"/>
+                                            <Border Height="3" CornerRadius="1.5" Background="{StaticResource AccentBrush}" VerticalAlignment="Center"/>
                                         </ControlTemplate>
                                     </RepeatButton.Template>
                                 </RepeatButton>
@@ -202,7 +202,7 @@
                                 <Thumb.Template>
                                     <ControlTemplate TargetType="Thumb">
                                         <Border Width="12" Height="12" CornerRadius="6"
-                                                Background="#1f6feb"
+                                                Background="{StaticResource AccentBrush}"
                                                 BorderBrush="White" BorderThickness="1.5"/>
                                     </ControlTemplate>
                                 </Thumb.Template>
@@ -228,7 +228,7 @@
                                 <RepeatButton Name="PART_DecreaseButton" Focusable="False">
                                     <RepeatButton.Template>
                                         <ControlTemplate>
-                                            <Border Width="3" CornerRadius="1.5" Background="#1f6feb" HorizontalAlignment="Center"/>
+                                            <Border Width="3" CornerRadius="1.5" Background="{StaticResource AccentBrush}" HorizontalAlignment="Center"/>
                                         </ControlTemplate>
                                     </RepeatButton.Template>
                                 </RepeatButton>
@@ -246,7 +246,7 @@
                                 <Thumb.Template>
                                     <ControlTemplate TargetType="Thumb">
                                         <Border Width="12" Height="12" CornerRadius="6"
-                                                Background="#1f6feb"
+                                                Background="{StaticResource AccentBrush}"
                                                 BorderBrush="White" BorderThickness="1.5"/>
                                     </ControlTemplate>
                                 </Thumb.Template>
@@ -284,7 +284,7 @@
         <!-- Top action bar — undo/redo + reset + export. The Layout/Object
              mode toggle has moved out of here onto a floating control inside
              the editor surface. -->
-        <Border DockPanel.Dock="Top" Background="#dee0e6" BorderBrush="#a3aab4" BorderThickness="0 0 0 1" Padding="10 6">
+        <Border DockPanel.Dock="Top" Background="{StaticResource SurfaceSecondaryBrush}" BorderBrush="{StaticResource BorderHairlineBrush}" BorderThickness="0 0 0 1" Padding="12 6">
             <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right" VerticalAlignment="Center">
                 <Button Content="Undo" Command="{Binding UndoCommand}" IsEnabled="{Binding CanUndo}" ToolTip.Tip="Undo (Ctrl+Z)"/>
                 <Button Content="Redo" Command="{Binding RedoCommand}" IsEnabled="{Binding CanRedo}" ToolTip.Tip="Redo (Ctrl+Y / Ctrl+Shift+Z)"/>
@@ -306,7 +306,7 @@
 
         <!-- Modern single-row settings strip. Sections separated by hairline
              dividers; each section labelled with a tiny uppercase caption. -->
-        <Border DockPanel.Dock="Top" Background="#f7f8fa" BorderBrush="#cdd1d9" BorderThickness="0 0 0 1" Padding="14 8">
+        <Border DockPanel.Dock="Top" Background="{StaticResource SurfacePrimaryBrush}" BorderBrush="{StaticResource BorderHairlineBrush}" BorderThickness="0 0 0 1" Padding="14 8">
                 <StackPanel Orientation="Horizontal" Spacing="0" VerticalAlignment="Center">
 
                     <!-- VIEW -->
@@ -378,12 +378,12 @@
         </Border>
 
         <!-- Status bar -->
-        <Border DockPanel.Dock="Bottom" Background="#101014" Padding="8 4">
+        <Border DockPanel.Dock="Bottom" Background="{StaticResource StatusBgBrush}" Padding="12 6">
             <TextBlock Text="{Binding StatusMessage}" Foreground="#cccccc"/>
         </Border>
 
         <Grid ColumnDefinitions="280,*,260">
-            <ScrollViewer Grid.Column="0" Background="#f4f4f7">
+            <ScrollViewer Grid.Column="0" Background="{StaticResource SurfacePrimaryBrush}">
                 <StackPanel Margin="12" Spacing="0">
 
                     <!-- ─── LAYOUT MODE LEFT PANEL ─── -->
@@ -497,7 +497,7 @@
 
             <Grid Grid.Column="1" RowDefinitions="*,Auto">
                 <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
-                    <Border Grid.Column="0" Background="#1a1a1f">
+                    <Border Grid.Column="0" Background="{StaticResource EditorBgBrush}">
                         <Grid>
                             <views:GridEditorView EditVersion="{Binding EditVersion}" Margin="8"/>
                             <!-- Floating Layout / Object segmented control,
@@ -523,7 +523,7 @@
                             </Border>
                         </Grid>
                     </Border>
-                    <Border Grid.Column="1" Background="#e6e6ea" BorderBrush="#c8c8cf" BorderThickness="1 0 0 0" Padding="6 10" Width="48">
+                    <Border Grid.Column="1" Background="{StaticResource SurfaceSecondaryBrush}" BorderBrush="{StaticResource BorderHairlineBrush}" BorderThickness="1 0 0 0" Padding="6 10" Width="48">
                         <DockPanel>
                             <TextBlock DockPanel.Dock="Top" Text="Zoom" HorizontalAlignment="Center" Foreground="#444" FontSize="11"/>
                             <Button DockPanel.Dock="Bottom" Content="Reset" FontSize="10" Padding="4 2"

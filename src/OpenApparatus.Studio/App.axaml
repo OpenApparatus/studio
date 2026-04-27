@@ -12,7 +12,18 @@
     <Application.DataTemplates>
         <local:ViewLocator/>
     </Application.DataTemplates>
-  
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- Design tokens: surfaces, accent, text, spacing, type
+                     scale, corner radii, elevation. Every view should
+                     consume these instead of literal hex/px values. -->
+                <ResourceInclude Source="avares://OpenApparatus.Studio/Themes/Tokens.axaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+
     <Application.Styles>
         <FluentTheme />
     </Application.Styles>
