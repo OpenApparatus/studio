@@ -190,6 +190,11 @@
                     <TextBlock TextWrapping="Wrap" Foreground="#444"
                                Text="• Random Fill generates a starter layout you can edit."/>
 
+                    <!-- Object-mode global settings (Placement constraints).
+                         Visible only when ViewMode is Objects; collapses
+                         otherwise. -->
+                    <views:ConstraintsPanel/>
+
                 </StackPanel>
             </ScrollViewer>
 

@@ -476,6 +476,260 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] bool _measurementsSelectedRoomOnly = true;
     partial void OnMeasurementsSelectedRoomOnlyChanged(bool value) => EditVersion++;
 
+    /// <summary>Active placement constraints. Stored as a single instance so
+    /// the panel can mutate fields directly; mutations call
+    /// <see cref="OnConstraintsChanged"/> to repaint and refresh the
+    /// compliance summary.</summary>
+    public PlacementConstraints Constraints { get; } = new();
+
+    /// <summary>Notify the editor view + the inspector panel that a
+    /// constraint has changed. Bumps EditVersion (view repaint) and raises
+    /// PropertyChanged on the constraints handle (inspector listens for that).</summary>
+    public void OnConstraintsChanged()
+    {
+        EditVersion++;
+        OnPropertyChanged(nameof(Constraints));
+        OnPropertyChanged(nameof(ConstraintViolations));
+        OnPropertyChanged(nameof(ConstraintComplianceSummary));
+    }
+
+    /// <summary>The current set of constraint violations across every object /
+    /// room. Recomputed on demand — cheap for typical apparatus sizes.</summary>
+    public IReadOnlyList<ConstraintViolation> ConstraintViolations => EvaluateConstraints();
+
+    /// <summary>Human-readable summary string ready to drop into the panel
+    /// header (e.g. "7 / 9 compliant").</summary>
+    public string ConstraintComplianceSummary
+    {
+        get
+        {
+            var list = EvaluateConstraints();
+            int total = _objects.Count;
+            int violators = 0;
+            var seen = new HashSet<int>();
+            foreach (var v in list)
+                if (v.ObjectIndex is int idx && seen.Add(idx)) violators++;
+            int compliant = total - violators;
+            int roomViolations = 0;
+            foreach (var v in list) if (v.RoomId is not null) roomViolations++;
+            return roomViolations == 0
+                ? $"{compliant} / {total} compliant"
+                : $"{compliant} / {total} compliant • {roomViolations} room count violation(s)";
+        }
+    }
+
+    /// <summary>Walks every object + room against the active constraints and
+    /// returns a flat list of violations. Empty list = fully compliant.</summary>
+    public IReadOnlyList<ConstraintViolation> EvaluateConstraints()
+    {
+        var c = Constraints;
+        var list = new List<ConstraintViolation>();
+        if (CurrentEnvironment is not { } env) return list;
+        if (_objects.Count == 0 && !c.PerRoomCountsEnabled) return list;
+
+        // Pre-build a roomId -> room lookup and a set of valid ids.
+        var roomById = new Dictionary<int, OpenApparatus.Topology.Room>();
+        foreach (var r in env.Rooms) roomById[r.Id] = r;
+
+        // Pre-build a roomId -> doors-with-inward-normals lookup.
+        var doorsByRoom = new Dictionary<int, List<(System.Numerics.Vector2 Pos, System.Numerics.Vector2 Inward)>>();
+        foreach (var adj in env.Adjacencies)
+        {
+            if (adj.Passage is not Passage.Doorway dw) continue;
+            void Add(OpenApparatus.Topology.Room? room, bool roomIsA)
+            {
+                if (room is null) return;
+                if (!doorsByRoom.TryGetValue(room.Id, out var lst))
+                    doorsByRoom[room.Id] = lst = new();
+                var seg = adj.SharedSegment;
+                var inward = roomIsA ? seg.Normal : -seg.Normal;
+                foreach (var op in dw.Openings)
+                {
+                    if (op.IsWindow) continue;
+                    var p = seg.Start + seg.Direction * (op.OffsetAlongEdge + op.Width * 0.5f);
+                    lst.Add((p, inward));
+                }
+            }
+            Add(adj.RoomA, true);
+            Add(adj.RoomB, false);
+        }
+
+        // Pre-build a roomId -> outline segments (the room's wall segments) for
+        // object-to-wall distance.
+        var wallsByRoom = new Dictionary<int, List<(System.Numerics.Vector2 A, System.Numerics.Vector2 B)>>();
+        foreach (var adj in env.Adjacencies)
+        {
+            void Add(OpenApparatus.Topology.Room? room)
+            {
+                if (room is null) return;
+                if (!wallsByRoom.TryGetValue(room.Id, out var lst))
+                    wallsByRoom[room.Id] = lst = new();
+                lst.Add((adj.SharedSegment.Start, adj.SharedSegment.End));
+            }
+            Add(adj.RoomA);
+            Add(adj.RoomB);
+        }
+
+        // Connected-room map for the "across connected rooms" toggle.
+        var connected = new Dictionary<int, HashSet<int>>();
+        if (c.ObjectToObjectAcrossConnectedRooms)
+        {
+            foreach (var adj in env.Adjacencies)
+            {
+                if (adj.IsOuter) continue;
+                if (adj.Passage is Passage.Closed) continue;
+                int a = adj.RoomA.Id, b = adj.RoomB!.Id;
+                if (!connected.TryGetValue(a, out var sa)) connected[a] = sa = new();
+                if (!connected.TryGetValue(b, out var sb)) connected[b] = sb = new();
+                sa.Add(b); sb.Add(a);
+            }
+        }
+
+        // -------- Per-object checks --------
+        for (int i = 0; i < _objects.Count; i++)
+        {
+            var oi = _objects[i];
+            var pi = new System.Numerics.Vector2(oi.Position.X, oi.Position.Z);
+
+            // Door → Object
+            if (c.DoorToObjectEnabled && roomById.ContainsKey(oi.OwningRoomId)
+                && doorsByRoom.TryGetValue(oi.OwningRoomId, out var doors)
+                && doors.Count > 0)
+            {
+                int satisfying = 0;
+                int firstFailIdx = -1;
+                string firstFailMsg = "";
+                for (int d = 0; d < doors.Count; d++)
+                {
+                    var (dp, inw) = doors[d];
+                    var v = pi - dp;
+                    float dist = v.Length();
+                    bool ok = true;
+                    string msg = "";
+                    if (c.DoorToObjectMin > 0 && dist < c.DoorToObjectMin)
+                    { ok = false; msg = $"door distance {dist:0.00}m < min {c.DoorToObjectMin:0.00}m"; }
+                    if (ok && c.DoorToObjectMax > 0 && dist > c.DoorToObjectMax)
+                    { ok = false; msg = $"door distance {dist:0.00}m > max {c.DoorToObjectMax:0.00}m"; }
+                    if (ok && c.DoorAngleBandEnabled)
+                    {
+                        double forward = v.X * inw.X + v.Y * inw.Y;
+                        double perp = v.X * inw.Y - v.Y * inw.X;
+                        double a = System.Math.Atan2(perp, forward) * 180.0 / System.Math.PI;
+                        double abs = System.Math.Abs(a);
+                        if (abs < c.DoorAngleMinDeg)
+                        { ok = false; msg = $"door angle {abs:0}° < min {c.DoorAngleMinDeg:0}°"; }
+                        else if (abs > c.DoorAngleMaxDeg)
+                        { ok = false; msg = $"door angle {abs:0}° > max {c.DoorAngleMaxDeg:0}°"; }
+                    }
+                    if (ok) satisfying++;
+                    else if (firstFailIdx < 0) { firstFailIdx = d; firstFailMsg = msg; }
+                }
+                bool passes = c.DoorAppliesToEveryDoor ? satisfying == doors.Count : satisfying > 0;
+                if (!passes)
+                    list.Add(new ConstraintViolation
+                    {
+                        ObjectIndex = i,
+                        Message = c.DoorAppliesToEveryDoor
+                            ? $"slot {oi.Slot}: {firstFailMsg}"
+                            : $"slot {oi.Slot}: no door satisfies the band ({firstFailMsg})",
+                    });
+            }
+
+            // Object → Wall
+            if (c.ObjectToWallEnabled && c.ObjectToWallMin > 0
+                && wallsByRoom.TryGetValue(oi.OwningRoomId, out var walls))
+            {
+                float minD = float.PositiveInfinity;
+                foreach (var (a, b) in walls)
+                {
+                    float d = DistanceFromPointToSegment(pi,
+                        new OpenApparatus.EdgeSegment(a, b));
+                    if (d < minD) minD = d;
+                }
+                if (minD < c.ObjectToWallMin)
+                    list.Add(new ConstraintViolation
+                    {
+                        ObjectIndex = i,
+                        Message = $"slot {oi.Slot}: wall distance {minD:0.00}m < min {c.ObjectToWallMin:0.00}m",
+                    });
+            }
+
+            // Object ↔ Object
+            if (c.ObjectToObjectEnabled)
+            {
+                for (int j = i + 1; j < _objects.Count; j++)
+                {
+                    var oj = _objects[j];
+                    bool sameRoom = oi.OwningRoomId == oj.OwningRoomId;
+                    bool connectedPair = false;
+                    if (c.ObjectToObjectAcrossConnectedRooms)
+                    {
+                        if (oi.OwningRoomId == oj.OwningRoomId) connectedPair = true;
+                        else if (connected.TryGetValue(oi.OwningRoomId, out var s) && s.Contains(oj.OwningRoomId))
+                            connectedPair = true;
+                    }
+                    bool inScope = c.ObjectToObjectAcrossConnectedRooms ? connectedPair : sameRoom;
+                    if (!inScope) continue;
+                    var pj = new System.Numerics.Vector2(oj.Position.X, oj.Position.Z);
+                    float dist = (pj - pi).Length();
+                    if (c.ObjectToObjectMin > 0 && dist < c.ObjectToObjectMin)
+                    {
+                        var msg = $"slots {oi.Slot}↔{oj.Slot}: distance {dist:0.00}m < min {c.ObjectToObjectMin:0.00}m";
+                        list.Add(new ConstraintViolation { ObjectIndex = i, Message = msg });
+                        list.Add(new ConstraintViolation { ObjectIndex = j, Message = msg });
+                    }
+                    else if (c.ObjectToObjectMax > 0 && dist > c.ObjectToObjectMax)
+                    {
+                        var msg = $"slots {oi.Slot}↔{oj.Slot}: distance {dist:0.00}m > max {c.ObjectToObjectMax:0.00}m";
+                        list.Add(new ConstraintViolation { ObjectIndex = i, Message = msg });
+                        list.Add(new ConstraintViolation { ObjectIndex = j, Message = msg });
+                    }
+                }
+            }
+        }
+
+        // -------- Per-room count check --------
+        if (c.PerRoomCountsEnabled)
+        {
+            var counts = new Dictionary<int, int>();
+            foreach (var o in _objects)
+            {
+                if (!roomById.ContainsKey(o.OwningRoomId)) continue;
+                counts.TryGetValue(o.OwningRoomId, out var n);
+                counts[o.OwningRoomId] = n + 1;
+            }
+            foreach (var r in env.Rooms)
+            {
+                counts.TryGetValue(r.Id, out var n);
+                if (c.PerRoomCountMin > 0 && n < c.PerRoomCountMin)
+                    list.Add(new ConstraintViolation
+                    {
+                        RoomId = r.Id,
+                        Message = $"Room {r.Id}: {n} objects < min {c.PerRoomCountMin}",
+                    });
+                if (c.PerRoomCountMax > 0 && n > c.PerRoomCountMax)
+                    list.Add(new ConstraintViolation
+                    {
+                        RoomId = r.Id,
+                        Message = $"Room {r.Id}: {n} objects > max {c.PerRoomCountMax}",
+                    });
+            }
+        }
+
+        return list;
+    }
+
+    /// <summary>Returns the indices of all objects with at least one violation.
+    /// The editor view uses this to draw violator highlight rings.</summary>
+    public HashSet<int> GetViolatingObjectIndices()
+    {
+        var s = new HashSet<int>();
+        if (!Constraints.HighlightViolations) return s;
+        foreach (var v in EvaluateConstraints())
+            if (v.ObjectIndex is int i) s.Add(i);
+        return s;
+    }
+
     /// <summary>Editor-only opacity multiplier for the interior wall borders.
     /// 1.0 = fully opaque (default), 0 = invisible. Does NOT alter the colours
     /// used by the glTF export — purely a viewport aid for spotting doors and
@@ -1563,7 +1817,8 @@ public partial class MainWindowViewModel : ViewModelBase
                 GridSubdivision,
                 DefaultObjectY,
                 _objects,
-                _objectTypes);
+                _objectTypes,
+                Constraints);
 
             await using var stream = await file.OpenWriteAsync();
             using var writer = new StreamWriter(stream);

@@ -787,9 +787,215 @@ public class GridEditorView : Control
         // so the user always sees what's been placed.
         DrawObjects(ctx, vm, origin, tileSize);
 
+        // Constraint zones (door annular wedges, object exclusion discs) and
+        // violator rings — drawn before the measurement labels so the labels
+        // remain on top, but after objects so the zones land on the floor.
+        DrawConstraintOverlays(ctx, vm, origin, tileSize);
+
         // Measurement overlay — door→object lines with distance + angle, plus
         // inter-object distance lines. Drawn last so labels stay legible.
         DrawMeasurements(ctx, vm, origin, tileSize);
+    }
+
+    /// <summary>
+    /// Translucent compliance hints. Door annular wedges show where an object
+    /// satisfies the door-to-object distance + angle constraints; object
+    /// exclusion discs show the min-spacing radius around the selected
+    /// object; objects that violate any constraint get a red dashed ring.
+    /// </summary>
+    static void DrawConstraintOverlays(DrawingContext ctx, MainWindowViewModel vm, Point origin, double tileSize)
+    {
+        if (vm.CurrentEnvironment is not { } env) return;
+        var c = vm.Constraints;
+        Point ToScreen(System.Numerics.Vector2 worldXz)
+        {
+            double xTile = worldXz.X / vm.TileSize;
+            double zTile = worldXz.Y / vm.TileSize;
+            return new Point(
+                origin.X + xTile * tileSize,
+                origin.Y + (vm.GridLength - zTile) * tileSize);
+        }
+        double scale = tileSize / vm.TileSize;
+
+        // Door zones — green-ish fill per door, only for the rooms in scope
+        // (the same scope as measurements: every room or just the selected).
+        if (c.DoorToObjectEnabled && (c.DoorToObjectMin > 0 || c.DoorToObjectMax > 0 || c.DoorAngleBandEnabled))
+        {
+            var rooms = new List<OpenApparatus.Topology.Room>();
+            if (vm.MeasurementsSelectedRoomOnly && vm.SelectedRoomId >= 0)
+            {
+                foreach (var r in env.Rooms)
+                    if (r.Id == vm.SelectedRoomId) { rooms.Add(r); break; }
+            }
+            else
+            {
+                foreach (var r in env.Rooms) rooms.Add(r);
+            }
+
+            var zoneFill = new SolidColorBrush(Color.FromArgb(60, 90, 200, 130));
+            var zoneEdge = new Pen(new SolidColorBrush(Color.FromArgb(180, 60, 160, 100)), 0.8);
+
+            foreach (var room in rooms)
+            {
+                foreach (var adj in env.Adjacencies)
+                {
+                    if (adj.RoomA != room && adj.RoomB != room) continue;
+                    if (adj.Passage is not OpenApparatus.Topology.Passage.Doorway dw) continue;
+                    bool isRoomA = adj.RoomA == room;
+                    var seg = adj.SharedSegment;
+                    var inward = isRoomA ? seg.Normal : -seg.Normal;
+                    foreach (var op in dw.Openings)
+                    {
+                        if (op.IsWindow) continue;
+                        var doorWorld = seg.Start + seg.Direction * (op.OffsetAlongEdge + op.Width * 0.5f);
+                        var doorScr = ToScreen(doorWorld);
+                        DrawDoorZone(ctx, zoneFill, zoneEdge, doorScr, inward, c, scale);
+                    }
+                }
+            }
+        }
+
+        // Object exclusion radius around the currently-selected object.
+        if (c.ObjectToObjectEnabled && c.ObjectToObjectMin > 0
+            && vm.SelectedObjectIndex >= 0 && vm.SelectedObjectIndex < vm.Objects.Count)
+        {
+            var sel = vm.Objects[vm.SelectedObjectIndex];
+            var p = ToScreen(new System.Numerics.Vector2(sel.Position.X, sel.Position.Z));
+            double r = c.ObjectToObjectMin * scale;
+            var fill = new SolidColorBrush(Color.FromArgb(45, 220, 90, 90));
+            var edge = new Pen(new SolidColorBrush(Color.FromArgb(190, 200, 70, 70)), 1.0)
+            {
+                DashStyle = new DashStyle(new[] { 3.0, 2.0 }, 0),
+            };
+            ctx.DrawEllipse(fill, edge, p, r, r);
+        }
+
+        // Violator rings — red dashed circle around any object that fails any
+        // constraint, when HighlightViolations is on.
+        if (c.HighlightViolations)
+        {
+            var bad = vm.GetViolatingObjectIndices();
+            if (bad.Count > 0)
+            {
+                var ringPen = new Pen(new SolidColorBrush(Color.FromRgb(220, 40, 40)), 2.0)
+                {
+                    DashStyle = new DashStyle(new[] { 3.0, 2.0 }, 0),
+                };
+                double iconR = System.Math.Min(16.0, System.Math.Max(6.0, tileSize * 0.25));
+                foreach (var idx in bad)
+                {
+                    var o = vm.Objects[idx];
+                    var p = ToScreen(new System.Numerics.Vector2(o.Position.X, o.Position.Z));
+                    ctx.DrawEllipse(null, ringPen, p, iconR + 4, iconR + 4);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Draws the green annular wedge for one door's compliance zone — the
+    /// region where an object satisfies the active door-to-object min/max
+    /// distance and (optionally) the angle band. Sampled as a triangle fan
+    /// in screen space.
+    /// </summary>
+    static void DrawDoorZone(
+        DrawingContext ctx, IBrush fill, Pen edge,
+        Point doorScr, System.Numerics.Vector2 inwardWorld,
+        PlacementConstraints c, double scale)
+    {
+        var inwardScr = new Point(inwardWorld.X * scale, -inwardWorld.Y * scale);
+        double iLen = System.Math.Sqrt(inwardScr.X * inwardScr.X + inwardScr.Y * inwardScr.Y);
+        if (iLen < 1e-3) return;
+        var inU = new Point(inwardScr.X / iLen, inwardScr.Y / iLen);
+        var perpU = new Point(inU.Y, -inU.X);
+
+        // Distance bounds in screen pixels. 0 means unset.
+        double minR = c.DoorToObjectMin > 0 ? c.DoorToObjectMin * scale : 0;
+        // If max is unset, fall back to a generous swathe (10 m or one
+        // viewport's worth — whichever is smaller).
+        double maxR = c.DoorToObjectMax > 0 ? c.DoorToObjectMax * scale : (10.0 * scale);
+
+        // Angle band: half-spread on each side of the 0° axis. When the band
+        // is disabled we sweep the full 180° forward arc (everything in
+        // front of the door).
+        double minDeg = c.DoorAngleBandEnabled ? System.Math.Max(0, c.DoorAngleMinDeg) : 0;
+        double maxDeg = c.DoorAngleBandEnabled ? System.Math.Min(180, c.DoorAngleMaxDeg) : 180;
+        if (maxDeg <= minDeg) return;
+        double minRad = minDeg * System.Math.PI / 180.0;
+        double maxRad = maxDeg * System.Math.PI / 180.0;
+
+        // Build the polygon path: outer arc on the +side then -side, then
+        // inner arc back. Use StreamGeometry to support fill + stroke.
+        const int Steps = 24;
+        var geo = new StreamGeometry();
+        using (var g = geo.Open())
+        {
+            // Start at outer arc, +side, near edge of band.
+            var p0 = ZonePoint(doorScr, inU, perpU, +1, minRad, maxR);
+            g.BeginFigure(p0, isFilled: true);
+            for (int i = 1; i <= Steps; i++)
+            {
+                double t = i / (double)Steps;
+                double a = minRad + (maxRad - minRad) * t;
+                g.LineTo(ZonePoint(doorScr, inU, perpU, +1, a, maxR));
+            }
+            // Drop down to inner arc (still on +side).
+            for (int i = Steps; i >= 0; i--)
+            {
+                double t = i / (double)Steps;
+                double a = minRad + (maxRad - minRad) * t;
+                g.LineTo(ZonePoint(doorScr, inU, perpU, +1, a, minR));
+            }
+            // Mirror onto -side (skipped if minRad == 0 to avoid a stray
+            // line through the centre).
+            if (minRad < 1e-3)
+            {
+                // Continue from the -side outer at maxRad and sweep back.
+                for (int i = 0; i <= Steps; i++)
+                {
+                    double t = i / (double)Steps;
+                    double a = minRad + (maxRad - minRad) * (1 - t);
+                    g.LineTo(ZonePoint(doorScr, inU, perpU, -1, a, minR));
+                }
+                for (int i = 0; i <= Steps; i++)
+                {
+                    double t = i / (double)Steps;
+                    double a = minRad + (maxRad - minRad) * t;
+                    g.LineTo(ZonePoint(doorScr, inU, perpU, -1, a, maxR));
+                }
+            }
+            else
+            {
+                // The +side ribbon is closed off; draw the -side as a
+                // separate ribbon by closing this figure first.
+                g.EndFigure(true);
+                var s0 = ZonePoint(doorScr, inU, perpU, -1, minRad, maxR);
+                g.BeginFigure(s0, isFilled: true);
+                for (int i = 1; i <= Steps; i++)
+                {
+                    double t = i / (double)Steps;
+                    double a = minRad + (maxRad - minRad) * t;
+                    g.LineTo(ZonePoint(doorScr, inU, perpU, -1, a, maxR));
+                }
+                for (int i = Steps; i >= 0; i--)
+                {
+                    double t = i / (double)Steps;
+                    double a = minRad + (maxRad - minRad) * t;
+                    g.LineTo(ZonePoint(doorScr, inU, perpU, -1, a, minR));
+                }
+            }
+            g.EndFigure(true);
+        }
+        ctx.DrawGeometry(fill, edge, geo);
+    }
+
+    static Point ZonePoint(Point centre, Point inU, Point perpU, int sign, double angleRad, double radius)
+    {
+        double cs = System.Math.Cos(angleRad);
+        double sn = System.Math.Sin(angleRad) * sign;
+        return new Point(
+            centre.X + (inU.X * cs + perpU.X * sn) * radius,
+            centre.Y + (inU.Y * cs + perpU.Y * sn) * radius);
     }
 
     /// <summary>
@@ -865,6 +1071,33 @@ public class GridEditorView : Control
             foreach (var o in vm.Objects)
                 if (o.OwningRoomId == room.Id) objs.Add(o);
 
+            // 0° reference tick at every door — short line pointing inward
+            // along the door's normal, with a small "0°" label so the angle
+            // zero is explicit.
+            var zeroPen = new Pen(new SolidColorBrush(Color.FromArgb(160, 70, 70, 90)), 1.0)
+            {
+                DashStyle = new DashStyle(new[] { 2.0, 2.0 }, 0),
+            };
+            foreach (var (doorPos, inward) in doors)
+            {
+                var doorScr = ToScreen(doorPos);
+                double scale = tileSize / vm.TileSize;
+                var inwardScr = new Point(inward.X * scale, -inward.Y * scale);
+                double inLen = System.Math.Sqrt(inwardScr.X * inwardScr.X + inwardScr.Y * inwardScr.Y);
+                if (inLen < 1e-3) continue;
+                var inU = new Point(inwardScr.X / inLen, inwardScr.Y / inLen);
+                double tickPx = System.Math.Min(28.0, System.Math.Max(14.0, tileSize * 0.20));
+                var tickEnd = new Point(doorScr.X + inU.X * tickPx, doorScr.Y + inU.Y * tickPx);
+                ctx.DrawLine(zeroPen, doorScr, tickEnd);
+                var zeroFmt = new FormattedText("0°",
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    FlowDirection.LeftToRight, typeface, 10,
+                    new SolidColorBrush(Color.FromRgb(80, 80, 100)));
+                ctx.DrawText(zeroFmt,
+                    new Point(tickEnd.X + inU.X * 2 - zeroFmt.Width * 0.5,
+                              tickEnd.Y + inU.Y * 2 - zeroFmt.Height * 0.5));
+            }
+
             // Door → object: line + midpoint distance label + angle arc + angle
             // label at the door.
             foreach (var (doorPos, inward) in doors)
@@ -893,7 +1126,7 @@ public class GridEditorView : Control
                         $"{dist:0.00} m",
                         new Point((doorScr.X + objScr.X) * 0.5, (doorScr.Y + objScr.Y) * 0.5));
                     DrawLabel(ctx, typeface, labelBrush, labelBg, labelBorder,
-                        $"{angleDeg:0}°",
+                        $"{System.Math.Abs(angleDeg):0}°",
                         AngleLabelAnchor(doorScr, inward, angleRad, vm.TileSize, tileSize));
                 }
             }

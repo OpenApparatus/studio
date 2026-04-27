@@ -43,7 +43,8 @@ public static class JsonExporter
         int gridSubdivision = 1,
         float defaultObjectY = 0f,
         IReadOnlyList<RoomObject>? objects = null,
-        IReadOnlyList<ObjectType>? objectTypes = null)
+        IReadOnlyList<ObjectType>? objectTypes = null,
+        PlacementConstraints? constraints = null)
     {
         int gridW = roomGrid.GetLength(0);
         int gridL = roomGrid.GetLength(1);
@@ -78,6 +79,25 @@ public static class JsonExporter
                 Tiles = tiles,
             },
             ObjectSlots = BuildSlotDefinitions(objectTypes),
+            PlacementConstraints = constraints is null ? null : new PlacementConstraintsSection
+            {
+                ObjectToObjectEnabled = constraints.ObjectToObjectEnabled,
+                ObjectToObjectMin = constraints.ObjectToObjectMin,
+                ObjectToObjectMax = constraints.ObjectToObjectMax,
+                ObjectToObjectAcrossConnectedRooms = constraints.ObjectToObjectAcrossConnectedRooms,
+                DoorToObjectEnabled = constraints.DoorToObjectEnabled,
+                DoorToObjectMin = constraints.DoorToObjectMin,
+                DoorToObjectMax = constraints.DoorToObjectMax,
+                DoorAppliesToEveryDoor = constraints.DoorAppliesToEveryDoor,
+                DoorAngleBandEnabled = constraints.DoorAngleBandEnabled,
+                DoorAngleMinDeg = constraints.DoorAngleMinDeg,
+                DoorAngleMaxDeg = constraints.DoorAngleMaxDeg,
+                ObjectToWallEnabled = constraints.ObjectToWallEnabled,
+                ObjectToWallMin = constraints.ObjectToWallMin,
+                PerRoomCountsEnabled = constraints.PerRoomCountsEnabled,
+                PerRoomCountMin = constraints.PerRoomCountMin,
+                PerRoomCountMax = constraints.PerRoomCountMax,
+            },
         };
 
         if (environment is null) return doc;
@@ -257,6 +277,29 @@ public static class JsonExporter
         /// <summary>Objects placed outside any room (OwningRoomId == -1).
         /// Null when there are none, so small documents stay tidy.</summary>
         public OutsideSection? Outside { get; set; }
+        /// <summary>Active placement constraints. Null = constraints feature
+        /// not used; otherwise a snapshot of every threshold + toggle.</summary>
+        public PlacementConstraintsSection? PlacementConstraints { get; set; }
+    }
+
+    public sealed class PlacementConstraintsSection
+    {
+        public bool ObjectToObjectEnabled { get; set; }
+        public float ObjectToObjectMin { get; set; }
+        public float ObjectToObjectMax { get; set; }
+        public bool ObjectToObjectAcrossConnectedRooms { get; set; }
+        public bool DoorToObjectEnabled { get; set; }
+        public float DoorToObjectMin { get; set; }
+        public float DoorToObjectMax { get; set; }
+        public bool DoorAppliesToEveryDoor { get; set; }
+        public bool DoorAngleBandEnabled { get; set; }
+        public float DoorAngleMinDeg { get; set; }
+        public float DoorAngleMaxDeg { get; set; }
+        public bool ObjectToWallEnabled { get; set; }
+        public float ObjectToWallMin { get; set; }
+        public bool PerRoomCountsEnabled { get; set; }
+        public int PerRoomCountMin { get; set; }
+        public int PerRoomCountMax { get; set; }
     }
 
     public sealed class OutsideSection

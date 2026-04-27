@@ -1,0 +1,7 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OpenApparatus.Studio.ViewModels"
+             x:Class="OpenApparatus.Studio.Views.ConstraintsPanel"
+             x:DataType="vm:MainWindowViewModel">
+    <StackPanel x:Name="ConstraintsBody" Margin="0 8 0 0"/>
+</UserControl>
