@@ -87,6 +87,12 @@ public partial class ObjectTypesPanel : UserControl
 
     Control TypeRow(int index, ObjectType type)
     {
+        // Swatch button now shows both the colour fill AND a silhouette
+        // glyph hinting at the type's 3D shape. Glyph contrast picks
+        // black or white depending on swatch luminance so it stays
+        // readable.
+        float lum = type.Color.X * 0.299f + type.Color.Y * 0.587f + type.Color.Z * 0.114f;
+        var glyphBrush = new SolidColorBrush(lum > 0.6f ? Color.FromRgb(20, 20, 26) : Colors.White);
         var swatchBtn = new Button
         {
             Width = 30,
@@ -96,19 +102,40 @@ public partial class ObjectTypesPanel : UserControl
                 (byte)(type.Color.X * 255), (byte)(type.Color.Y * 255), (byte)(type.Color.Z * 255))),
             BorderBrush = new SolidColorBrush(Color.FromRgb(60, 60, 70)),
             BorderThickness = new Thickness(1),
+            CornerRadius = new Avalonia.CornerRadius(4),
             VerticalAlignment = VerticalAlignment.Center,
+            Content = new TextBlock
+            {
+                Text = ShapeGlyph(type.Shape),
+                FontSize = 16,
+                Foreground = glyphBrush,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+            },
         };
         ToolTip.SetTip(swatchBtn, $"{type.Shape} — click to edit shape and colour.");
         swatchBtn.Click += async (_, _) => await OnEditType(index);
 
-        var slotLabel = new TextBlock
+        // Slot indicator styled as a keyboard chip — communicates that
+        // this row is bound to a hotkey.
+        var slotChip = new Border
         {
-            Text = $"{index + 1}.",
-            FontWeight = FontWeight.SemiBold,
+            BorderBrush = new SolidColorBrush(Color.FromRgb(0xD3, 0xD7, 0xDF)),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new Avalonia.CornerRadius(3),
+            Padding = new Thickness(5, 1),
+            Margin = new Thickness(8, 0, 6, 0),
             VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(6, 0, 6, 0),
-            MinWidth = 18,
+            Background = new SolidColorBrush(Color.FromRgb(0xF7, 0xF8, 0xFA)),
+            Child = new TextBlock
+            {
+                Text = (index + 1).ToString(),
+                FontSize = 10,
+                FontFamily = new FontFamily("Consolas, 'Courier New', monospace"),
+                Foreground = new SolidColorBrush(Color.FromRgb(0x23, 0x26, 0x2E)),
+            },
         };
+        ToolTip.SetTip(slotChip, $"Press {index + 1} on the keyboard to place this object type.");
 
         var nameBox = new TextBox
         {
@@ -153,11 +180,26 @@ public partial class ObjectTypesPanel : UserControl
             Margin = new Thickness(0, 0, 0, 4),
         };
         stack.Children.Add(swatchBtn);
-        stack.Children.Add(slotLabel);
+        stack.Children.Add(slotChip);
         stack.Children.Add(nameBox);
         stack.Children.Add(delBtn);
         return stack;
     }
+
+    /// <summary>Maps the 7 ObjectShape primitives to a Unicode glyph that
+    /// approximates their silhouette. Used as a hint inside the swatch
+    /// button so the type list shows shape, not just colour.</summary>
+    static string ShapeGlyph(ObjectShape shape) => shape switch
+    {
+        ObjectShape.Cube          => "■",
+        ObjectShape.Sphere        => "●",
+        ObjectShape.Cylinder      => "▮",
+        ObjectShape.SquatCylinder => "▬",
+        ObjectShape.Cone          => "▲",
+        ObjectShape.Capsule       => "⬭",
+        ObjectShape.Pyramid       => "◆",
+        _ => "?",
+    };
 
     async System.Threading.Tasks.Task OnEditType(int index)
     {
