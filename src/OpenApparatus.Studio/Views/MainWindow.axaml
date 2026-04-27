@@ -13,11 +13,35 @@
 
     <Window.Styles>
         <Style Selector="TextBlock.label">
-            <Setter Property="Margin" Value="0 8 0 2"/>
+            <Setter Property="Margin" Value="2 14 2 6"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="{StaticResource FontBodyStrong}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
         </Style>
         <Style Selector="StackPanel.section">
-            <Setter Property="Margin" Value="0 0 0 8"/>
+            <Setter Property="Margin" Value="0 0 0 4"/>
+        </Style>
+        <!-- Elevated card surface used for grouped sections in the side
+             panels. White surface, hairline border, Level-1 shadow, soft
+             rounding. Replaces the flat panel-on-panel look. -->
+        <Style Selector="Border.section">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaisedBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderHairlineBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{StaticResource CornerMd}"/>
+            <Setter Property="BoxShadow" Value="{StaticResource Elevation1}"/>
+            <Setter Property="Padding" Value="12"/>
+            <Setter Property="Margin" Value="0 0 0 4"/>
+        </Style>
+        <!-- Card variant without shadow — for content that's already on a
+             nested surface and shouldn't double-elevate. -->
+        <Style Selector="Border.sectionFlat">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaisedBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderHairlineBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{StaticResource CornerMd}"/>
+            <Setter Property="Padding" Value="12"/>
+            <Setter Property="Margin" Value="0 0 0 4"/>
         </Style>
         <!-- Two-column property grid (label | input). Replaces stacked
              label-then-NumericUpDown forms with a denser layout. -->
@@ -407,15 +431,17 @@
                     <!-- ─── LAYOUT MODE LEFT PANEL ─── -->
                     <StackPanel IsVisible="{Binding IsLayoutMode}" Spacing="0">
                         <TextBlock Classes="label" Text="Actions"/>
-                        <StackPanel Classes="section" Spacing="4">
-                            <Button Content="Create Room from Selection (R)" Classes="primary"
-                                    Command="{Binding CreateRoomFromSelectionCommand}"/>
-                            <Button Content="Clear Selection (Esc)" Classes="action"
-                                    Command="{Binding ClearSelectionCommand}"/>
-                        </StackPanel>
+                        <Border Classes="section">
+                            <StackPanel Spacing="6">
+                                <Button Content="Create Room from Selection (R)" Classes="primary"
+                                        Command="{Binding CreateRoomFromSelectionCommand}"/>
+                                <Button Content="Clear Selection (Esc)" Classes="action"
+                                        Command="{Binding ClearSelectionCommand}"/>
+                            </StackPanel>
+                        </Border>
 
                         <TextBlock Classes="label" Text="Tile colour view"/>
-                        <StackPanel Classes="section">
+                        <Border Classes="section">
                             <StackPanel Orientation="Horizontal" Spacing="0">
                                 <RadioButton GroupName="ViewSurfaceLayout"
                                              Content="Floor"
@@ -426,95 +452,113 @@
                                              IsChecked="{Binding ViewMode, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=Ceiling}"
                                              Classes="tab" Padding="14 4"/>
                             </StackPanel>
-                        </StackPanel>
+                        </Border>
 
                         <TextBlock Classes="label" Text="Grid"/>
-                        <Grid Classes="props" ColumnDefinitions="Auto,*"
-                              RowDefinitions="Auto,Auto,Auto" RowSpacing="4" ColumnSpacing="10">
-                            <TextBlock Grid.Row="0" Grid.Column="0" Classes="propLabel" Text="Width (tiles)"/>
-                            <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="compact"
-                                           Value="{Binding GridWidth}" Minimum="1" Maximum="64" FormatString="0"/>
-                            <TextBlock Grid.Row="1" Grid.Column="0" Classes="propLabel" Text="Length (tiles)"/>
-                            <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="compact"
-                                           Value="{Binding GridLength}" Minimum="1" Maximum="64" FormatString="0"/>
-                            <TextBlock Grid.Row="2" Grid.Column="0" Classes="propLabel" Text="Tile size (m)"/>
-                            <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="compact"
-                                           Value="{Binding TileSize}" Minimum="0.5" Maximum="10" Increment="0.5" FormatString="0.0"/>
-                        </Grid>
+                        <Border Classes="section">
+                            <Grid ColumnDefinitions="Auto,*"
+                                  RowDefinitions="Auto,Auto,Auto" RowSpacing="6" ColumnSpacing="10">
+                                <TextBlock Grid.Row="0" Grid.Column="0" Classes="propLabel" Text="Width (tiles)"/>
+                                <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="compact"
+                                               Value="{Binding GridWidth}" Minimum="1" Maximum="64" FormatString="0"/>
+                                <TextBlock Grid.Row="1" Grid.Column="0" Classes="propLabel" Text="Length (tiles)"/>
+                                <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="compact"
+                                               Value="{Binding GridLength}" Minimum="1" Maximum="64" FormatString="0"/>
+                                <TextBlock Grid.Row="2" Grid.Column="0" Classes="propLabel" Text="Tile size (m)"/>
+                                <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="compact"
+                                               Value="{Binding TileSize}" Minimum="0.5" Maximum="10" Increment="0.5" FormatString="0.0"/>
+                            </Grid>
+                        </Border>
 
                         <TextBlock Classes="label" Text="Defaults for new rooms"/>
-                        <StackPanel Classes="section" Spacing="4">
-                            <Button Content="Default floor color…" Classes="action"
-                                    Click="OnPickDefaultFloor"
-                                    ToolTip.Tip="Used as the floor color when a new room is created."/>
-                            <Button Content="Default ceiling color…" Classes="action"
-                                    Click="OnPickDefaultCeiling"
-                                    ToolTip.Tip="Used as the ceiling color when a new room is created."/>
-                        </StackPanel>
+                        <Border Classes="section">
+                            <StackPanel Spacing="6">
+                                <Button Content="Default floor color…" Classes="action"
+                                        Click="OnPickDefaultFloor"
+                                        ToolTip.Tip="Used as the floor color when a new room is created."/>
+                                <Button Content="Default ceiling color…" Classes="action"
+                                        Click="OnPickDefaultCeiling"
+                                        ToolTip.Tip="Used as the ceiling color when a new room is created."/>
+                            </StackPanel>
+                        </Border>
 
                         <TextBlock Classes="label" Text="Walls"/>
-                        <Grid Classes="props" ColumnDefinitions="Auto,*"
-                              RowDefinitions="Auto,Auto" RowSpacing="4" ColumnSpacing="10">
-                            <TextBlock Grid.Row="0" Grid.Column="0" Classes="propLabel" Text="Thickness (m)"/>
-                            <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="compact"
-                                           Value="{Binding WallThickness}" Minimum="0.05" Maximum="2.0" Increment="0.05" FormatString="0.00"/>
-                            <TextBlock Grid.Row="1" Grid.Column="0" Classes="propLabel" Text="Height (m)"/>
-                            <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="compact"
-                                           Value="{Binding WallHeight}" Minimum="0.5" Maximum="6.0" Increment="0.5" FormatString="0.0"/>
-                        </Grid>
+                        <Border Classes="section">
+                            <Grid ColumnDefinitions="Auto,*"
+                                  RowDefinitions="Auto,Auto" RowSpacing="6" ColumnSpacing="10">
+                                <TextBlock Grid.Row="0" Grid.Column="0" Classes="propLabel" Text="Thickness (m)"/>
+                                <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="compact"
+                                               Value="{Binding WallThickness}" Minimum="0.05" Maximum="2.0" Increment="0.05" FormatString="0.00"/>
+                                <TextBlock Grid.Row="1" Grid.Column="0" Classes="propLabel" Text="Height (m)"/>
+                                <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="compact"
+                                               Value="{Binding WallHeight}" Minimum="0.5" Maximum="6.0" Increment="0.5" FormatString="0.0"/>
+                            </Grid>
+                        </Border>
 
                         <TextBlock Classes="label" Text="Doorways"/>
-                        <Grid Classes="props" ColumnDefinitions="Auto,*"
-                              RowDefinitions="Auto,Auto" RowSpacing="4" ColumnSpacing="10">
-                            <TextBlock Grid.Row="0" Grid.Column="0" Classes="propLabel" Text="Width (m)"/>
-                            <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="compact"
-                                           Value="{Binding DoorWidth}" Minimum="0.5" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
-                            <TextBlock Grid.Row="1" Grid.Column="0" Classes="propLabel" Text="Height (m)"/>
-                            <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="compact"
-                                           Value="{Binding DoorHeight}" Minimum="1.5" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
-                        </Grid>
+                        <Border Classes="section">
+                            <Grid ColumnDefinitions="Auto,*"
+                                  RowDefinitions="Auto,Auto" RowSpacing="6" ColumnSpacing="10">
+                                <TextBlock Grid.Row="0" Grid.Column="0" Classes="propLabel" Text="Width (m)"/>
+                                <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="compact"
+                                               Value="{Binding DoorWidth}" Minimum="0.5" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
+                                <TextBlock Grid.Row="1" Grid.Column="0" Classes="propLabel" Text="Height (m)"/>
+                                <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="compact"
+                                               Value="{Binding DoorHeight}" Minimum="1.5" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
+                            </Grid>
+                        </Border>
 
                         <TextBlock Classes="label" Text="Windows"/>
-                        <Grid Classes="props" ColumnDefinitions="Auto,*"
-                              RowDefinitions="Auto,Auto,Auto" RowSpacing="4" ColumnSpacing="10">
-                            <TextBlock Grid.Row="0" Grid.Column="0" Classes="propLabel" Text="Width (m)"/>
-                            <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="compact"
-                                           Value="{Binding WindowWidth}" Minimum="0.3" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
-                            <TextBlock Grid.Row="1" Grid.Column="0" Classes="propLabel" Text="Head height (m)"/>
-                            <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="compact"
-                                           Value="{Binding WindowHeight}" Minimum="1.0" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
-                            <TextBlock Grid.Row="2" Grid.Column="0" Classes="propLabel" Text="Sill height (m)"/>
-                            <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="compact"
-                                           Value="{Binding WindowSillHeight}" Minimum="0.1" Maximum="2.5" Increment="0.1" FormatString="0.0"/>
-                        </Grid>
+                        <Border Classes="section">
+                            <Grid ColumnDefinitions="Auto,*"
+                                  RowDefinitions="Auto,Auto,Auto" RowSpacing="6" ColumnSpacing="10">
+                                <TextBlock Grid.Row="0" Grid.Column="0" Classes="propLabel" Text="Width (m)"/>
+                                <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="compact"
+                                               Value="{Binding WindowWidth}" Minimum="0.3" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
+                                <TextBlock Grid.Row="1" Grid.Column="0" Classes="propLabel" Text="Head height (m)"/>
+                                <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="compact"
+                                               Value="{Binding WindowHeight}" Minimum="1.0" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
+                                <TextBlock Grid.Row="2" Grid.Column="0" Classes="propLabel" Text="Sill height (m)"/>
+                                <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="compact"
+                                               Value="{Binding WindowSillHeight}" Minimum="0.1" Maximum="2.5" Increment="0.1" FormatString="0.0"/>
+                            </Grid>
+                        </Border>
 
                         <TextBlock Classes="label" Text="How to use"/>
-                        <TextBlock TextWrapping="Wrap" Foreground="#444" Margin="0 0 0 6"
-                                   Text="• Click+drag empty tiles to select. Press R to make a room from a rectangular selection."/>
-                        <TextBlock TextWrapping="Wrap" Foreground="#444" Margin="0 0 0 6"
-                                   Text="• Click a wall to select it. D = door, W = window, O = open, C = closed."/>
-                        <TextBlock TextWrapping="Wrap" Foreground="#444"
-                                   Text="• Switch to Object mode to populate rooms with objects."/>
+                        <Border Classes="sectionFlat">
+                            <StackPanel Spacing="6">
+                                <TextBlock TextWrapping="Wrap" Foreground="{StaticResource TextSecondaryBrush}" FontSize="{StaticResource FontBody}"
+                                           Text="• Click+drag empty tiles to select. Press R to make a room from a rectangular selection."/>
+                                <TextBlock TextWrapping="Wrap" Foreground="{StaticResource TextSecondaryBrush}" FontSize="{StaticResource FontBody}"
+                                           Text="• Click a wall to select it. D = door, W = window, O = open, C = closed."/>
+                                <TextBlock TextWrapping="Wrap" Foreground="{StaticResource TextSecondaryBrush}" FontSize="{StaticResource FontBody}"
+                                           Text="• Switch to Object mode to populate rooms with objects."/>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
                     <!-- ─── OBJECT MODE LEFT PANEL ─── -->
                     <StackPanel IsVisible="{Binding IsObjectsMode}" Spacing="0">
                         <TextBlock Classes="label" Text="Defaults for new objects"/>
-                        <Grid Classes="props" ColumnDefinitions="Auto,*"
-                              RowDefinitions="Auto,Auto" RowSpacing="4" ColumnSpacing="10">
-                            <TextBlock Grid.Row="0" Grid.Column="0" Classes="propLabel" Text="Default Y (m)"
-                                       ToolTip.Tip="Initial height above floor for newly placed objects."/>
-                            <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="compact"
-                                           Value="{Binding DefaultObjectY}"
-                                           Minimum="0" Maximum="3.0" Increment="0.05" FormatString="0.00"/>
-                            <TextBlock Grid.Row="1" Grid.Column="0" Classes="propLabel" Text="Sub-grid (per tile)"
-                                       ToolTip.Tip="Each tile is divided into N×N sub-cells. 1 = no subdivision."/>
-                            <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="compact"
-                                           Value="{Binding GridSubdivision}" Minimum="1" Maximum="8" Increment="1" FormatString="0"/>
-                        </Grid>
-                        <Button Content="Snap objects to grid" Classes="action" Margin="0 0 0 8"
-                                Command="{Binding SnapObjectsToGridCommand}"
-                                ToolTip.Tip="Round every object's X/Z to the nearest sub-cell centre. Y is preserved."/>
+                        <Border Classes="section">
+                            <StackPanel Spacing="8">
+                                <Grid ColumnDefinitions="Auto,*"
+                                      RowDefinitions="Auto,Auto" RowSpacing="6" ColumnSpacing="10">
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Classes="propLabel" Text="Default Y (m)"
+                                               ToolTip.Tip="Initial height above floor for newly placed objects."/>
+                                    <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="compact"
+                                                   Value="{Binding DefaultObjectY}"
+                                                   Minimum="0" Maximum="3.0" Increment="0.05" FormatString="0.00"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Classes="propLabel" Text="Sub-grid (per tile)"
+                                               ToolTip.Tip="Each tile is divided into N×N sub-cells. 1 = no subdivision."/>
+                                    <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="compact"
+                                                   Value="{Binding GridSubdivision}" Minimum="1" Maximum="8" Increment="1" FormatString="0"/>
+                                </Grid>
+                                <Button Content="Snap objects to grid" Classes="action"
+                                        Command="{Binding SnapObjectsToGridCommand}"
+                                        ToolTip.Tip="Round every object's X/Z to the nearest sub-cell centre. Y is preserved."/>
+                            </StackPanel>
+                        </Border>
 
                         <!-- Object types list (moved from right panel). The
                              panel itself is hosted as a UserControl so the
