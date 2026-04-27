@@ -10,6 +10,8 @@ namespace OpenApparatus.Studio.Behaviors;
 /// "drag-to-scrub" affordance for a sibling NumericUpDown — the standard
 /// CAD / DCC interaction. Hover the label, the cursor turns into a
 /// horizontal-resize arrow; drag left/right to scrub the bound value.
+/// Double-click the label to reset the target to its Increment value
+/// (treated as a sensible "default" for the field).
 ///
 /// Usage:
 ///     <TextBlock behaviors:DragScrub.Target="{Binding ElementName=widthInput}"

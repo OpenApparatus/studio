@@ -225,6 +225,19 @@ public partial class RoomEditorPanel : UserControl
         });
     }
 
+    /// <summary>Compass-direction caption for a wall, derived from the
+    /// adjacency segment's outward normal in world XZ. World X is east,
+    /// world Z is south. Returns one of "north / east / south / west".</summary>
+    static string WallCompassDirection(OpenApparatus.Topology.Adjacency adj)
+    {
+        var n = adj.SharedSegment.Normal;
+        // n.x > 0 → wall faces +X → east; etc.
+        // Larger magnitude axis wins.
+        if (System.Math.Abs(n.X) >= System.Math.Abs(n.Y))
+            return n.X > 0 ? "east" : "west";
+        return n.Y > 0 ? "south" : "north";
+    }
+
     static string ShapeGlyph(OpenApparatus.Studio.ViewModels.ObjectShape shape) => shape switch
     {
         OpenApparatus.Studio.ViewModels.ObjectShape.Cube          => "■",
@@ -555,7 +568,9 @@ public partial class RoomEditorPanel : UserControl
         }
         else
         {
-            // One row per wall the room participates in.
+            // One row per wall the room participates in. Label includes
+            // a compass-direction hint + which other room it borders so
+            // the user can identify it without staring at the canvas.
             int idx = 1;
             foreach (var adj in _vm.SelectedRoomAdjacencies)
             {
@@ -563,8 +578,14 @@ public partial class RoomEditorPanel : UserControl
                 var key = OpenApparatus.Studio.Services.GltfExporter.WallColorKey(roomId, adj);
                 System.Numerics.Vector3? cur = _vm.WallColors.TryGetValue(key, out var v) ? v : null;
                 var capturedAdj = adj;
+                string dir = WallCompassDirection(adj);
+                string neighbour = adj.IsOuter
+                    ? "outside"
+                    : (adj.RoomA.Id == roomId
+                        ? $"Room {adj.RoomB!.Id}"
+                        : $"Room {adj.RoomA.Id}");
                 BodyPanel.Children.Add(ColorRow(
-                    label: $"Wall {wallNum}",
+                    label: $"Wall {wallNum} — {dir}, {neighbour}",
                     current: cur,
                     setter: c => _vm.SetWallColor(roomId, capturedAdj, c),
                     clearer: () => _vm.ClearWallColor(roomId, capturedAdj)));
