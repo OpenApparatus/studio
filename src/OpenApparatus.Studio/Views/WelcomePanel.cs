@@ -49,11 +49,14 @@ public sealed class WelcomePanel : ContentControl
         }
     }
 
+    Button? _primaryAction;
+
     void Build()
     {
         if (_vm is null) return;
         IsVisible = _vm.ShowWelcomePanel;
         if (!IsVisible) return;
+        _primaryAction = null;
 
         // Vector-only "hero" mark — three nested rounded squares forming
         // a stylised floor plan. Cheap, on-brand, no external assets.
@@ -231,6 +234,16 @@ public sealed class WelcomePanel : ContentControl
         };
 
         Content = backdrop;
+
+        // Auto-focus the primary action so Enter / Space triggers
+        // immediately (matches Figma / Notion welcome flows). Posted
+        // to the dispatcher so focus runs after this build cycle.
+        if (_primaryAction is not null)
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(
+                () => _primaryAction?.Focus(),
+                Avalonia.Threading.DispatcherPriority.Render);
+        }
     }
 
     Control MakeAction(string title, string subtitle, string iconSymbol, Action onClick, bool primary = false)
@@ -249,7 +262,13 @@ public sealed class WelcomePanel : ContentControl
             BorderBrush = primary
                 ? new SolidColorBrush(Color.FromRgb(0x1C, 0x5F, 0xC7))
                 : new SolidColorBrush(Color.FromRgb(0xE5, 0xE7, 0xEC)),
+            // Primary action accepts Enter — same pattern as a default
+            // dialog button. Combined with auto-focus on Build it means
+            // the user can hit Enter immediately to start a new scene.
+            IsDefault = primary,
         };
+        Avalonia.Automation.AutomationProperties.SetName(btn, $"{title}: {subtitle}");
+        if (primary) _primaryAction = btn;
         var sp = new StackPanel
         {
             Spacing = 8, HorizontalAlignment = HorizontalAlignment.Center,

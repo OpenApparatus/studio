@@ -629,13 +629,20 @@
                      start with a static label that's easy to swap out later. -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                     <!-- Unsaved-changes indicator. Ellipse fills brand-blue
-                         when there are unsaved edits, transparent when
-                         clean, and the tooltip narrates which state. -->
+                         when there are unsaved edits and gracefully fades
+                         in/out via the Opacity transition rather than
+                         popping. -->
                     <Ellipse Width="8" Height="8"
                              Fill="{StaticResource AccentBrush}"
-                             IsVisible="{Binding HasUnsavedChanges}"
                              VerticalAlignment="Center"
-                             ToolTip.Tip="Unsaved changes"/>
+                             Opacity="{Binding HasUnsavedChanges, Converter={x:Static converters:BoolToTextConverter.Instance}, ConverterParameter='1|0', FallbackValue=0}"
+                             ToolTip.Tip="Unsaved changes">
+                        <Ellipse.Transitions>
+                            <Transitions>
+                                <DoubleTransition Property="Opacity" Duration="0:0:0.18"/>
+                            </Transitions>
+                        </Ellipse.Transitions>
+                    </Ellipse>
                     <TextBlock Text="OpenApparatus Studio"
                                FontWeight="SemiBold"
                                FontSize="{StaticResource FontBodyStrong}"
@@ -669,7 +676,8 @@
                             IsVisible="{Binding IsLayoutMode}"
                             Padding="10 5"
                             ToolTip.Tip="Generate a random room layout"/>
-                    <Button Classes="toolIcon" ToolTip.Tip="More actions">
+                    <Button Classes="toolIcon" ToolTip.Tip="More actions"
+                            AutomationProperties.Name="More actions">
                         <views:Icon Symbol="More"/>
                         <Button.Flyout>
                             <MenuFlyout>
@@ -1320,7 +1328,8 @@
                                VerticalAlignment="Center"/>
                     <Button Grid.Column="1" Classes="toolIcon"
                             Command="{Binding DismissShortcutOverlayCommand}"
-                            ToolTip.Tip="Close (Esc)">
+                            ToolTip.Tip="Close (Esc)"
+                            AutomationProperties.Name="Close help overlay">
                         <views:Icon Symbol="Close"/>
                     </Button>
                 </Grid>
