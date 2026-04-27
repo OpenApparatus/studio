@@ -543,7 +543,9 @@ public class GridEditorView : Control
         if (tileSize <= 0) return;
 
         var emptyFill = new SolidColorBrush(Color.FromRgb(248, 248, 250));
-        var selectedFill = new SolidColorBrush(Color.FromRgb(255, 220, 130));
+        // Brand-blue tinted fill — matches the selection treatment used on
+        // walls + objects elsewhere in the editor.
+        var selectedFill = new SolidColorBrush(Color.FromArgb(110, 31, 111, 235));
         var gridStroke = new Pen(new SolidColorBrush(Color.FromRgb(190, 190, 198)), 1.5);
 
         // Tiles. Floor view uses each room's floor color, Ceiling view uses its
@@ -650,8 +652,9 @@ public class GridEditorView : Control
                     origin.X + xTile * tileSize,
                     origin.Y + (vm.GridLength - zTile) * tileSize);
             }
-            // Selected-wall highlight: drawn first so the wall pen renders on top of it.
-            var selectedHighlightPen = new Pen(new SolidColorBrush(Color.FromArgb(180, 255, 215, 80)), 9.0)
+            // Selected-wall highlight: brand-blue glow drawn first so the
+            // wall pen renders on top of it. Matches selection elsewhere.
+            var selectedHighlightPen = new Pen(new SolidColorBrush(Color.FromArgb(150, 31, 111, 235)), 9.0)
             {
                 LineCap = PenLineCap.Round,
             };
@@ -1626,8 +1629,9 @@ public class GridEditorView : Control
             DrawObjectIcon(ctx, type.Shape, screen, iconR, fill, border);
             if (selected)
             {
+                // Brand-blue 2-px ring; same treatment as wall + tile selection.
                 ctx.DrawEllipse(null,
-                    new Pen(new SolidColorBrush(Color.FromRgb(255, 200, 30)), 2.0)
+                    new Pen(new SolidColorBrush(Color.FromRgb(31, 111, 235)), 2.0)
                     {
                         DashStyle = new DashStyle(new[] { 2.5, 1.5 }, 0),
                     },
