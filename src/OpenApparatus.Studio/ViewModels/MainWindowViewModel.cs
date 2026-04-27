@@ -1112,6 +1112,13 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     [ObservableProperty] MultiRoomEnvironment? _currentEnvironment;
+
+    /// <summary>True before any rooms have been created. Drives the
+    /// "How to use" first-run card so it stops occupying panel space
+    /// once the user has built their first room.</summary>
+    public bool HasNoRooms => CurrentEnvironment is null || CurrentEnvironment.Rooms.Count == 0;
+    partial void OnCurrentEnvironmentChanged(MultiRoomEnvironment? value)
+        => OnPropertyChanged(nameof(HasNoRooms));
     [ObservableProperty] string _statusMessage = "Click and drag to select tiles, then click 'Create Room'.";
 
     /// <summary>Bumped after every grid mutation so views can re-render.</summary>

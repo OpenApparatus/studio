@@ -916,15 +916,22 @@
                             </StackPanel>
                         </Expander>
 
-                        <TextBlock Classes="label" Text="How to use"/>
-                        <Border Classes="sectionFlat">
+                        <!-- First-run helper. Hides once the user creates
+                             their first room — the F1 overlay covers the
+                             same content for everyone past that point. -->
+                        <TextBlock Classes="label" Text="Getting started"
+                                   IsVisible="{Binding HasNoRooms}"/>
+                        <Border Classes="sectionFlat" IsVisible="{Binding HasNoRooms}">
                             <StackPanel Spacing="6">
                                 <TextBlock TextWrapping="Wrap" Foreground="{StaticResource TextSecondaryBrush}" FontSize="{StaticResource FontBody}"
-                                           Text="• Click+drag empty tiles to select. Press R to make a room from a rectangular selection."/>
+                                           Text="• Click + drag empty tiles to select. Press R to make a room."/>
                                 <TextBlock TextWrapping="Wrap" Foreground="{StaticResource TextSecondaryBrush}" FontSize="{StaticResource FontBody}"
-                                           Text="• Click a wall to select it. D = door, W = window, O = open, C = closed."/>
+                                           Text="• Click a wall to select. D = door · W = window · O = open · C = closed."/>
                                 <TextBlock TextWrapping="Wrap" Foreground="{StaticResource TextSecondaryBrush}" FontSize="{StaticResource FontBody}"
                                            Text="• Switch to Object mode to populate rooms with objects."/>
+                                <TextBlock TextWrapping="Wrap" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontCaption}"
+                                           Margin="0 4 0 0"
+                                           Text="Press F1 anytime for the full keyboard reference."/>
                             </StackPanel>
                         </Border>
                     </StackPanel>
