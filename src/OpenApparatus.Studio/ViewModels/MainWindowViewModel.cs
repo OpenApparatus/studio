@@ -548,6 +548,19 @@ public partial class MainWindowViewModel : ViewModelBase
             // Outside container.
             o.OwningRoomId = RoomIdAtWorld(new System.Numerics.Vector2(snappedX, snappedZ));
         }
+        if (touched > 0)
+        {
+            OpenApparatus.Studio.Services.Toasts.Default.Show(
+                $"Snapped {touched} object{(touched == 1 ? "" : "s")} to the {GridSubdivision}× sub-grid.",
+                OpenApparatus.Studio.Services.ToastSeverity.Success,
+                undo: () => UndoCommand.Execute(null));
+        }
+        else
+        {
+            OpenApparatus.Studio.Services.Toasts.Default.Show(
+                "Objects already aligned to the current sub-grid.",
+                OpenApparatus.Studio.Services.ToastSeverity.Info);
+        }
         StatusMessage = touched > 0
             ? $"Snapped {touched} object(s) to the {GridSubdivision}× sub-grid."
             : "Objects already aligned to the current sub-grid.";
@@ -1682,7 +1695,12 @@ public partial class MainWindowViewModel : ViewModelBase
         SelectedObjectIndex = -1;
         Rebuild();
         EditVersion++;
-        StatusMessage = "Grid reset.";
+        // Toast with Undo — the explicit Reset is destructive and should
+        // be reversible at one click without diving into the menu.
+        OpenApparatus.Studio.Services.Toasts.Default.Show(
+            "Scene reset.",
+            OpenApparatus.Studio.Services.ToastSeverity.Warning,
+            undo: () => UndoCommand.Execute(null));
     }
 
     /// <summary>

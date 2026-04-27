@@ -1106,6 +1106,9 @@
         </Grid>
     </DockPanel>
 
+    <!-- Toast layer — bottom-right transient confirmations + Undo. -->
+    <views:ToastsLayer/>
+
     <!-- Keyboard-shortcut help overlay. Toggled with F1; click the
          backdrop or press the close button to dismiss. -->
     <Grid IsVisible="{Binding IsShortcutOverlayVisible}"

@@ -20,3 +20,6 @@ Thumbs.db
 # Temp
 *.tmp
 *.bak
+
+# AI agent scratch space (worktrees / session state)
+.claude/
