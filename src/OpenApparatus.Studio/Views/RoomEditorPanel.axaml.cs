@@ -63,16 +63,26 @@ public partial class RoomEditorPanel : UserControl
         BodyPanel.Children.Clear();
         if (_vm is null) return;
 
-        // In Objects mode the panel is always object-related; everything else
-        // (room appearance, opening edits) is gated by the floor/ceiling tabs.
+        // ── Object mode ──
+        // The right panel is the per-selection editor only:
+        //   - object selected → its type + transform + delete
+        //   - room selected (via clicking a tile) → stacked editors for every
+        //     object in that room
+        //   - nothing → placeholder
         if (_vm.IsObjectsMode)
         {
-            BuildObjectsEditor();
+            if (_vm.SelectedObjectIndex >= 0 && _vm.SelectedObjectIndex < _vm.Objects.Count)
+                BuildSingleObjectEditor(_vm.SelectedObjectIndex);
+            else if (_vm.SelectedRoomId >= 0)
+                BuildStackedObjectsForRoom(_vm.SelectedRoomId);
+            else
+                BuildObjectModePlaceholder();
             return;
         }
 
-        // Opening edits take precedence — when an opening is selected the user
-        // is in 'tweak this door / window' context; the room panel can wait.
+        // ── Layout mode ──
+        // Opening edit takes precedence (tweak this door / window), then room
+        // appearance, then placeholder.
         if (_vm.HasSelectedOpening)
         {
             BuildOpeningEditor();
@@ -86,117 +96,157 @@ public partial class RoomEditorPanel : UserControl
         BuildRoomEditor();
     }
 
-    void BuildObjectsEditor()
+    void BuildObjectModePlaceholder()
     {
         BodyPanel.Children.Add(new TextBlock
         {
-            Text = "Objects",
+            Text = "No selection",
+            FontWeight = FontWeight.SemiBold,
+            FontSize = 14,
+            Foreground = new SolidColorBrush(Color.FromRgb(120, 120, 130)),
+            Margin = new Thickness(0, 8, 0, 8),
+        });
+        BodyPanel.Children.Add(new TextBlock
+        {
+            Text = "Click an object to edit its type, position, or rotation. Click a tile in a room to view all of that room's objects together.",
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = new SolidColorBrush(Color.FromRgb(110, 110, 120)),
+            FontSize = 12,
+        });
+    }
+
+    void BuildSingleObjectEditor(int idx)
+    {
+        BodyPanel.Children.Add(new TextBlock
+        {
+            Text = "Selected object",
             FontWeight = FontWeight.SemiBold,
             FontSize = 16,
             Margin = new Thickness(0, 0, 0, 12),
         });
+        BuildObjectEditorRows(idx);
+    }
 
-        // Subdivision (global). Spinner 1..8.
-        BodyPanel.Children.Add(SectionHeader("Sub-grid"));
-        var subBox = new NumericUpDown
-        {
-            Minimum = 1,
-            Maximum = 8,
-            Increment = 1,
-            FormatString = "0",
-            Value = _vm!.GridSubdivision,
-            Margin = new Thickness(0, 0, 0, 4),
-        };
-        subBox.ValueChanged += (_, e) =>
-        {
-            if (e.NewValue.HasValue) _vm.GridSubdivision = (int)e.NewValue.Value;
-        };
-        BodyPanel.Children.Add(subBox);
+    void BuildStackedObjectsForRoom(int roomId)
+    {
         BodyPanel.Children.Add(new TextBlock
         {
-            Text = "Each tile is divided into N×N sub-cells.",
-            TextWrapping = TextWrapping.Wrap,
-            Foreground = new SolidColorBrush(Color.FromRgb(120, 120, 130)),
-            FontSize = 11,
-            Margin = new Thickness(0, 0, 0, 6),
-        });
-
-        var snapBtn = new Button
-        {
-            Content = "Snap objects to grid",
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            HorizontalContentAlignment = HorizontalAlignment.Center,
-            Margin = new Thickness(0, 0, 0, 14),
-        };
-        ToolTip.SetTip(snapBtn,
-            "Round every object's X / Z to the nearest sub-cell centre at the current sub-grid. " +
-            "Y is preserved.");
-        snapBtn.Click += (_, _) => _vm.SnapObjectsToGridCommand.Execute(null);
-        BodyPanel.Children.Add(snapBtn);
-
-        // Editable object type list.
-        BodyPanel.Children.Add(SectionHeader("Object types"));
-        BodyPanel.Children.Add(new TextBlock
-        {
-            Text = "Select a sub-cell, then press 1–" + System.Math.Min(_vm.ObjectTypes.Count, 9) +
-                   " to place the matching type. Click a type's swatch to edit its shape and colour.",
-            TextWrapping = TextWrapping.Wrap,
-            Foreground = new SolidColorBrush(Color.FromRgb(120, 120, 130)),
-            FontSize = 11,
+            Text = $"Room {roomId} objects",
+            FontWeight = FontWeight.SemiBold,
+            FontSize = 16,
             Margin = new Thickness(0, 0, 0, 8),
         });
-        for (int ti = 0; ti < _vm.ObjectTypes.Count; ti++)
-            BodyPanel.Children.Add(TypeRow(ti, _vm.ObjectTypes[ti]));
+        var indices = new System.Collections.Generic.List<int>();
+        for (int i = 0; i < _vm!.Objects.Count; i++)
+            if (_vm.Objects[i].OwningRoomId == roomId) indices.Add(i);
 
-        var addTypeBtn = new Button
+        if (indices.Count == 0)
         {
-            Content = "+ Add object type",
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            HorizontalContentAlignment = HorizontalAlignment.Center,
-            Margin = new Thickness(0, 4, 0, 4),
-        };
-        addTypeBtn.Click += (_, _) => _vm.AddObjectTypeCommand.Execute(null);
-        BodyPanel.Children.Add(addTypeBtn);
+            BodyPanel.Children.Add(new TextBlock
+            {
+                Text = "No objects in this room yet. Switch to a sub-cell and press 1–9 to place one.",
+                TextWrapping = TextWrapping.Wrap,
+                Foreground = new SolidColorBrush(Color.FromRgb(110, 110, 120)),
+                FontSize = 12,
+            });
+            return;
+        }
 
-        // Selected object editor.
-        var sel = _vm.SelectedObject;
-        if (sel is null) return;
-
-        BodyPanel.Children.Add(SectionHeader("Selected object", topMargin: 16));
-        var slotInfo = _vm.GetObjectType(sel.Slot);
-        BodyPanel.Children.Add(new TextBlock
+        foreach (var i in indices)
         {
-            Text = slotInfo is null ? $"Slot {sel.Slot}" : $"Slot {sel.Slot} — {slotInfo.Name}",
+            BodyPanel.Children.Add(new Border
+            {
+                Background = new SolidColorBrush(Color.FromRgb(248, 248, 252)),
+                BorderBrush = new SolidColorBrush(Color.FromRgb(210, 210, 220)),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new Avalonia.CornerRadius(6),
+                Padding = new Thickness(8),
+                Margin = new Thickness(0, 0, 0, 8),
+                Child = BuildObjectCard(i),
+            });
+        }
+    }
+
+    Control BuildObjectCard(int idx)
+    {
+        var sp = new StackPanel { Spacing = 0 };
+        var t = _vm!.GetObjectType(_vm.Objects[idx].Slot);
+        sp.Children.Add(new TextBlock
+        {
+            Text = t is null ? $"Slot {_vm.Objects[idx].Slot}" : $"{t.Name} (slot {_vm.Objects[idx].Slot})",
             FontWeight = FontWeight.SemiBold,
             Margin = new Thickness(0, 0, 0, 4),
         });
-        BodyPanel.Children.Add(new TextBlock
+        AddObjectEditorControls(sp, idx);
+        return sp;
+    }
+
+    void BuildObjectEditorRows(int idx)
+    {
+        AddObjectEditorControls(BodyPanel, idx);
+    }
+
+    void AddObjectEditorControls(StackPanel host, int idx)
+    {
+        if (_vm is null) return;
+        if (idx < 0 || idx >= _vm.Objects.Count) return;
+        var sel = _vm.Objects[idx];
+
+        // Type chooser — combo over all object types so the user can swap
+        // which type this instance is.
+        var typeRow = new StackPanel { Margin = new Thickness(0, 0, 0, 6) };
+        typeRow.Children.Add(new TextBlock { Text = "Type", FontSize = 11, Margin = new Thickness(0, 0, 0, 2) });
+        var combo = new ComboBox { HorizontalAlignment = HorizontalAlignment.Stretch };
+        for (int ti = 0; ti < _vm.ObjectTypes.Count; ti++)
+            combo.Items.Add(_vm.ObjectTypes[ti].Name);
+        combo.SelectedIndex = sel.Slot - 1;
+        combo.SelectionChanged += (_, _) =>
         {
-            Text = $"Owning room: {sel.OwningRoomId}",
+            int newIdx = combo.SelectedIndex;
+            if (newIdx < 0) return;
+            sel.Slot = newIdx + 1;
+            _vm.OnEditedSelectedObject();
+        };
+        typeRow.Children.Add(combo);
+        host.Children.Add(typeRow);
+
+        host.Children.Add(new TextBlock
+        {
+            Text = $"Owning room: {(sel.OwningRoomId < 0 ? "outside" : sel.OwningRoomId.ToString())}",
             Foreground = new SolidColorBrush(Color.FromRgb(110, 110, 120)),
             FontSize = 11,
             Margin = new Thickness(0, 0, 0, 6),
         });
 
-        BodyPanel.Children.Add(NumericRow("X (m)", sel.Position.X, -100, 100, 0.05,
-            v => MutateSelectedObject(o => o.Position = new System.Numerics.Vector3((float)v, o.Position.Y, o.Position.Z))));
-        BodyPanel.Children.Add(NumericRow("Y (m)", sel.Position.Y, 0, 5, 0.05,
-            v => MutateSelectedObject(o => o.Position = new System.Numerics.Vector3(o.Position.X, (float)v, o.Position.Z))));
-        BodyPanel.Children.Add(NumericRow("Z (m)", sel.Position.Z, -100, 100, 0.05,
-            v => MutateSelectedObject(o => o.Position = new System.Numerics.Vector3(o.Position.X, o.Position.Y, (float)v))));
-        BodyPanel.Children.Add(NumericRow("Rotation (°)", sel.Rotation * (180.0 / System.Math.PI), -360, 360, 5,
-            v => MutateSelectedObject(o => o.Rotation = (float)(v * System.Math.PI / 180.0))));
+        host.Children.Add(NumericRow("X (m)", sel.Position.X, -100, 100, 0.05,
+            v => { sel.Position = new System.Numerics.Vector3((float)v, sel.Position.Y, sel.Position.Z); _vm.OnEditedSelectedObject(); }));
+        host.Children.Add(NumericRow("Y (m)", sel.Position.Y, 0, 5, 0.05,
+            v => { sel.Position = new System.Numerics.Vector3(sel.Position.X, (float)v, sel.Position.Z); _vm.OnEditedSelectedObject(); }));
+        host.Children.Add(NumericRow("Z (m)", sel.Position.Z, -100, 100, 0.05,
+            v => { sel.Position = new System.Numerics.Vector3(sel.Position.X, sel.Position.Y, (float)v); _vm.OnEditedSelectedObject(); }));
+        host.Children.Add(NumericRow("Rotation (°)", sel.Rotation * (180.0 / System.Math.PI), -360, 360, 5,
+            v => { sel.Rotation = (float)(v * System.Math.PI / 180.0); _vm.OnEditedSelectedObject(); }));
 
         var deleteBtn = new Button
         {
             Content = "Delete object",
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Center,
-            Margin = new Thickness(0, 8, 0, 0),
+            Margin = new Thickness(0, 6, 0, 0),
         };
-        deleteBtn.Click += (_, _) => _vm.DeleteSelectedObjectCommand.Execute(null);
-        BodyPanel.Children.Add(deleteBtn);
+        int capturedIdx = idx;
+        deleteBtn.Click += (_, _) =>
+        {
+            _vm.SelectedObjectIndex = capturedIdx;
+            _vm.DeleteSelectedObjectCommand.Execute(null);
+        };
+        host.Children.Add(deleteBtn);
     }
+
+    // BuildObjectsEditor was replaced by BuildSingleObjectEditor /
+    // BuildStackedObjectsForRoom (object-mode right panel) plus the
+    // ObjectTypesPanel control on the left for the type list. The
+    // sub-grid + Snap + Constraints all live on the left panel now.
 
     /// <summary>Apply a side-effecting change to the selected object's mutable
     /// fields, then bump EditVersion so the editor view repaints.</summary>

@@ -5,10 +5,10 @@
         xmlns:converters="using:OpenApparatus.Studio.Converters"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="700"
+        mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="780"
         x:Class="OpenApparatus.Studio.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
-        Width="1100" Height="700"
+        Width="1200" Height="780"
         Title="OpenApparatus Studio">
 
     <Window.Styles>
@@ -19,7 +19,6 @@
         <Style Selector="StackPanel.section">
             <Setter Property="Margin" Value="0 0 0 8"/>
         </Style>
-        <!-- Primary action: Create Room. High-contrast so users find it immediately. -->
         <Style Selector="Button.primary">
             <Setter Property="Background" Value="#1f6feb"/>
             <Setter Property="Foreground" Value="White"/>
@@ -37,7 +36,21 @@
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="Padding" Value="8 6"/>
         </Style>
-        <!-- Tab-styled radio buttons for the Floor/Ceiling view toggle. -->
+        <!-- Mode tabs (Layout / Object) — bigger / more prominent than the
+             old view tabs, since they switch what the whole UI is about. -->
+        <Style Selector="RadioButton.modeTab">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="#9aa1ab"/>
+            <Setter Property="BorderThickness" Value="1 1 1 0"/>
+            <Setter Property="CornerRadius" Value="6 6 0 0"/>
+            <Setter Property="Margin" Value="0 0 4 0"/>
+            <Setter Property="Padding" Value="18 6"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+        <Style Selector="RadioButton.modeTab:checked">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
         <Style Selector="RadioButton.tab">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderBrush" Value="#c8c8cf"/>
@@ -49,50 +62,138 @@
             <Setter Property="Background" Value="White"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
         </Style>
+        <!-- Card-style border for the toolbar above the editor. -->
+        <Style Selector="Border.card">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="#cdd1d9"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="10 8"/>
+            <Setter Property="Margin" Value="0 0 8 0"/>
+            <Setter Property="MinWidth" Value="200"/>
+        </Style>
+        <Style Selector="TextBlock.cardHdr">
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="#3b4250"/>
+            <Setter Property="Margin" Value="0 0 0 4"/>
+        </Style>
     </Window.Styles>
 
     <Design.DataContext>
         <vm:MainWindowViewModel/>
     </Design.DataContext>
 
-    <!-- Shortcuts are wired in code-behind (not Window.KeyBindings) so that
-         single-letter hotkeys (R / D / W / O / C / Escape) defer to any
-         focused text input — typing a letter into the room name field
-         shouldn't fire a wall command. -->
-
-
     <DockPanel LastChildFill="True">
-        <!-- Top toolbar — light background so default Light-theme buttons are visible -->
-        <Border DockPanel.Dock="Top" Background="#e6e6ea" BorderBrush="#c8c8cf" BorderThickness="0 0 0 1" Padding="8">
-            <StackPanel Orientation="Horizontal" Spacing="6">
-                <Button Content="Create Room (R)" Classes="primary"
-                        Command="{Binding CreateRoomFromSelectionCommand}"
-                        ToolTip.Tip="Turn the current tile selection into a room (hotkey: R)"/>
-                <Button Content="Clear Selection (Esc)"
-                        Command="{Binding ClearSelectionCommand}"
-                        ToolTip.Tip="Clear the current tile selection (hotkey: Escape)"/>
-                <Separator Width="12"/>
-                <Button Content="Undo"
-                        Command="{Binding UndoCommand}"
-                        IsEnabled="{Binding CanUndo}"
-                        ToolTip.Tip="Undo (Ctrl+Z)"/>
-                <Button Content="Redo"
-                        Command="{Binding RedoCommand}"
-                        IsEnabled="{Binding CanRedo}"
-                        ToolTip.Tip="Redo (Ctrl+Y / Ctrl+Shift+Z)"/>
-                <Separator Width="12"/>
-                <Button Content="Reset All" Command="{Binding ResetAllCommand}"/>
-                <Button Content="Random Fill" Command="{Binding RandomFillCommand}"/>
-                <Separator Width="12"/>
-                <Button Content="Export glTF…"
-                        Command="{Binding ExportGltfCommand}"
-                        CommandParameter="{Binding $parent[Window]}"
-                        ToolTip.Tip="Export as glTF (.glb / .gltf) with per-room scene hierarchy"/>
-                <Button Content="Export JSON…"
-                        Command="{Binding ExportJsonCommand}"
-                        CommandParameter="{Binding $parent[Window]}"
-                        ToolTip.Tip="Save the authored grid + passages as JSON"/>
-            </StackPanel>
+
+        <!-- Mode bar: Layout / Object toggle + mode-independent actions. -->
+        <Border DockPanel.Dock="Top" Background="#dee0e6" BorderBrush="#a3aab4" BorderThickness="0 0 0 1" Padding="10 8 10 0">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="0">
+                    <RadioButton GroupName="EditMode"
+                                 Content="Layout"
+                                 IsChecked="{Binding EditMode, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=Layout}"
+                                 Classes="modeTab"/>
+                    <RadioButton GroupName="EditMode"
+                                 Content="Object"
+                                 IsChecked="{Binding EditMode, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=Object}"
+                                 Classes="modeTab"/>
+                </StackPanel>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="0 0 0 8">
+                    <Button Content="Undo" Command="{Binding UndoCommand}" IsEnabled="{Binding CanUndo}" ToolTip.Tip="Undo (Ctrl+Z)"/>
+                    <Button Content="Redo" Command="{Binding RedoCommand}" IsEnabled="{Binding CanRedo}" ToolTip.Tip="Redo (Ctrl+Y / Ctrl+Shift+Z)"/>
+                    <Separator Width="10"/>
+                    <Button Content="Reset All" Command="{Binding ResetAllCommand}"/>
+                    <Button Content="Random Fill" Command="{Binding RandomFillCommand}"
+                            IsVisible="{Binding IsLayoutMode}"/>
+                    <Separator Width="10"/>
+                    <Button Content="Export glTF…"
+                            Command="{Binding ExportGltfCommand}"
+                            CommandParameter="{Binding $parent[Window]}"
+                            ToolTip.Tip="Export as glTF with per-room scene hierarchy"/>
+                    <Button Content="Export JSON…"
+                            Command="{Binding ExportJsonCommand}"
+                            CommandParameter="{Binding $parent[Window]}"
+                            ToolTip.Tip="Save the authored scene as JSON"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Toolbar cards strip: View / Layout meas. / Object meas. -->
+        <Border DockPanel.Dock="Top" Background="#eef0f5" BorderBrush="#cdd1d9" BorderThickness="0 0 0 1" Padding="10 10 2 10">
+            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                <StackPanel Orientation="Horizontal">
+
+                    <!-- View card -->
+                    <Border Classes="card">
+                        <StackPanel Spacing="3">
+                            <TextBlock Classes="cardHdr" Text="View"/>
+                            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="3">
+                                <CheckBox Grid.Row="0" Grid.ColumnSpan="2"
+                                          Content="Show wall borders"
+                                          IsChecked="{Binding ShowWallBorders}"
+                                          ToolTip.Tip="The 14-px coloured ribbons just inside each wall."/>
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Wall border opacity" VerticalAlignment="Center" Foreground="#444"/>
+                                <Slider Grid.Row="1" Grid.Column="1" Width="140" Minimum="0" Maximum="1"
+                                        Value="{Binding WallBorderOpacity, Mode=TwoWay}"
+                                        TickFrequency="0.1" IsSnapToTickEnabled="False"
+                                        IsEnabled="{Binding ShowWallBorders}"/>
+                                <CheckBox Grid.Row="2" Grid.ColumnSpan="2"
+                                          Content="Show room labels"
+                                          IsChecked="{Binding ShowRoomLabels}"
+                                          ToolTip.Tip="Room id + name overlay at each room's centre."/>
+                                <StackPanel Grid.Row="3" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="6">
+                                    <CheckBox Content="Show paths"
+                                              IsChecked="{Binding ShowPaths}"
+                                              VerticalAlignment="Center"/>
+                                    <Button Width="20" Height="20" Padding="0"
+                                            BorderBrush="#888" BorderThickness="1"
+                                            Background="{Binding PathColor, Converter={x:Static converters:Vector3ToBrushConverter.Instance}}"
+                                            Click="OnPickPathColor"
+                                            VerticalAlignment="Center"
+                                            ToolTip.Tip="Path overlay colour"/>
+                                </StackPanel>
+                                <StackPanel Grid.Row="4" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="Tile saturation" VerticalAlignment="Center" Foreground="#444"/>
+                                    <Slider Width="120" Minimum="0" Maximum="1"
+                                            Value="{Binding TileSaturation, Mode=TwoWay}"
+                                            ToolTip.Tip="Mute the room tile colours so other overlays read more clearly."/>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Layout measurements card -->
+                    <Border Classes="card">
+                        <StackPanel Spacing="3">
+                            <TextBlock Classes="cardHdr" Text="Layout measurements"/>
+                            <CheckBox Content="Room dimensions" IsChecked="{Binding ShowRoomDimensions}"
+                                      ToolTip.Tip="W × D label at each room's centre."/>
+                            <CheckBox Content="Door / window sizes" IsChecked="{Binding ShowOpeningSizeLabels}"
+                                      ToolTip.Tip="Width label next to each opening."/>
+                            <CheckBox Content="Wall lengths" IsChecked="{Binding ShowWallLengthLabels}"
+                                      ToolTip.Tip="Length label along every wall segment."/>
+                            <CheckBox Content="Floor area" IsChecked="{Binding ShowFloorAreaLabels}"
+                                      ToolTip.Tip="m² label per room."/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Object measurements card -->
+                    <Border Classes="card">
+                        <StackPanel Spacing="3">
+                            <TextBlock Classes="cardHdr" Text="Object measurements"/>
+                            <CheckBox Content="Show measurements"
+                                      IsChecked="{Binding ShowMeasurements}"
+                                      ToolTip.Tip="Door→object distance + angle and inter-object distance lines."/>
+                            <CheckBox Content="Selected room only"
+                                      IsChecked="{Binding MeasurementsSelectedRoomOnly}"
+                                      IsEnabled="{Binding ShowMeasurements}"
+                                      ToolTip.Tip="When on (and a room is selected) only that room's lines render."/>
+                        </StackPanel>
+                    </Border>
+
+                </StackPanel>
+            </ScrollViewer>
         </Border>
 
         <!-- Status bar -->
@@ -100,156 +201,121 @@
             <TextBlock Text="{Binding StatusMessage}" Foreground="#cccccc"/>
         </Border>
 
-        <!-- Main split: parameter panel + interactive grid editor + per-room editor.
-             The right column is a fixed width so the editor area doesn't reflow
-             every time a room or opening is selected — auto-fit layout would
-             otherwise shift the grid every time the panel toggled visibility. -->
         <Grid ColumnDefinitions="280,*,260">
             <ScrollViewer Grid.Column="0" Background="#f4f4f7">
                 <StackPanel Margin="12" Spacing="0">
 
-                    <!-- Primary actions in the left panel for maximum discoverability -->
-                    <TextBlock Classes="label" Text="Actions"/>
-                    <StackPanel Classes="section" Spacing="4">
-                        <Button Content="Create Room from Selection (R)" Classes="primary"
-                                Command="{Binding CreateRoomFromSelectionCommand}"/>
-                        <Button Content="Clear Selection (Esc)" Classes="action"
-                                Command="{Binding ClearSelectionCommand}"/>
-                        <Button Content="Random Fill" Classes="action"
-                                Command="{Binding RandomFillCommand}"/>
-                        <Button Content="Reset All" Classes="action"
-                                Command="{Binding ResetAllCommand}"/>
+                    <!-- ─── LAYOUT MODE LEFT PANEL ─── -->
+                    <StackPanel IsVisible="{Binding IsLayoutMode}" Spacing="0">
+                        <TextBlock Classes="label" Text="Actions"/>
+                        <StackPanel Classes="section" Spacing="4">
+                            <Button Content="Create Room from Selection (R)" Classes="primary"
+                                    Command="{Binding CreateRoomFromSelectionCommand}"/>
+                            <Button Content="Clear Selection (Esc)" Classes="action"
+                                    Command="{Binding ClearSelectionCommand}"/>
+                        </StackPanel>
+
+                        <TextBlock Classes="label" Text="Tile colour view"/>
+                        <StackPanel Classes="section">
+                            <StackPanel Orientation="Horizontal" Spacing="0">
+                                <RadioButton GroupName="ViewSurfaceLayout"
+                                             Content="Floor"
+                                             IsChecked="{Binding ViewMode, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=Floor}"
+                                             Classes="tab" Padding="14 4"/>
+                                <RadioButton GroupName="ViewSurfaceLayout"
+                                             Content="Ceiling"
+                                             IsChecked="{Binding ViewMode, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=Ceiling}"
+                                             Classes="tab" Padding="14 4"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <TextBlock Classes="label" Text="Grid"/>
+                        <StackPanel Classes="section">
+                            <TextBlock Text="Width (tiles)"/>
+                            <NumericUpDown Value="{Binding GridWidth}" Minimum="1" Maximum="64" FormatString="0"/>
+                            <TextBlock Text="Length (tiles)"/>
+                            <NumericUpDown Value="{Binding GridLength}" Minimum="1" Maximum="64" FormatString="0"/>
+                            <TextBlock Text="Tile size (m)"/>
+                            <NumericUpDown Value="{Binding TileSize}" Minimum="0.5" Maximum="10" Increment="0.5" FormatString="0.0"/>
+                        </StackPanel>
+
+                        <TextBlock Classes="label" Text="Defaults for new rooms"/>
+                        <StackPanel Classes="section">
+                            <Button Content="Default floor color…" Classes="action"
+                                    Click="OnPickDefaultFloor"
+                                    ToolTip.Tip="Used as the floor color when a new room is created."/>
+                            <Button Content="Default ceiling color…" Classes="action"
+                                    Click="OnPickDefaultCeiling"
+                                    ToolTip.Tip="Used as the ceiling color when a new room is created."/>
+                        </StackPanel>
+
+                        <TextBlock Classes="label" Text="Walls"/>
+                        <StackPanel Classes="section">
+                            <TextBlock Text="Wall thickness (m)"/>
+                            <NumericUpDown Value="{Binding WallThickness}" Minimum="0.05" Maximum="2.0" Increment="0.05" FormatString="0.00"/>
+                            <TextBlock Text="Wall height (m)"/>
+                            <NumericUpDown Value="{Binding WallHeight}" Minimum="0.5" Maximum="6.0" Increment="0.5" FormatString="0.0"/>
+                        </StackPanel>
+
+                        <TextBlock Classes="label" Text="Doorways"/>
+                        <StackPanel Classes="section">
+                            <TextBlock Text="Door width (m)"/>
+                            <NumericUpDown Value="{Binding DoorWidth}" Minimum="0.5" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
+                            <TextBlock Text="Door height (m)"/>
+                            <NumericUpDown Value="{Binding DoorHeight}" Minimum="1.5" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
+                        </StackPanel>
+
+                        <TextBlock Classes="label" Text="Windows"/>
+                        <StackPanel Classes="section">
+                            <TextBlock Text="Window width (m)"/>
+                            <NumericUpDown Value="{Binding WindowWidth}" Minimum="0.3" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
+                            <TextBlock Text="Window head height (m)"/>
+                            <NumericUpDown Value="{Binding WindowHeight}" Minimum="1.0" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
+                            <TextBlock Text="Sill height (m)"/>
+                            <NumericUpDown Value="{Binding WindowSillHeight}" Minimum="0.1" Maximum="2.5" Increment="0.1" FormatString="0.0"/>
+                        </StackPanel>
+
+                        <TextBlock Classes="label" Text="How to use"/>
+                        <TextBlock TextWrapping="Wrap" Foreground="#444" Margin="0 0 0 6"
+                                   Text="• Click+drag empty tiles to select. Press R to make a room from a rectangular selection."/>
+                        <TextBlock TextWrapping="Wrap" Foreground="#444" Margin="0 0 0 6"
+                                   Text="• Click a wall to select it. D = door, W = window, O = open, C = closed."/>
+                        <TextBlock TextWrapping="Wrap" Foreground="#444"
+                                   Text="• Switch to Object mode to populate rooms with objects."/>
                     </StackPanel>
 
-                    <TextBlock Classes="label" Text="Grid"/>
-                    <StackPanel Classes="section">
-                        <TextBlock Text="Width (tiles)"/>
-                        <NumericUpDown Value="{Binding GridWidth}" Minimum="1" Maximum="64" FormatString="0"/>
-                        <TextBlock Text="Length (tiles)"/>
-                        <NumericUpDown Value="{Binding GridLength}" Minimum="1" Maximum="64" FormatString="0"/>
-                        <TextBlock Text="Tile size (m)"/>
-                        <NumericUpDown Value="{Binding TileSize}" Minimum="0.5" Maximum="10" Increment="0.5" FormatString="0.0"/>
+                    <!-- ─── OBJECT MODE LEFT PANEL ─── -->
+                    <StackPanel IsVisible="{Binding IsObjectsMode}" Spacing="0">
+                        <TextBlock Classes="label" Text="Defaults for new objects"/>
+                        <StackPanel Classes="section">
+                            <TextBlock Text="Default Y (m above floor)"/>
+                            <NumericUpDown Value="{Binding DefaultObjectY}"
+                                           Minimum="0" Maximum="3.0" Increment="0.05"
+                                           FormatString="0.00"
+                                           ToolTip.Tip="Initial height for newly placed objects."/>
+                            <TextBlock Text="Sub-grid (per tile)" Margin="0 8 0 0"/>
+                            <NumericUpDown Value="{Binding GridSubdivision}" Minimum="1" Maximum="8" Increment="1" FormatString="0"
+                                           ToolTip.Tip="Each tile is divided into N×N sub-cells. 1 = no subdivision."/>
+                            <Button Content="Snap objects to grid" Classes="action" Margin="0 6 0 0"
+                                    Command="{Binding SnapObjectsToGridCommand}"
+                                    ToolTip.Tip="Round every object's X/Z to the nearest sub-cell centre. Y is preserved."/>
+                        </StackPanel>
+
+                        <!-- Object types list (moved from right panel). The
+                             panel itself is hosted as a UserControl so the
+                             code-behind can rebuild rows dynamically. -->
+                        <views:ObjectTypesPanel/>
+
+                        <!-- Placement constraints (always visible in Object
+                             mode — used to live in its own panel). -->
+                        <views:ConstraintsPanel/>
                     </StackPanel>
-
-                    <TextBlock Classes="label" Text="Defaults for new rooms"/>
-                    <StackPanel Classes="section">
-                        <Button Content="Default floor color…" Classes="action"
-                                Click="OnPickDefaultFloor"
-                                ToolTip.Tip="Used as the floor color when a new room is created."/>
-                        <Button Content="Default ceiling color…" Classes="action"
-                                Click="OnPickDefaultCeiling"
-                                ToolTip.Tip="Used as the ceiling color when a new room is created."/>
-                    </StackPanel>
-
-                    <TextBlock Classes="label" Text="Defaults for new objects"/>
-                    <StackPanel Classes="section">
-                        <TextBlock Text="Default Y (m above floor)"/>
-                        <NumericUpDown Value="{Binding DefaultObjectY}"
-                                       Minimum="0" Maximum="3.0" Increment="0.05"
-                                       FormatString="0.00"
-                                       ToolTip.Tip="Initial height for newly placed objects."/>
-                    </StackPanel>
-
-                    <TextBlock Classes="label" Text="Walls"/>
-                    <StackPanel Classes="section">
-                        <TextBlock Text="Wall thickness (m)"/>
-                        <NumericUpDown Value="{Binding WallThickness}" Minimum="0.05" Maximum="2.0" Increment="0.05" FormatString="0.00"/>
-                        <TextBlock Text="Wall height (m)"/>
-                        <NumericUpDown Value="{Binding WallHeight}" Minimum="0.5" Maximum="6.0" Increment="0.5" FormatString="0.0"/>
-                    </StackPanel>
-
-                    <TextBlock Classes="label" Text="Doorways"/>
-                    <StackPanel Classes="section">
-                        <TextBlock Text="Door width (m)"/>
-                        <NumericUpDown Value="{Binding DoorWidth}" Minimum="0.5" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
-                        <TextBlock Text="Door height (m)"/>
-                        <NumericUpDown Value="{Binding DoorHeight}" Minimum="1.5" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
-                    </StackPanel>
-
-                    <TextBlock Classes="label" Text="Windows"/>
-                    <StackPanel Classes="section">
-                        <TextBlock Text="Window width (m)"/>
-                        <NumericUpDown Value="{Binding WindowWidth}" Minimum="0.3" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
-                        <TextBlock Text="Window head height (m)"/>
-                        <NumericUpDown Value="{Binding WindowHeight}" Minimum="1.0" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
-                        <TextBlock Text="Sill height (m)"/>
-                        <NumericUpDown Value="{Binding WindowSillHeight}" Minimum="0.1" Maximum="2.5" Increment="0.1" FormatString="0.0"/>
-                    </StackPanel>
-
-                    <TextBlock Classes="label" Text="How to use"/>
-                    <TextBlock TextWrapping="Wrap" Foreground="#444" Margin="0 0 0 6"
-                               Text="• Click+drag empty tiles to select. Click+drag selected tiles to deselect."/>
-                    <TextBlock TextWrapping="Wrap" Foreground="#444" Margin="0 0 0 6"
-                               Text="• When the selection is rectangular, press R or click Create Room."/>
-                    <TextBlock TextWrapping="Wrap" Foreground="#444" Margin="0 0 0 6"
-                               Text="• Click a wall to select it (yellow highlight)."/>
-                    <TextBlock TextWrapping="Wrap" Foreground="#444" Margin="0 0 0 6"
-                               Text="• With a wall selected: D = doorway, W = window, O = open (no wall), C = closed."/>
-                    <TextBlock TextWrapping="Wrap" Foreground="#444" Margin="0 0 0 6"
-                               Text="• Adjacent windows merge into a single wider window."/>
-                    <TextBlock TextWrapping="Wrap" Foreground="#444"
-                               Text="• Random Fill generates a starter layout you can edit."/>
-
-                    <!-- Object-mode global settings (Placement constraints).
-                         Visible only when ViewMode is Objects; collapses
-                         otherwise. -->
-                    <views:ConstraintsPanel/>
 
                 </StackPanel>
             </ScrollViewer>
 
-            <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto">
-                <!-- View tabs: Floor / Ceiling. Each tile gets recolored to that
-                     room's floor or ceiling color when the tab is active. -->
-                <Border Grid.Row="0" Background="#e6e6ea" BorderBrush="#c8c8cf" BorderThickness="0 0 0 1" Padding="8 6">
-                    <Grid ColumnDefinitions="Auto,*,Auto">
-                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="0">
-                            <RadioButton GroupName="ViewMode"
-                                         Content="Floor"
-                                         IsChecked="{Binding ViewMode, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=Floor}"
-                                         Classes="tab" Padding="14 4"/>
-                            <RadioButton GroupName="ViewMode"
-                                         Content="Ceiling"
-                                         IsChecked="{Binding ViewMode, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=Ceiling}"
-                                         Classes="tab" Padding="14 4"/>
-                            <RadioButton GroupName="ViewMode"
-                                         Content="Objects"
-                                         IsChecked="{Binding ViewMode, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=Objects}"
-                                         Classes="tab" Padding="14 4"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
-                            <CheckBox Content="Show measurements"
-                                      IsChecked="{Binding ShowMeasurements}"
-                                      VerticalAlignment="Center"
-                                      ToolTip.Tip="Draw door→object distance + angle and inter-object distance lines."/>
-                            <CheckBox Content="Selected room only"
-                                      IsChecked="{Binding MeasurementsSelectedRoomOnly}"
-                                      VerticalAlignment="Center"
-                                      IsEnabled="{Binding ShowMeasurements}"
-                                      ToolTip.Tip="When on (and a room is selected), only that room's measurements are drawn. When off, every room's measurements show."/>
-                            <Separator Width="6"/>
-                            <CheckBox Content="Show path(s)"
-                                      IsChecked="{Binding ShowPaths}"
-                                      VerticalAlignment="Center"
-                                      ToolTip.Tip="Draw a polyline through every traversable wall (open or doorway) to visualize how rooms connect."/>
-                            <Button x:Name="PathColorSwatch"
-                                    Width="20" Height="20"
-                                    Padding="0"
-                                    BorderBrush="#888"
-                                    BorderThickness="1"
-                                    Background="{Binding PathColor, Converter={x:Static converters:Vector3ToBrushConverter.Instance}}"
-                                    Click="OnPickPathColor"
-                                    VerticalAlignment="Center"
-                                    ToolTip.Tip="Path overlay colour"/>
-                            <TextBlock Text="Wall border opacity" VerticalAlignment="Center" Foreground="#444"/>
-                            <Slider Width="160" Minimum="0" Maximum="1"
-                                    Value="{Binding WallBorderOpacity, Mode=TwoWay}"
-                                    TickFrequency="0.1" IsSnapToTickEnabled="False"
-                                    ToolTip.Tip="Editor-only — fades the coloured wall ribbons so doors / windows behind them are easier to see. Does not affect the exported colours."/>
-                        </StackPanel>
-                    </Grid>
-                </Border>
-                <Grid Grid.Row="1" ColumnDefinitions="*,Auto">
+            <Grid Grid.Column="1" RowDefinitions="*,Auto">
+                <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
                     <Border Grid.Column="0" Background="#1a1a1f">
                         <views:GridEditorView EditVersion="{Binding EditVersion}" Margin="8"/>
                     </Border>
@@ -259,25 +325,18 @@
                             <Button DockPanel.Dock="Bottom" Content="Reset" FontSize="10" Padding="4 2"
                                     HorizontalAlignment="Stretch"
                                     Command="{Binding ResetViewCommand}"
-                                    ToolTip.Tip="Reset zoom and pan to the default fit-to-view layout"/>
+                                    ToolTip.Tip="Reset zoom and pan to fit-to-view."/>
                             <Slider Orientation="Vertical"
                                     Minimum="0.5" Maximum="8.0"
                                     Value="{Binding ZoomFactor, Mode=TwoWay}"
                                     HorizontalAlignment="Center"
-                                    Margin="0 6"
-                                    ToolTip.Tip="Zoom in / out. Scroll over the editor or drag with middle / right mouse to pan."/>
+                                    Margin="0 6"/>
                         </DockPanel>
                     </Border>
                 </Grid>
-                <!-- Legend strip below the grid, never overlapping the editor. -->
-                <views:LegendBar Grid.Row="2"/>
+                <views:LegendBar Grid.Row="1"/>
             </Grid>
 
-            <!-- Right-side editor: rooms when a room is selected, doors /
-                 windows when an opening is selected, otherwise an empty
-                 placeholder. Always rendered so the column width never
-                 changes — the editor area's reserved space stays constant
-                 regardless of selection state. -->
             <views:RoomEditorPanel Grid.Column="2"/>
         </Grid>
     </DockPanel>

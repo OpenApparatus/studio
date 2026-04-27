@@ -212,13 +212,35 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] System.Numerics.Vector3 _defaultFloorColor   = new(0.92f, 0.92f, 0.93f);
     [ObservableProperty] System.Numerics.Vector3 _defaultCeilingColor = new(0.92f, 0.92f, 0.90f);
 
-    /// <summary>Which surface the editor view recolors tiles by — Floor shows
-    /// each room's floor colour, Ceiling shows each room's ceiling colour, and
-    /// Objects switches the editor into the object-placement mode.</summary>
-    public enum ViewSurface { Floor, Ceiling, Objects }
-    [ObservableProperty] ViewSurface _viewMode = ViewSurface.Floor;
+    /// <summary>The user-facing edit mode. Layout mode is for authoring the
+    /// floor plan (rooms, walls, doors, windows). Object mode is for placing
+    /// objects in those rooms. Each mode swaps the left panel and the
+    /// editor's input semantics.</summary>
+    public enum EditModeKind { Layout, Object }
+    [ObservableProperty] EditModeKind _editMode = EditModeKind.Layout;
 
-    public bool IsObjectsMode => ViewMode == ViewSurface.Objects;
+    partial void OnEditModeChanged(EditModeKind value)
+    {
+        // Mode switch resets the contextual selection so the right panel
+        // doesn't dangle on something irrelevant in the new mode.
+        SelectedAdjacency = null;
+        SelectedOpeningIndex = -1;
+        SelectedSubCell = null;
+        SelectedObjectIndex = -1;
+        SelectedTiles.Clear();
+        EditVersion++;
+        OnPropertyChanged(nameof(IsObjectsMode));
+        OnPropertyChanged(nameof(IsLayoutMode));
+    }
+
+    public bool IsObjectsMode => EditMode == EditModeKind.Object;
+    public bool IsLayoutMode => EditMode == EditModeKind.Layout;
+
+    /// <summary>Tile-colour view used while in Layout mode. Floor shows each
+    /// room's floor colour, Ceiling shows the ceiling colour. Has no effect in
+    /// Object mode (always renders floor colours).</summary>
+    public enum ViewSurface { Floor, Ceiling }
+    [ObservableProperty] ViewSurface _viewMode = ViewSurface.Floor;
 
     /// <summary>Global subdivision: every tile is divided into N×N sub-cells
     /// when placing or snapping objects. 1 = no subdivision (objects sit at
@@ -363,15 +385,16 @@ public partial class MainWindowViewModel : ViewModelBase
         // — empty tiles are still valid object territory and the JSON / glTF
         // exports group those objects under an Outside container.
         int roomId = RoomIdAtWorld(center2);
-        // No-op if the same slot is already at the same sub-cell centre.
+        // Single-object-per-sub-cell rule: refuse if ANY object (regardless
+        // of slot) already occupies this sub-cell centre. Users delete first
+        // to replace; replacing silently would be too easy to do by accident.
         const float EPS = 1e-3f;
         foreach (var o in _objects)
         {
-            if (o.Slot != slot) continue;
             if (System.Math.Abs(o.Position.X - center2.X) < EPS &&
                 System.Math.Abs(o.Position.Z - center2.Y) < EPS)
             {
-                StatusMessage = $"Slot {slot} already placed at this sub-cell.";
+                StatusMessage = "Sub-cell already has an object — delete it first.";
                 return;
             }
         }
@@ -730,6 +753,32 @@ public partial class MainWindowViewModel : ViewModelBase
         return s;
     }
 
+    // ─── View options (cosmetic editor toggles, never affect export) ───
+    [ObservableProperty] bool _showRoomLabels = true;
+    partial void OnShowRoomLabelsChanged(bool value) => EditVersion++;
+
+    [ObservableProperty] bool _showWallBorders = true;
+    partial void OnShowWallBordersChanged(bool value) => EditVersion++;
+
+    /// <summary>0..1 multiplier on the saturation of room tile fills. 1 =
+    /// full colour, 0 = greyscale. Useful in Object mode so the room hues
+    /// don't compete with object icons.</summary>
+    [ObservableProperty] double _tileSaturation = 1.0;
+    partial void OnTileSaturationChanged(double value) => EditVersion++;
+
+    // ─── Layout measurement toggles (all default off) ───
+    [ObservableProperty] bool _showRoomDimensions;
+    partial void OnShowRoomDimensionsChanged(bool value) => EditVersion++;
+
+    [ObservableProperty] bool _showOpeningSizeLabels;
+    partial void OnShowOpeningSizeLabelsChanged(bool value) => EditVersion++;
+
+    [ObservableProperty] bool _showWallLengthLabels;
+    partial void OnShowWallLengthLabelsChanged(bool value) => EditVersion++;
+
+    [ObservableProperty] bool _showFloorAreaLabels;
+    partial void OnShowFloorAreaLabelsChanged(bool value) => EditVersion++;
+
     /// <summary>Editor-only opacity multiplier for the interior wall borders.
     /// 1.0 = fully opaque (default), 0 = invisible. Does NOT alter the colours
     /// used by the glTF export — purely a viewport aid for spotting doors and
@@ -808,18 +857,7 @@ public partial class MainWindowViewModel : ViewModelBase
         PanOffsetY = tile * (cz - GridLength * 0.5);
     }
 
-    partial void OnViewModeChanged(ViewSurface value)
-    {
-        // Leaving Objects mode clears any active sub-cell / object selection
-        // so the right panel collapses cleanly back to the room editor.
-        if (value != ViewSurface.Objects)
-        {
-            SelectedSubCell = null;
-            SelectedObjectIndex = -1;
-        }
-        EditVersion++;
-        OnPropertyChanged(nameof(IsObjectsMode));
-    }
+    partial void OnViewModeChanged(ViewSurface value) => EditVersion++;
 
     /// <summary>Auto-generated room color used as both the visible tile fill and
     /// the seed for the room's wall color when it is first created. The same
