@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using Avalonia;
 using Avalonia.Media;
+using OpenApparatus.Geometry;
 using OpenApparatus.Studio.ViewModels;
 using OpenApparatus.Topology;
 
@@ -69,10 +70,11 @@ internal static class Iso3DRenderer
         Vector3 lightDir = Vector3.Normalize(new Vector3(0.45f, -0.95f, 0.30f));
 
         // ── Mesh collection ──────────────────────────────────────
-        var tris = new List<Tri>(2048);
-        AddFloors(tris, vm);
-        AddCeilings(tris, vm);
-        AddWalls(tris, vm, env);
+        // Use the same mesh builders the glTF exporter does, so the 3D
+        // view shows exactly what would be exported (real wall thickness,
+        // doorway tunnels, frame geometry around openings, etc).
+        var tris = new List<Tri>(4096);
+        AddRealEnvironmentMeshes(tris, vm, env);
         AddObjects(tris, vm);
 
         // ── Project + cull + shade ─────────────────────────────
@@ -163,107 +165,84 @@ internal static class Iso3DRenderer
 
     // ── Mesh builders ──────────────────────────────────────────────
 
-    static void AddFloors(List<Tri> tris, MainWindowViewModel vm)
+    /// <summary>Builds the same geometry the glTF exporter would and
+    /// streams its triangles into the rasterizer's Tri list. Floor +
+    /// wall meshes come from the core's RectangleInteriorBuilder /
+    /// BoundaryWallBuilder (so wall thickness, doorway tunnels, and
+    /// frame geometry around openings are real, not hand-rolled).
+    /// Ceilings are dropped on purpose so the orbit camera can see
+    /// inside ("dollhouse" view, like SketchUp / Revit).</summary>
+    static void AddRealEnvironmentMeshes(List<Tri> tris, MainWindowViewModel vm, MultiRoomEnvironment env)
     {
-        Vector3 nUp = Vector3.UnitY;
-        for (int xi = 0; xi < vm.GridWidth; xi++)
-            for (int zi = 0; zi < vm.GridLength; zi++)
-            {
-                int id = vm.RoomGrid[xi, zi];
-                if (id < 0) continue;
-                Vector3 col = vm.RoomFloorColors.TryGetValue(id, out var c)
-                    ? c : MainWindowViewModel.RoomColorRgb(id);
-                if (vm.TileSaturation < 0.999)
-                    col = GridEditorView.DesaturateRgbPublic(col, (float)vm.TileSaturation);
-                float x0 = xi * vm.TileSize, x1 = x0 + vm.TileSize;
-                float z0 = zi * vm.TileSize, z1 = z0 + vm.TileSize;
-                Vector3 a = new(x0, 0, z0), b = new(x1, 0, z0);
-                Vector3 cv = new(x1, 0, z1), d = new(x0, 0, z1);
-                tris.Add(new Tri(a, b, cv, nUp, col));
-                tris.Add(new Tri(a, cv, d, nUp, col));
-            }
-    }
+        var interiorBuilder = new RectangleInteriorBuilder();
+        var wallBuilder = new BoundaryWallBuilder();
 
-    static void AddCeilings(List<Tri> tris, MainWindowViewModel vm)
-    {
-        // Skip ceilings — they'd block the orbit view from above. Common
-        // pattern in floor-plan 3D viewers (SketchUp / Revit "doll-house"
-        // mode does the same). If we ever want them they'd go here.
-        _ = tris; _ = vm;
-    }
-
-    static void AddWalls(List<Tri> tris, MainWindowViewModel vm, MultiRoomEnvironment env)
-    {
-        float H = vm.WallHeight;
+        // Pre-build wall meshes once per adjacency (matches GltfExporter).
+        var wallMeshes = new Dictionary<Adjacency, MeshData>(env.Adjacencies.Count);
         foreach (var adj in env.Adjacencies)
+            wallMeshes[adj] = wallBuilder.Build(adj, vm.WallThickness, vm.WallHeight);
+
+        // Per-room interior + per-adjacency walls, just like the exporter.
+        foreach (var room in env.Rooms)
         {
-            if (adj.Passage is Passage.Open) continue;
+            // Floor / ceiling colours match the 2D editor.
+            Vector3 floorCol = vm.RoomFloorColors.TryGetValue(room.Id, out var fc)
+                ? fc : MainWindowViewModel.RoomColorRgb(room.Id);
+            if (vm.TileSaturation < 0.999)
+                floorCol = GridEditorView.DesaturateRgbPublic(floorCol, (float)vm.TileSaturation);
 
-            // Pick a wall colour. Use room A's effective wall colour for
-            // the +n side and room B's for the -n side.
-            Vector3 colA = vm.EffectiveWallColor(adj.RoomA.Id, adj);
-            Vector3 colB = adj.RoomB is { } rB
-                ? vm.EffectiveWallColor(rB.Id, adj)
-                : colA * 0.7f;
+            // Interior carries floor + ceiling submeshes; walls submesh is
+            // empty there. Emit floor only — skip ceiling so we can see in.
+            var interior = interiorBuilder.Build(room, vm.WallThickness, vm.WallHeight);
+            EmitSubmesh(tris, interior, SubmeshIndex.Floor, floorCol, doubleSided: false);
 
-            // Mix the two for a single double-sided slab — keeps the
-            // mesh count down. Per-face two-sided colouring would need
-            // separate triangulations per side.
-            Vector3 col = (colA + colB) * 0.5f;
-
-            var s = adj.SharedSegment;
-            Vector3 p0 = new(s.Start.X, 0, s.Start.Y);
-            Vector3 p1 = new(s.End.X,   0, s.End.Y);
-
-            // Wall normal — perpendicular to (p1-p0) in the XZ plane.
-            Vector3 along = p1 - p0;
-            float lenAlong = along.Length();
-            if (lenAlong < 1e-3f) continue;
-            Vector3 dir = along / lenAlong;
-            Vector3 normal = new(dir.Z, 0, -dir.X);
-
-            // Decompose the wall into rectangular sub-rects when there
-            // are doors / windows: solid sections + sill bars + lintels +
-            // window glass panes.
-            var openings = new List<(float t0, float t1, Opening op)>();
-            if (adj.Passage is Passage.Doorway dw)
+            // Each adjacency: emit its real wall geometry once, owned by
+            // the lower-id room (matches GltfExporter ownership rules so
+            // we don't double-render shared walls).
+            foreach (var adj in env.Adjacencies)
             {
-                foreach (var op in dw.Openings)
-                {
-                    float center = op.OffsetAlongEdge / lenAlong;
-                    float half = (op.Width * 0.5f) / lenAlong;
-                    openings.Add((MathF.Max(0f, center - half),
-                                  MathF.Min(1f, center + half), op));
-                }
-                openings.Sort((a, b) => a.t0.CompareTo(b.t0));
-            }
+                if (adj.RoomA != room && adj.RoomB != room) continue;
+                int ownerId = adj.IsOuter ? adj.RoomA.Id
+                            : (adj.RoomA.Id < adj.RoomB!.Id ? adj.RoomA.Id : adj.RoomB.Id);
+                if (ownerId != room.Id) continue;
 
-            void Slab(float t0, float t1, float yBot, float yTop, Vector3 colSlab)
-            {
-                if (t1 - t0 < 1e-4f || yTop - yBot < 1e-4f) return;
-                Vector3 a = new(p0.X + (p1.X - p0.X) * t0, yBot, p0.Z + (p1.Z - p0.Z) * t0);
-                Vector3 b = new(p0.X + (p1.X - p0.X) * t1, yBot, p0.Z + (p1.Z - p0.Z) * t1);
-                Vector3 c = new(p0.X + (p1.X - p0.X) * t1, yTop, p0.Z + (p1.Z - p0.Z) * t1);
-                Vector3 d = new(p0.X + (p1.X - p0.X) * t0, yTop, p0.Z + (p1.Z - p0.Z) * t0);
-                tris.Add(new Tri(a, b, c, normal, colSlab, doubleSided: true));
-                tris.Add(new Tri(a, c, d, normal, colSlab, doubleSided: true));
-            }
+                Vector3 wallCol = vm.EffectiveWallColor(room.Id, adj);
+                EmitSubmesh(tris, wallMeshes[adj], SubmeshIndex.Walls, wallCol, doubleSided: false);
 
-            float cursor = 0f;
-            Vector3 glassCol = new(0.78f, 0.88f, 0.95f);  // light-blue tinted glass
-            foreach (var (t0, t1, op) in openings)
-            {
-                Slab(cursor, t0, 0, H, col);                 // wall to the left of opening
-                if (op.SillHeight > 1e-3f)
-                    Slab(t0, t1, 0, op.SillHeight, col);     // sill (windows)
-                if (op.Height < H - 1e-3f)
-                    Slab(t0, t1, op.Height, H, col);         // lintel above opening
-                if (op.IsWindow)
-                    Slab(t0, t1, op.SillHeight, op.Height, glassCol);  // window glass pane
-                // doors: leave the doorway empty
-                cursor = t1;
+                // The wall's own floor frame (around the doorway) belongs
+                // to the lower-id owner's floor mesh in the exporter; emit
+                // it here too so doorway thresholds aren't holes.
+                EmitSubmesh(tris, wallMeshes[adj], SubmeshIndex.Floor, floorCol, doubleSided: false);
             }
-            Slab(cursor, 1f, 0, H, col);                     // wall to the right of last opening
+        }
+    }
+
+    /// <summary>Streams one MeshData submesh into the rasterizer's Tri
+    /// buffer. Vertex normals from the source mesh are averaged per
+    /// triangle so the rasterizer can do a single shading lookup per
+    /// face (Lambert), rather than per-vertex Phong.</summary>
+    static void EmitSubmesh(List<Tri> tris, MeshData mesh, int submeshIndex, Vector3 color, bool doubleSided)
+    {
+        if (submeshIndex < 0 || submeshIndex >= mesh.SubmeshCount) return;
+        var idx = mesh.SubmeshIndices[submeshIndex];
+        var v = mesh.Vertices;
+        var n = mesh.Normals;
+        for (int i = 0; i + 2 < idx.Length; i += 3)
+        {
+            int ia = idx[i], ib = idx[i + 1], ic = idx[i + 2];
+            // Face normal: average the per-vertex normals (close enough
+            // for flat-shaded preview), fall back to cross product if the
+            // average is degenerate.
+            Vector3 normal = (n[ia] + n[ib] + n[ic]) / 3f;
+            float nLen = normal.Length();
+            if (nLen < 1e-4f)
+            {
+                normal = Vector3.Cross(v[ib] - v[ia], v[ic] - v[ia]);
+                nLen = normal.Length();
+                if (nLen < 1e-4f) continue;
+            }
+            normal /= nLen;
+            tris.Add(new Tri(v[ia], v[ib], v[ic], normal, color, doubleSided));
         }
     }
 
