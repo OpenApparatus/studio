@@ -131,6 +131,7 @@ public partial class MainWindowViewModel : ViewModelBase
             StatusMessage = $"Can't fit a {newOp.Width:F2}m opening — wall is only {seg.Length:F2}m.";
             return;
         }
+        PushUndo();
         openings[SelectedOpeningIndex] = newOp;
         SelectedAdjacency.Passage = new Passage.Doorway(openings);
         RememberPassage(SelectedAdjacency);
@@ -154,6 +155,7 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>Sets the color for one room's side of the given wall. RGB in 0..1.</summary>
     public void SetWallColor(int roomId, Adjacency adj, System.Numerics.Vector3 rgb)
     {
+        PushUndo();
         _wallColors[GltfExporter.WallColorKey(roomId, adj)] = rgb;
         EditVersion++;
     }
@@ -161,6 +163,7 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>Removes any color override for one room's side of the given wall.</summary>
     public void ClearWallColor(int roomId, Adjacency adj)
     {
+        PushUndo();
         _wallColors.Remove(GltfExporter.WallColorKey(roomId, adj));
         EditVersion++;
     }
@@ -270,6 +273,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     void AddObjectType()
     {
+        PushUndo();
         int id = _objectTypes.Count + 1;
         var shape = (ObjectShape)((id - 1) % System.Enum.GetValues<ObjectShape>().Length);
         // Pick a perceptually-distinct hue so consecutive Add presses don't
@@ -297,6 +301,7 @@ public partial class MainWindowViewModel : ViewModelBase
             StatusMessage = "Need at least one object type.";
             return;
         }
+        PushUndo();
         int removedSlot = index + 1;
         _objectTypes.RemoveAt(index);
         // Drop instances using the removed type, decrement instances above it.
@@ -370,6 +375,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 return;
             }
         }
+        PushUndo();
         var obj = new RoomObject
         {
             OwningRoomId = roomId,
@@ -401,6 +407,7 @@ public partial class MainWindowViewModel : ViewModelBase
     void DeleteSelectedObject()
     {
         if (SelectedObjectIndex < 0 || SelectedObjectIndex >= _objects.Count) return;
+        PushUndo();
         _objects.RemoveAt(SelectedObjectIndex);
         SelectedObjectIndex = -1;
         StatusMessage = "Object deleted.";
@@ -421,6 +428,7 @@ public partial class MainWindowViewModel : ViewModelBase
             StatusMessage = "No objects to snap.";
             return;
         }
+        PushUndo();
         float s = SubCellSize;
         int touched = 0;
         foreach (var o in _objects)
@@ -613,6 +621,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public void SetRoomMultiColor(int roomId, bool on)
     {
+        PushUndo();
         if (on) _multiColorRoomIds.Add(roomId);
         else _multiColorRoomIds.Remove(roomId);
         EditVersion++;
@@ -620,31 +629,37 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public void SetRoomFloorColor(int roomId, System.Numerics.Vector3 rgb)
     {
+        PushUndo();
         _roomFloorColors[roomId] = rgb; EditVersion++;
     }
 
     public void ClearRoomFloorColor(int roomId)
     {
+        PushUndo();
         _roomFloorColors.Remove(roomId); EditVersion++;
     }
 
     public void SetRoomCeilingColor(int roomId, System.Numerics.Vector3 rgb)
     {
+        PushUndo();
         _roomCeilingColors[roomId] = rgb; EditVersion++;
     }
 
     public void ClearRoomCeilingColor(int roomId)
     {
+        PushUndo();
         _roomCeilingColors.Remove(roomId); EditVersion++;
     }
 
     public void SetRoomSingleWallColor(int roomId, System.Numerics.Vector3 rgb)
     {
+        PushUndo();
         _roomSingleWallColors[roomId] = rgb; EditVersion++;
     }
 
     public void ClearRoomSingleWallColor(int roomId)
     {
+        PushUndo();
         _roomSingleWallColors.Remove(roomId); EditVersion++;
     }
 
@@ -653,6 +668,141 @@ public partial class MainWindowViewModel : ViewModelBase
 
     /// <summary>Bumped after every grid mutation so views can re-render.</summary>
     [ObservableProperty] int _editVersion;
+
+    // ---- Undo / redo state. Snapshots are deep copies of authored state; we
+    // push one before every user-initiated mutation. Selection / view state is
+    // excluded so undo doesn't move the camera.
+    readonly Stack<Snapshot> _undoStack = new();
+    readonly Stack<Snapshot> _redoStack = new();
+    const int UndoLimit = 100;
+    bool _suppressUndoCapture;
+
+    public bool CanUndo => _undoStack.Count > 0;
+    public bool CanRedo => _redoStack.Count > 0;
+
+    /// <summary>Capture the current state into the undo stack and clear redo.
+    /// Call this at the start of any user-initiated mutating action.</summary>
+    public void PushUndo()
+    {
+        if (_suppressUndoCapture) return;
+        _undoStack.Push(Snapshot.Capture(this));
+        if (_undoStack.Count > UndoLimit)
+        {
+            // Drop oldest by reversing — Stack is LIFO so we pop+rebuild.
+            var keep = new Snapshot[UndoLimit];
+            for (int i = UndoLimit - 1; i >= 0; i--) keep[i] = _undoStack.Pop();
+            _undoStack.Clear();
+            for (int i = 0; i < UndoLimit; i++) _undoStack.Push(keep[i]);
+        }
+        _redoStack.Clear();
+        OnPropertyChanged(nameof(CanUndo));
+        OnPropertyChanged(nameof(CanRedo));
+    }
+
+    [RelayCommand]
+    void Undo()
+    {
+        if (_undoStack.Count == 0) return;
+        _redoStack.Push(Snapshot.Capture(this));
+        var snap = _undoStack.Pop();
+        _suppressUndoCapture = true;
+        try { snap.Restore(this); }
+        finally { _suppressUndoCapture = false; }
+        OnPropertyChanged(nameof(CanUndo));
+        OnPropertyChanged(nameof(CanRedo));
+        StatusMessage = "Undo.";
+    }
+
+    [RelayCommand]
+    void Redo()
+    {
+        if (_redoStack.Count == 0) return;
+        _undoStack.Push(Snapshot.Capture(this));
+        var snap = _redoStack.Pop();
+        _suppressUndoCapture = true;
+        try { snap.Restore(this); }
+        finally { _suppressUndoCapture = false; }
+        OnPropertyChanged(nameof(CanUndo));
+        OnPropertyChanged(nameof(CanRedo));
+        StatusMessage = "Redo.";
+    }
+
+    // Internal raw accessors used by Snapshot. Keep these here rather than
+    // exposing the underlying dictionaries so the public API stays clean.
+    internal int NextRoomIdRaw => _nextRoomId;
+    internal Dictionary<(int, int), (Passage, System.Numerics.Vector2)> PassageOverridesRaw => _passageOverrides;
+
+    /// <summary>Internal hook used by <see cref="Snapshot.Restore"/>. Do not
+    /// call directly — go through Undo / Redo / push-and-mutate instead.</summary>
+    internal void RestoreFromSnapshot(Snapshot s)
+    {
+        // Selection and transient state cleared so we don't dangle pointers
+        // into a stale environment.
+        SelectedAdjacency = null;
+        SelectedOpeningIndex = -1;
+        SelectedRoomId = -1;
+        SelectedTiles.Clear();
+        SelectedSubCell = null;
+        SelectedObjectIndex = -1;
+
+        // Resize the grid + replay tile assignments.
+        RoomGrid = (int[,])s.RoomGrid.Clone();
+        GridWidth = s.GridWidth;
+        GridLength = s.GridLength;
+
+        // Parameter state.
+        TileSize = s.TileSize;
+        WallThickness = s.WallThickness;
+        WallHeight = s.WallHeight;
+        DoorWidth = s.DoorWidth;
+        DoorHeight = s.DoorHeight;
+        WindowWidth = s.WindowWidth;
+        WindowHeight = s.WindowHeight;
+        WindowSillHeight = s.WindowSillHeight;
+        GridSubdivision = s.GridSubdivision;
+        DefaultObjectY = s.DefaultObjectY;
+        DefaultFloorColor = s.DefaultFloorColor;
+        DefaultCeilingColor = s.DefaultCeilingColor;
+        _nextRoomId = s.NextRoomId;
+
+        // Authored dictionaries.
+        _passageOverrides.Clear();
+        foreach (var kv in s.PassageOverrides) _passageOverrides[kv.Key] = kv.Value;
+        _wallColors.Clear();
+        foreach (var kv in s.WallColors) _wallColors[kv.Key] = kv.Value;
+        _roomFloorColors.Clear();
+        foreach (var kv in s.RoomFloorColors) _roomFloorColors[kv.Key] = kv.Value;
+        _roomCeilingColors.Clear();
+        foreach (var kv in s.RoomCeilingColors) _roomCeilingColors[kv.Key] = kv.Value;
+        _roomSingleWallColors.Clear();
+        foreach (var kv in s.RoomSingleWallColors) _roomSingleWallColors[kv.Key] = kv.Value;
+        _multiColorRoomIds.Clear();
+        foreach (var id in s.MultiColorRoomIds) _multiColorRoomIds.Add(id);
+        _roomNames.Clear();
+        foreach (var kv in s.RoomNames) _roomNames[kv.Key] = kv.Value;
+
+        _objects.Clear();
+        foreach (var o in s.Objects)
+            _objects.Add(new RoomObject
+            {
+                OwningRoomId = o.OwningRoomId,
+                Slot = o.Slot,
+                Position = o.Position,
+                Rotation = o.Rotation,
+            });
+        _objectTypes.Clear();
+        foreach (var t in s.ObjectTypes)
+            _objectTypes.Add(new ObjectType
+            {
+                Name = t.Name,
+                Shape = t.Shape,
+                Color = t.Color,
+                Size = t.Size,
+            });
+
+        Rebuild();
+        EditVersion++;
+    }
 
     public MainWindowViewModel()
     {
@@ -719,6 +869,7 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
+        PushUndo();
         int id = _nextRoomId++;
         foreach (var (x, z) in SelectedTiles)
             RoomGrid[x, z] = id;
@@ -761,6 +912,7 @@ public partial class MainWindowViewModel : ViewModelBase
             StatusMessage = "Room 0 is already the start room.";
             return;
         }
+        PushUndo();
         int oldStart = SelectedRoomId;
         RenumberFromStart(oldStart);
         SelectedRoomId = 0;
@@ -866,6 +1018,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public void UpdateDoorSwingsToHigherRoom()
     {
         if (CurrentEnvironment is null) return;
+        PushUndo();
         int touched = 0;
         foreach (var adj in CurrentEnvironment.Adjacencies)
         {
@@ -948,7 +1101,20 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     void ResetAll()
     {
+        PushUndo();
         ResetGrid();
+        // Clear authored state too — Reset means a clean slate.
+        _passageOverrides.Clear();
+        _wallColors.Clear();
+        _roomFloorColors.Clear();
+        _roomCeilingColors.Clear();
+        _roomSingleWallColors.Clear();
+        _multiColorRoomIds.Clear();
+        _roomNames.Clear();
+        _objects.Clear();
+        SelectedRoomId = -1;
+        SelectedSubCell = null;
+        SelectedObjectIndex = -1;
         Rebuild();
         EditVersion++;
         StatusMessage = "Grid reset.";
@@ -1042,6 +1208,7 @@ public partial class MainWindowViewModel : ViewModelBase
             StatusMessage = "No wall selected. Click a wall first.";
             return;
         }
+        PushUndo();
 
         var adj = SelectedAdjacency;
         float segLen = adj.SharedSegment.Length;
@@ -1190,6 +1357,7 @@ public partial class MainWindowViewModel : ViewModelBase
             StatusMessage = "No wall selected. Click a wall first.";
             return;
         }
+        PushUndo();
         SelectedAdjacency.Passage = Passage.Open.Instance;
         RememberPassage(SelectedAdjacency);
         EditVersion++;
@@ -1205,6 +1373,7 @@ public partial class MainWindowViewModel : ViewModelBase
             StatusMessage = "No wall selected. Click a wall first.";
             return;
         }
+        PushUndo();
         SelectedAdjacency.Passage = Passage.Closed.Instance;
         RememberPassage(SelectedAdjacency);
         EditVersion++;
@@ -1269,6 +1438,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     void RandomFill()
     {
+        PushUndo();
         try
         {
             int seed = new Random().Next(int.MaxValue);

@@ -21,6 +21,24 @@ public partial class MainWindow : Window
     {
         var vm = Vm;
         if (vm is null) return;
+
+        // Undo / Redo are global — they fire even when a TextBox has focus so
+        // the user can roll back unexpected typing. Other shortcuts still
+        // defer to the focused field.
+        bool ctrl = (e.KeyModifiers & KeyModifiers.Control) != 0;
+        if (ctrl && e.Key == Key.Z)
+        {
+            vm.UndoCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+        if (ctrl && (e.Key == Key.Y || (e.Key == Key.Z && (e.KeyModifiers & KeyModifiers.Shift) != 0)))
+        {
+            vm.RedoCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+
         if (FocusedIsTextEntry()) return;
 
         // Objects-mode shortcuts: 1..9 place an object at the selected sub-cell;

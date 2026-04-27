@@ -72,6 +72,15 @@
                         Command="{Binding ClearSelectionCommand}"
                         ToolTip.Tip="Clear the current tile selection (hotkey: Escape)"/>
                 <Separator Width="12"/>
+                <Button Content="Undo"
+                        Command="{Binding UndoCommand}"
+                        IsEnabled="{Binding CanUndo}"
+                        ToolTip.Tip="Undo (Ctrl+Z)"/>
+                <Button Content="Redo"
+                        Command="{Binding RedoCommand}"
+                        IsEnabled="{Binding CanRedo}"
+                        ToolTip.Tip="Redo (Ctrl+Y / Ctrl+Shift+Z)"/>
+                <Separator Width="12"/>
                 <Button Content="Reset All" Command="{Binding ResetAllCommand}"/>
                 <Button Content="Random Fill" Command="{Binding RandomFillCommand}"/>
                 <Separator Width="12"/>
