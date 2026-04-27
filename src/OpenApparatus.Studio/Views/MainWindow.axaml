@@ -889,7 +889,17 @@
             </Grid>
         </Border>
 
-        <Grid ColumnDefinitions="280,*,260">
+        <!-- Three-pane layout with GridSplitters between panels so the
+             user can resize side panels. Stars allow the centre to flex
+             on window resize. Min widths prevent panels collapsing into
+             nothing. Splitter widths sit on top of the column boundaries
+             so they don't take their own column space. -->
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="280" MinWidth="220"/>
+                <ColumnDefinition Width="*" MinWidth="380"/>
+                <ColumnDefinition Width="280" MinWidth="240"/>
+            </Grid.ColumnDefinitions>
             <ScrollViewer Grid.Column="0" Background="{StaticResource SurfacePrimaryBrush}">
                 <StackPanel Margin="12" Spacing="0">
 
@@ -1224,6 +1234,19 @@
             </Grid>
 
             <views:RoomEditorPanel Grid.Column="2"/>
+
+            <!-- Splitters sit on top of the column boundaries so the user
+                 can drag the side-panel widths. Cursor changes to
+                 SizeWestEast on hover; 5-px hit area is wider than the
+                 visible 1-px hairline. -->
+            <GridSplitter Grid.Column="0" HorizontalAlignment="Right"
+                          Width="5" Background="Transparent"
+                          ResizeDirection="Columns"
+                          ZIndex="100"/>
+            <GridSplitter Grid.Column="1" HorizontalAlignment="Right"
+                          Width="5" Background="Transparent"
+                          ResizeDirection="Columns"
+                          ZIndex="100"/>
         </Grid>
     </DockPanel>
 
