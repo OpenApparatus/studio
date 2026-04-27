@@ -46,7 +46,48 @@ internal static class Iso3DRenderer
     const int LayerWall   = 1;
     const int LayerObject = 2;
 
+    /// <summary>Public entry point — renders the 3D scene to the
+    /// supplied DrawingContext at the requested size. We render 2× the
+    /// requested size into a RenderTargetBitmap, then DrawImage that
+    /// bitmap back at 1× — this gives free supersampling AA for the
+    /// triangle edges (cheaper than analytic edge AA, and ~independent
+    /// of the geometry detail). Falls back to a direct render if
+    /// bitmap creation fails for any reason (memory pressure, etc).</summary>
     public static void Render(DrawingContext ctx, MainWindowViewModel vm, Size size)
+    {
+        // Below ~64 px there's nothing to AA — render directly.
+        if (size.Width < 64 || size.Height < 64)
+        {
+            RenderInner(ctx, vm, size);
+            return;
+        }
+        const double scale = 2.0;
+        var px = new PixelSize(
+            (int)System.Math.Ceiling(size.Width  * scale),
+            (int)System.Math.Ceiling(size.Height * scale));
+        Avalonia.Media.Imaging.RenderTargetBitmap? bmp = null;
+        try
+        {
+            bmp = new Avalonia.Media.Imaging.RenderTargetBitmap(px, new Avalonia.Vector(96 * scale, 96 * scale));
+            using (var inner = bmp.CreateDrawingContext())
+            {
+                // Inner render uses logical (scale-independent) size
+                // coords because the bitmap's DPI carries the scaling.
+                RenderInner(inner, vm, size);
+            }
+            ctx.DrawImage(bmp, new Rect(0, 0, size.Width, size.Height));
+        }
+        catch
+        {
+            RenderInner(ctx, vm, size);
+        }
+        finally
+        {
+            bmp?.Dispose();
+        }
+    }
+
+    static void RenderInner(DrawingContext ctx, MainWindowViewModel vm, Size size)
     {
         // Background — soft horizon gradient. The earlier near-grey on
         // grey was effectively invisible against the building. Now uses
