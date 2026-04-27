@@ -21,6 +21,10 @@
                     CommandParameter="{Binding $parent[Window]}"/>
         <KeyBinding Gesture="Ctrl+Shift+S" Command="{Binding SaveProjectAsCommand}"
                     CommandParameter="{Binding $parent[Window]}"/>
+        <!-- Ctrl+0 actual-size; Ctrl+1 fit. F is gated by focus and
+             handled in OnGlobalKey so it doesn't fire inside TextBoxes. -->
+        <KeyBinding Gesture="Ctrl+D0" Command="{Binding ZoomActualSizeCommand}"/>
+        <KeyBinding Gesture="Ctrl+D1" Command="{Binding ResetViewCommand}"/>
     </Window.KeyBindings>
 
     <Window.Styles>
@@ -158,6 +162,11 @@
             <Setter Property="MinHeight" Value="0"/>
             <Setter Property="MinWidth" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Foreground" Duration="0:0:0.15"/>
+                </Transitions>
+            </Setter>
             <Setter Property="Template">
                 <ControlTemplate TargetType="RadioButton">
                     <Border Name="PART_Border"
@@ -240,7 +249,9 @@
             <Setter Property="VerticalAlignment" Value="Stretch"/>
         </Style>
         <!-- Pill-style toggle buttons: a single chip with the label inside.
-             Lit blue when checked. -->
+             Lit blue when checked. Smooth 120 ms colour transitions on
+             state changes so the toggle reads as a deliberate action,
+             not an instantaneous snap. -->
         <Style Selector="ToggleButton.pill">
             <Setter Property="Padding" Value="9 3"/>
             <Setter Property="MinHeight" Value="0"/>
@@ -252,6 +263,13 @@
             <Setter Property="CornerRadius" Value="12"/>
             <Setter Property="Margin" Value="0 0 4 0"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.12"/>
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.12"/>
+                    <BrushTransition Property="Foreground" Duration="0:0:0.12"/>
+                </Transitions>
+            </Setter>
         </Style>
         <Style Selector="ToggleButton.pill:checked /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{StaticResource AccentBrush}"/>

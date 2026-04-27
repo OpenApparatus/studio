@@ -129,6 +129,7 @@ public partial class MainWindow : Window
             case Key.W: vm.ToggleWindowOnSelectedWallCommand.Execute(null); e.Handled = true; break;
             case Key.O: vm.OpenSelectedWallCommand.Execute(null); e.Handled = true; break;
             case Key.C: vm.CloseSelectedWallCommand.Execute(null); e.Handled = true; break;
+            case Key.F: vm.FrameSelectionCommand.Execute(null); e.Handled = true; break;
             case Key.Escape: vm.ClearSelectionCommand.Execute(null); e.Handled = true; break;
         }
     }

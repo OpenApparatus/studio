@@ -976,6 +976,89 @@ public partial class MainWindowViewModel : ViewModelBase
         PanOffsetY = 0;
     }
 
+    /// <summary>Zoom to 100% (1× — pixel-perfect tile rendering).</summary>
+    [RelayCommand]
+    void ZoomActualSize()
+    {
+        ZoomFactor = 1.0;
+        PanOffsetX = 0;
+        PanOffsetY = 0;
+    }
+
+    /// <summary>Frame the current selection (room or object). Falls back
+    /// to fit-all when nothing is selected. Bound to the F key.</summary>
+    [RelayCommand]
+    void FrameSelection()
+    {
+        if (CameraView == CameraKind.Iso)
+        {
+            // 3D mode: pull the orbit pivot to the selection centroid and
+            // tighten distance so the camera frames it.
+            (float cx, float cz, float radius)? sel = SelectionCentre();
+            if (sel is null) return;
+            IsoPivotX = sel.Value.cx;
+            IsoPivotZ = sel.Value.cz;
+            IsoDistance = System.Math.Clamp(sel.Value.radius * 3f, 4f, 200f);
+            IsoCameraInitialised = true;
+            EditVersion++;
+            return;
+        }
+        // Top-down: defer to FocusOnRoom for a selected room; otherwise
+        // reset to fit-all.
+        if (SelectedRoomId >= 0 && _lastViewportSize is { } vp)
+            FocusOnRoom(SelectedRoomId, vp.W, vp.H);
+        else ResetView();
+    }
+
+    /// <summary>Bounding centroid + approximate radius (in world m) of
+    /// the current selection. Used by FrameSelection.</summary>
+    (float cx, float cz, float radius)? SelectionCentre()
+    {
+        // Selected object — use its position.
+        if (SelectedObjectIndex >= 0 && SelectedObjectIndex < _objects.Count)
+        {
+            var o = _objects[SelectedObjectIndex];
+            float r = GetObjectType(o.Slot)?.Size ?? 0.5f;
+            return (o.Position.X, o.Position.Z, r * 2f);
+        }
+        // Selected room — bbox of its tiles.
+        if (SelectedRoomId >= 0)
+        {
+            int xMin = int.MaxValue, xMax = int.MinValue;
+            int zMin = int.MaxValue, zMax = int.MinValue;
+            bool any = false;
+            for (int x = 0; x < GridWidth; x++)
+                for (int z = 0; z < GridLength; z++)
+                    if (RoomGrid[x, z] == SelectedRoomId)
+                    {
+                        if (x < xMin) xMin = x; if (x > xMax) xMax = x;
+                        if (z < zMin) zMin = z; if (z > zMax) zMax = z;
+                        any = true;
+                    }
+            if (any)
+            {
+                float cx = (xMin + xMax + 1) * 0.5f * TileSize;
+                float cz = (zMin + zMax + 1) * 0.5f * TileSize;
+                float r  = System.MathF.Max(xMax - xMin + 1, zMax - zMin + 1) * TileSize;
+                return (cx, cz, r);
+            }
+        }
+        // No selection — return entire grid.
+        if (GridWidth > 0 && GridLength > 0)
+        {
+            return (
+                GridWidth  * TileSize * 0.5f,
+                GridLength * TileSize * 0.5f,
+                System.MathF.Max(GridWidth, GridLength) * TileSize);
+        }
+        return null;
+    }
+
+    // Surface size cached by GridEditorView so ResetView / FrameSelection
+    // can compute fits without a window-handle round-trip.
+    (double W, double H)? _lastViewportSize;
+    public void ReportViewportSize(double w, double h) => _lastViewportSize = (w, h);
+
     /// <summary>
     /// Compute zoom + pan so the given room fits centered in the viewport with a
     /// small empty buffer of tiles on each side. Width / height are the editor's

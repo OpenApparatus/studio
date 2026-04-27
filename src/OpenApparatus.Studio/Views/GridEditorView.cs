@@ -1931,6 +1931,8 @@ public class GridEditorView : Control
     (Point origin, double tileSize) ComputeLayout(MainWindowViewModel vm)
     {
         var size = Bounds.Size;
+        // Cache for the VM's FrameSelection / fit commands.
+        vm.ReportViewportSize(size.Width - EditorPadding * 2, size.Height - EditorPadding * 2);
         double availW = size.Width - EditorPadding * 2;
         double availH = size.Height - EditorPadding * 2;
         if (availW <= 0 || availH <= 0 || vm.GridWidth <= 0 || vm.GridLength <= 0)
