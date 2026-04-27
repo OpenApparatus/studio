@@ -36,20 +36,66 @@
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="Padding" Value="8 6"/>
         </Style>
-        <!-- Mode tabs (Layout / Object) — bigger / more prominent than the
-             old view tabs, since they switch what the whole UI is about. -->
-        <Style Selector="RadioButton.modeTab">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="#9aa1ab"/>
-            <Setter Property="BorderThickness" Value="1 1 1 0"/>
-            <Setter Property="CornerRadius" Value="6 6 0 0"/>
-            <Setter Property="Margin" Value="0 0 4 0"/>
-            <Setter Property="Padding" Value="18 6"/>
+        <!-- Floating segmented mode toggle (Layout / Object) anchored at the
+             top of the editor. Two RadioButtons sit flush against each other
+             so they read as one connected control with a single seam in the
+             middle. The unchecked half is light and raised; the checked half
+             is dark with an inset shadow at the top, giving a "pressed in"
+             feel. -->
+        <Style Selector="RadioButton.modePill">
+            <Setter Property="Background" Value="#ffffff"/>
+            <Setter Property="Foreground" Value="#3a4150"/>
+            <Setter Property="BorderBrush" Value="#a8aebb"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="22 7"/>
             <Setter Property="FontSize" Value="13"/>
-        </Style>
-        <Style Selector="RadioButton.modeTab:checked">
-            <Setter Property="Background" Value="White"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="MinWidth" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <ControlTemplate TargetType="RadioButton">
+                    <Border Name="PART_Border"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{TemplateBinding CornerRadius}"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter
+                            Content="{TemplateBinding Content}"
+                            Foreground="{TemplateBinding Foreground}"
+                            HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <!-- Left segment: rounded left, square right. -->
+        <Style Selector="RadioButton.modePillLeft">
+            <Setter Property="CornerRadius" Value="16 0 0 16"/>
+        </Style>
+        <!-- Right segment: square left, rounded right. Negative left margin
+             pulls it onto the left segment so they share a single 1-px seam
+             instead of doubling up. -->
+        <Style Selector="RadioButton.modePillRight">
+            <Setter Property="CornerRadius" Value="0 16 16 0"/>
+            <Setter Property="Margin" Value="-1 0 0 0"/>
+        </Style>
+        <Style Selector="RadioButton.modePill:pointerover /template/ Border#PART_Border">
+            <Setter Property="Background" Value="#eef0f6"/>
+        </Style>
+        <!-- Pressed-in checked state: dark fill + inset shadow at the top
+             edge so the button looks recessed into the editor surface. -->
+        <Style Selector="RadioButton.modePill:checked /template/ Border#PART_Border">
+            <Setter Property="Background" Value="#2a3242"/>
+            <Setter Property="BorderBrush" Value="#171c26"/>
+            <Setter Property="BoxShadow" Value="inset 0 2 4 0 #66000000"/>
+        </Style>
+        <Style Selector="RadioButton.modePill:checked /template/ ContentPresenter">
+            <Setter Property="Foreground" Value="#ffffff"/>
+        </Style>
+        <Style Selector="RadioButton.modePill:checked:pointerover /template/ Border#PART_Border">
+            <Setter Property="Background" Value="#323b4d"/>
         </Style>
         <Style Selector="RadioButton.tab">
             <Setter Property="Background" Value="Transparent"/>
@@ -62,38 +108,41 @@
             <Setter Property="Background" Value="White"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
         </Style>
-        <!-- Card-style border for the toolbar above the editor. Tighter
-             paddings + a smaller checkbox font so the three cards fit on
-             one horizontal line in standard window widths. -->
-        <Style Selector="Border.card">
-            <Setter Property="Background" Value="White"/>
-            <Setter Property="BorderBrush" Value="#cdd1d9"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="5"/>
-            <Setter Property="Padding" Value="10 6"/>
-            <Setter Property="HorizontalAlignment" Value="Stretch"/>
-        </Style>
-        <Style Selector="Border.card TextBlock">
-            <Setter Property="FontSize" Value="11"/>
-        </Style>
-        <Style Selector="TextBlock.cardHdr">
+        <!-- Section caption above each toolbar group. Tiny, uppercase, grey. -->
+        <Style Selector="TextBlock.sectionLabel">
+            <Setter Property="FontSize" Value="9.5"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="Foreground" Value="#7a808c"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0 0 8 0"/>
+        </Style>
+        <!-- Inline label for sliders ("Opacity", "Saturation", etc.). -->
+        <Style Selector="TextBlock.sliderLabel">
+            <Setter Property="FontSize" Value="11"/>
             <Setter Property="Foreground" Value="#5a6270"/>
-            <Setter Property="Margin" Value="0 0 0 3"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="8 0 5 0"/>
+        </Style>
+        <!-- Vertical hairline divider between toolbar sections. -->
+        <Style Selector="Border.vsep">
+            <Setter Property="Width" Value="1"/>
+            <Setter Property="Background" Value="#d3d7df"/>
+            <Setter Property="Margin" Value="10 2"/>
+            <Setter Property="VerticalAlignment" Value="Stretch"/>
         </Style>
         <!-- Pill-style toggle buttons: a single chip with the label inside.
              Lit blue when checked. -->
         <Style Selector="ToggleButton.pill">
-            <Setter Property="Padding" Value="8 3"/>
+            <Setter Property="Padding" Value="9 3"/>
             <Setter Property="MinHeight" Value="0"/>
             <Setter Property="MinWidth" Value="0"/>
             <Setter Property="FontSize" Value="11"/>
-            <Setter Property="Background" Value="#f4f5f7"/>
+            <Setter Property="Background" Value="#ffffff"/>
             <Setter Property="BorderBrush" Value="#c8ccd6"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="14"/>
+            <Setter Property="CornerRadius" Value="12"/>
             <Setter Property="Margin" Value="0 0 4 0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
         <Style Selector="ToggleButton.pill:checked /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="#1f6feb"/>
@@ -104,6 +153,126 @@
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="BorderBrush" Value="#1c5fc7"/>
         </Style>
+        <Style Selector="ToggleButton.pill:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#eef2f7"/>
+        </Style>
+        <Style Selector="ToggleButton.pill:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#1c5fc7"/>
+        </Style>
+
+        <!-- Slim modern slider — full ControlTemplate replacement so we don't
+             have to fight the Fluent default's chunky red thumb. Both
+             orientations supported. Thin (3 px) track, small (12 px) flat
+             blue thumb with a white halo. -->
+        <Style Selector="Slider">
+            <Setter Property="Background" Value="#dde1e8"/>
+            <Setter Property="Foreground" Value="#1f6feb"/>
+        </Style>
+        <Style Selector="Slider:horizontal">
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="Height" Value="18"/>
+            <Setter Property="Template">
+                <ControlTemplate TargetType="Slider">
+                    <Grid Margin="0">
+                        <Border Height="3" CornerRadius="1.5" Background="#dde1e8" VerticalAlignment="Center"/>
+                        <Track Name="PART_Track" Orientation="Horizontal"
+                               Minimum="{TemplateBinding Minimum}"
+                               Maximum="{TemplateBinding Maximum}"
+                               Value="{TemplateBinding Value, Mode=TwoWay}"
+                               IsDirectionReversed="{TemplateBinding IsDirectionReversed}">
+                            <Track.DecreaseButton>
+                                <RepeatButton Name="PART_DecreaseButton" Focusable="False">
+                                    <RepeatButton.Template>
+                                        <ControlTemplate>
+                                            <Border Height="3" CornerRadius="1.5" Background="#1f6feb" VerticalAlignment="Center"/>
+                                        </ControlTemplate>
+                                    </RepeatButton.Template>
+                                </RepeatButton>
+                            </Track.DecreaseButton>
+                            <Track.IncreaseButton>
+                                <RepeatButton Name="PART_IncreaseButton" Focusable="False">
+                                    <RepeatButton.Template>
+                                        <ControlTemplate>
+                                            <Border Background="Transparent"/>
+                                        </ControlTemplate>
+                                    </RepeatButton.Template>
+                                </RepeatButton>
+                            </Track.IncreaseButton>
+                            <Thumb>
+                                <Thumb.Template>
+                                    <ControlTemplate TargetType="Thumb">
+                                        <Border Width="12" Height="12" CornerRadius="6"
+                                                Background="#1f6feb"
+                                                BorderBrush="White" BorderThickness="1.5"/>
+                                    </ControlTemplate>
+                                </Thumb.Template>
+                            </Thumb>
+                        </Track>
+                    </Grid>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="Slider:vertical">
+            <Setter Property="MinWidth" Value="0"/>
+            <Setter Property="Width" Value="18"/>
+            <Setter Property="Template">
+                <ControlTemplate TargetType="Slider">
+                    <Grid Margin="0">
+                        <Border Width="3" CornerRadius="1.5" Background="#dde1e8" HorizontalAlignment="Center"/>
+                        <Track Name="PART_Track" Orientation="Vertical"
+                               Minimum="{TemplateBinding Minimum}"
+                               Maximum="{TemplateBinding Maximum}"
+                               Value="{TemplateBinding Value, Mode=TwoWay}"
+                               IsDirectionReversed="{TemplateBinding IsDirectionReversed}">
+                            <Track.DecreaseButton>
+                                <RepeatButton Name="PART_DecreaseButton" Focusable="False">
+                                    <RepeatButton.Template>
+                                        <ControlTemplate>
+                                            <Border Width="3" CornerRadius="1.5" Background="#1f6feb" HorizontalAlignment="Center"/>
+                                        </ControlTemplate>
+                                    </RepeatButton.Template>
+                                </RepeatButton>
+                            </Track.DecreaseButton>
+                            <Track.IncreaseButton>
+                                <RepeatButton Name="PART_IncreaseButton" Focusable="False">
+                                    <RepeatButton.Template>
+                                        <ControlTemplate>
+                                            <Border Background="Transparent"/>
+                                        </ControlTemplate>
+                                    </RepeatButton.Template>
+                                </RepeatButton>
+                            </Track.IncreaseButton>
+                            <Thumb>
+                                <Thumb.Template>
+                                    <ControlTemplate TargetType="Thumb">
+                                        <Border Width="12" Height="12" CornerRadius="6"
+                                                Background="#1f6feb"
+                                                BorderBrush="White" BorderThickness="1.5"/>
+                                    </ControlTemplate>
+                                </Thumb.Template>
+                            </Thumb>
+                        </Track>
+                    </Grid>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="Slider:disabled">
+            <Setter Property="Opacity" Value="0.5"/>
+        </Style>
+
+        <!-- Compact icon button used for the path play/stop + colour swatch. -->
+        <Style Selector="Button.icon">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="MinWidth" Value="0"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="Width" Value="22"/>
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="CornerRadius" Value="11"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="FontSize" Value="11"/>
+        </Style>
     </Window.Styles>
 
     <Design.DataContext>
@@ -112,129 +281,100 @@
 
     <DockPanel LastChildFill="True">
 
-        <!-- Mode bar: Layout / Object toggle + mode-independent actions. -->
-        <Border DockPanel.Dock="Top" Background="#dee0e6" BorderBrush="#a3aab4" BorderThickness="0 0 0 1" Padding="10 8 10 0">
-            <Grid ColumnDefinitions="Auto,*,Auto">
-                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="0">
-                    <RadioButton GroupName="EditMode"
-                                 Content="Layout"
-                                 IsChecked="{Binding EditMode, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=Layout}"
-                                 Classes="modeTab"/>
-                    <RadioButton GroupName="EditMode"
-                                 Content="Object"
-                                 IsChecked="{Binding EditMode, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=Object}"
-                                 Classes="modeTab"/>
-                </StackPanel>
-                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="0 0 0 8">
-                    <Button Content="Undo" Command="{Binding UndoCommand}" IsEnabled="{Binding CanUndo}" ToolTip.Tip="Undo (Ctrl+Z)"/>
-                    <Button Content="Redo" Command="{Binding RedoCommand}" IsEnabled="{Binding CanRedo}" ToolTip.Tip="Redo (Ctrl+Y / Ctrl+Shift+Z)"/>
-                    <Separator Width="10"/>
-                    <Button Content="Reset All" Command="{Binding ResetAllCommand}"/>
-                    <Button Content="Random Fill" Command="{Binding RandomFillCommand}"
-                            IsVisible="{Binding IsLayoutMode}"/>
-                    <Separator Width="10"/>
-                    <Button Content="Export glTF…"
-                            Command="{Binding ExportGltfCommand}"
-                            CommandParameter="{Binding $parent[Window]}"
-                            ToolTip.Tip="Export as glTF with per-room scene hierarchy"/>
-                    <Button Content="Export JSON…"
-                            Command="{Binding ExportJsonCommand}"
-                            CommandParameter="{Binding $parent[Window]}"
-                            ToolTip.Tip="Save the authored scene as JSON"/>
-                </StackPanel>
-            </Grid>
+        <!-- Top action bar — undo/redo + reset + export. The Layout/Object
+             mode toggle has moved out of here onto a floating control inside
+             the editor surface. -->
+        <Border DockPanel.Dock="Top" Background="#dee0e6" BorderBrush="#a3aab4" BorderThickness="0 0 0 1" Padding="10 6">
+            <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <Button Content="Undo" Command="{Binding UndoCommand}" IsEnabled="{Binding CanUndo}" ToolTip.Tip="Undo (Ctrl+Z)"/>
+                <Button Content="Redo" Command="{Binding RedoCommand}" IsEnabled="{Binding CanRedo}" ToolTip.Tip="Redo (Ctrl+Y / Ctrl+Shift+Z)"/>
+                <Separator Width="10"/>
+                <Button Content="Reset All" Command="{Binding ResetAllCommand}"/>
+                <Button Content="Random Fill" Command="{Binding RandomFillCommand}"
+                        IsVisible="{Binding IsLayoutMode}"/>
+                <Separator Width="10"/>
+                <Button Content="Export glTF…"
+                        Command="{Binding ExportGltfCommand}"
+                        CommandParameter="{Binding $parent[Window]}"
+                        ToolTip.Tip="Export as glTF with per-room scene hierarchy"/>
+                <Button Content="Export JSON…"
+                        Command="{Binding ExportJsonCommand}"
+                        CommandParameter="{Binding $parent[Window]}"
+                        ToolTip.Tip="Save the authored scene as JSON"/>
+            </StackPanel>
         </Border>
 
-        <!-- Toolbar cards strip: View / Layout meas. / Object meas. / Paths.
-             The four cards share the window width via star columns so each
-             takes a quarter of the bar. -->
-        <Border DockPanel.Dock="Top" Background="#eef0f5" BorderBrush="#cdd1d9" BorderThickness="0 0 0 1" Padding="8">
-            <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="6">
+        <!-- Modern single-row settings strip. Sections separated by hairline
+             dividers; each section labelled with a tiny uppercase caption. -->
+        <Border DockPanel.Dock="Top" Background="#f7f8fa" BorderBrush="#cdd1d9" BorderThickness="0 0 0 1" Padding="14 8">
+                <StackPanel Orientation="Horizontal" Spacing="0" VerticalAlignment="Center">
 
-                <!-- View card — single row of pill toggles + compact sliders. -->
-                <Border Grid.Column="0" Classes="card">
-                    <StackPanel Spacing="2">
-                        <TextBlock Classes="cardHdr" Text="VIEW"/>
-                        <StackPanel Orientation="Horizontal" Spacing="0" VerticalAlignment="Center">
-                            <ToggleButton Classes="pill" Content="Borders"
-                                          IsChecked="{Binding ShowWallBorders}"
-                                          ToolTip.Tip="14-px coloured ribbons inside each wall."/>
-                            <ToggleButton Classes="pill" Content="Labels"
-                                          IsChecked="{Binding ShowRoomLabels}"
-                                          ToolTip.Tip="Room id + name at room centre."/>
-                            <Slider Width="64" Minimum="0" Maximum="1" Margin="6 0 0 0"
-                                    Value="{Binding WallBorderOpacity, Mode=TwoWay}"
-                                    IsEnabled="{Binding ShowWallBorders}"
-                                    VerticalAlignment="Center"
-                                    ToolTip.Tip="Wall border opacity."/>
-                            <Slider Width="64" Minimum="0" Maximum="1" Margin="6 0 0 0"
-                                    Value="{Binding TileSaturation, Mode=TwoWay}"
-                                    VerticalAlignment="Center"
-                                    ToolTip.Tip="Tile colour saturation."/>
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
+                    <!-- VIEW -->
+                    <TextBlock Classes="sectionLabel" Text="VIEW"/>
+                    <ToggleButton Classes="pill" Content="Borders"
+                                  IsChecked="{Binding ShowWallBorders}"
+                                  ToolTip.Tip="14-px coloured ribbons inside each wall."/>
+                    <ToggleButton Classes="pill" Content="Labels"
+                                  IsChecked="{Binding ShowRoomLabels}"
+                                  ToolTip.Tip="Room id + name at room centre."/>
+                    <TextBlock Classes="sliderLabel" Text="Opacity"/>
+                    <Slider Width="76" Minimum="0" Maximum="1"
+                            Value="{Binding WallBorderOpacity, Mode=TwoWay}"
+                            IsEnabled="{Binding ShowWallBorders}"
+                            VerticalAlignment="Center"
+                            ToolTip.Tip="Wall border opacity."/>
+                    <TextBlock Classes="sliderLabel" Text="Saturation"/>
+                    <Slider Width="76" Minimum="0" Maximum="1"
+                            Value="{Binding TileSaturation, Mode=TwoWay}"
+                            VerticalAlignment="Center"
+                            ToolTip.Tip="Tile colour saturation."/>
 
-                <!-- Layout measurements card — three pill toggles. -->
-                <Border Grid.Column="1" Classes="card">
-                    <StackPanel Spacing="2">
-                        <TextBlock Classes="cardHdr" Text="LAYOUT MEASUREMENTS"/>
-                        <StackPanel Orientation="Horizontal" Spacing="0">
-                            <ToggleButton Classes="pill" Content="Dimensions"
-                                          IsChecked="{Binding ShowRoomDimensions}"
-                                          ToolTip.Tip="W × D label per room."/>
-                            <ToggleButton Classes="pill" Content="Area"
-                                          IsChecked="{Binding ShowFloorAreaLabels}"
-                                          ToolTip.Tip="m² label per room."/>
-                            <ToggleButton Classes="pill" Content="Openings"
-                                          IsChecked="{Binding ShowOpeningSizeLabels}"
-                                          ToolTip.Tip="Width × height per door / window."/>
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
+                    <Border Classes="vsep"/>
 
-                <!-- Object measurements card — three independent pill toggles. -->
-                <Border Grid.Column="2" Classes="card">
-                    <StackPanel Spacing="2">
-                        <TextBlock Classes="cardHdr" Text="OBJECT MEASUREMENTS"/>
-                        <StackPanel Orientation="Horizontal" Spacing="0">
-                            <ToggleButton Classes="pill" Content="Object distances"
-                                          IsChecked="{Binding ShowObjectDistances}"
-                                          ToolTip.Tip="Inter-object distance line + label."/>
-                            <ToggleButton Classes="pill" Content="Door angles"
-                                          IsChecked="{Binding ShowDoorAngles}"
-                                          ToolTip.Tip="Angle arc + |angle| label at every door, plus 0° tick."/>
-                            <ToggleButton Classes="pill" Content="Door distances"
-                                          IsChecked="{Binding ShowDoorDistances}"
-                                          ToolTip.Tip="Door→object line + distance label."/>
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
+                    <!-- LAYOUT -->
+                    <TextBlock Classes="sectionLabel" Text="LAYOUT"/>
+                    <ToggleButton Classes="pill" Content="Dimensions"
+                                  IsChecked="{Binding ShowRoomDimensions}"
+                                  ToolTip.Tip="W × D label per room."/>
+                    <ToggleButton Classes="pill" Content="Area"
+                                  IsChecked="{Binding ShowFloorAreaLabels}"
+                                  ToolTip.Tip="m² label per room."/>
+                    <ToggleButton Classes="pill" Content="Openings"
+                                  IsChecked="{Binding ShowOpeningSizeLabels}"
+                                  ToolTip.Tip="Width × height per door / window."/>
 
-                <!-- Paths card — connectivity overlay between rooms. -->
-                <Border Grid.Column="3" Classes="card">
-                    <StackPanel Spacing="2">
-                        <TextBlock Classes="cardHdr" Text="PATHS"/>
-                        <StackPanel Orientation="Horizontal" Spacing="0" VerticalAlignment="Center">
-                            <ToggleButton Classes="pill" Content="Show"
-                                          IsChecked="{Binding ShowPaths}"
-                                          ToolTip.Tip="Polyline through every traversable wall (open / doorway)."/>
-                            <Button Width="20" Height="20" Padding="0" Margin="4 0 0 0"
-                                    BorderBrush="#888" BorderThickness="1"
-                                    Background="{Binding PathColor, Converter={x:Static converters:Vector3ToBrushConverter.Instance}}"
-                                    Click="OnPickPathColor"
-                                    VerticalAlignment="Center"
-                                    ToolTip.Tip="Path overlay colour"/>
-                            <Button Width="22" Height="22" Padding="0" Margin="4 0 0 0"
-                                    Command="{Binding TogglePathAnimationCommand}"
-                                    VerticalAlignment="Center"
-                                    Content="{Binding IsPathAnimating, Converter={x:Static converters:BoolToTextConverter.Instance}, ConverterParameter='■|▶'}"
-                                    ToolTip.Tip="Animate the path overlay outward from the start room. Loops while running."/>
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
+                    <Border Classes="vsep"/>
 
-            </Grid>
+                    <!-- OBJECTS -->
+                    <TextBlock Classes="sectionLabel" Text="OBJECTS"/>
+                    <ToggleButton Classes="pill" Content="Distances"
+                                  IsChecked="{Binding ShowObjectDistances}"
+                                  ToolTip.Tip="Inter-object distance line + label."/>
+                    <ToggleButton Classes="pill" Content="Door angles"
+                                  IsChecked="{Binding ShowDoorAngles}"
+                                  ToolTip.Tip="Angle arc + |angle| label at every door, plus 0° tick."/>
+                    <ToggleButton Classes="pill" Content="Door distances"
+                                  IsChecked="{Binding ShowDoorDistances}"
+                                  ToolTip.Tip="Door→object line + distance label."/>
+
+                    <Border Classes="vsep"/>
+
+                    <!-- PATHS -->
+                    <TextBlock Classes="sectionLabel" Text="PATHS"/>
+                    <ToggleButton Classes="pill" Content="Show"
+                                  IsChecked="{Binding ShowPaths}"
+                                  ToolTip.Tip="Polyline through every traversable wall (open / doorway)."/>
+                    <Button Classes="icon" Margin="2 0 0 0"
+                            BorderBrush="#888" BorderThickness="1"
+                            Background="{Binding PathColor, Converter={x:Static converters:Vector3ToBrushConverter.Instance}}"
+                            Click="OnPickPathColor"
+                            ToolTip.Tip="Path overlay colour"/>
+                    <Button Classes="icon" Margin="4 0 0 0"
+                            Command="{Binding TogglePathAnimationCommand}"
+                            Content="{Binding IsPathAnimating, Converter={x:Static converters:BoolToTextConverter.Instance}, ConverterParameter='■|▶'}"
+                            ToolTip.Tip="Animate the path overlay outward from the start room. Loops while running."/>
+
+                </StackPanel>
         </Border>
 
         <!-- Status bar -->
@@ -358,7 +498,30 @@
             <Grid Grid.Column="1" RowDefinitions="*,Auto">
                 <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
                     <Border Grid.Column="0" Background="#1a1a1f">
-                        <views:GridEditorView EditVersion="{Binding EditVersion}" Margin="8"/>
+                        <Grid>
+                            <views:GridEditorView EditVersion="{Binding EditVersion}" Margin="8"/>
+                            <!-- Floating Layout / Object segmented control,
+                                 anchored top-centre over the editor. The
+                                 outer Border carries a soft drop shadow so
+                                 the control reads as elevated above the
+                                 dark editor surface. -->
+                            <Border HorizontalAlignment="Center"
+                                    VerticalAlignment="Top"
+                                    Margin="0 14 0 0"
+                                    CornerRadius="16"
+                                    BoxShadow="0 4 14 0 #55000000">
+                                <StackPanel Orientation="Horizontal">
+                                    <RadioButton GroupName="EditMode"
+                                                 Content="Layout"
+                                                 Classes="modePill modePillLeft"
+                                                 IsChecked="{Binding EditMode, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=Layout}"/>
+                                    <RadioButton GroupName="EditMode"
+                                                 Content="Object"
+                                                 Classes="modePill modePillRight"
+                                                 IsChecked="{Binding EditMode, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=Object}"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
                     </Border>
                     <Border Grid.Column="1" Background="#e6e6ea" BorderBrush="#c8c8cf" BorderThickness="1 0 0 0" Padding="6 10" Width="48">
                         <DockPanel>
