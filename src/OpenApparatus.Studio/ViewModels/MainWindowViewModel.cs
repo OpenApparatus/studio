@@ -220,8 +220,10 @@ public partial class MainWindowViewModel : ViewModelBase
 
     /// <summary>When on, each newly-created room is assigned a random
     /// HSV-rotated wall colour instead of <see cref="DefaultWallColor"/>.
-    /// Surfaced in the UI as a rainbow-gradient swatch.</summary>
-    [ObservableProperty] bool _useRandomDefaultWallColor;
+    /// Surfaced in the UI as a rainbow-gradient swatch. Defaults to
+    /// true so a fresh project visually distinguishes adjacent rooms
+    /// without the user touching settings.</summary>
+    [ObservableProperty] bool _useRandomDefaultWallColor = true;
 
     /// <summary>Brush displayed in the wall-default swatch — either a
     /// solid colour or a rainbow gradient when random-mode is on.
