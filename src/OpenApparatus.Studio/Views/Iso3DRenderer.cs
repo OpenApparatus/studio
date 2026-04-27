@@ -206,14 +206,61 @@ internal static class Iso3DRenderer
                             : (adj.RoomA.Id < adj.RoomB!.Id ? adj.RoomA.Id : adj.RoomB.Id);
                 if (ownerId != room.Id) continue;
 
-                Vector3 wallCol = vm.EffectiveWallColor(room.Id, adj);
-                EmitSubmesh(tris, wallMeshes[adj], SubmeshIndex.Walls, wallCol, doubleSided: false);
+                // Per-face wall colour: the face that points toward Room A
+                // (positive dot with SharedSegment.Normal) is what Room A
+                // sees from the inside, so it gets Room A's wall colour.
+                // The opposite face is what Room B sees → Room B's colour.
+                // Top / bottom / end faces (normal nearly perpendicular to
+                // the segment normal) use the mix of the two.
+                Vector3 colA = vm.EffectiveWallColor(adj.RoomA.Id, adj);
+                Vector3 colB = adj.RoomB is { } rB
+                    ? vm.EffectiveWallColor(rB.Id, adj)
+                    : colA * 0.7f;
+                var n2 = adj.SharedSegment.Normal;
+                Vector3 nAdj = new(n2.X, 0f, n2.Y);
+                EmitWallSubmesh(tris, wallMeshes[adj], nAdj, colA, colB);
 
                 // The wall's own floor frame (around the doorway) belongs
                 // to the lower-id owner's floor mesh in the exporter; emit
                 // it here too so doorway thresholds aren't holes.
                 EmitSubmesh(tris, wallMeshes[adj], SubmeshIndex.Floor, floorCol, doubleSided: false);
             }
+        }
+    }
+
+    /// <summary>Like EmitSubmesh, but every wall triangle gets its colour
+    /// chosen by whichever room sees that face. Room A's wall colour for
+    /// faces pointing along the adjacency normal, Room B's for the
+    /// opposite side, the mix for top / bottom / wall-end caps.</summary>
+    static void EmitWallSubmesh(
+        List<Tri> tris, MeshData mesh, Vector3 nAdj,
+        Vector3 colA, Vector3 colB)
+    {
+        if (SubmeshIndex.Walls >= mesh.SubmeshCount) return;
+        var idx = mesh.SubmeshIndices[SubmeshIndex.Walls];
+        var v = mesh.Vertices;
+        var n = mesh.Normals;
+        Vector3 colMix = (colA + colB) * 0.5f;
+        for (int i = 0; i + 2 < idx.Length; i += 3)
+        {
+            int ia = idx[i], ib = idx[i + 1], ic = idx[i + 2];
+            Vector3 normal = (n[ia] + n[ib] + n[ic]) / 3f;
+            float nLen = normal.Length();
+            if (nLen < 1e-4f)
+            {
+                normal = Vector3.Cross(v[ib] - v[ia], v[ic] - v[ia]);
+                nLen = normal.Length();
+                if (nLen < 1e-4f) continue;
+            }
+            normal /= nLen;
+            // Side selection. Threshold of 0.5 so cap faces (top/bottom/
+            // ends, where the dot is ~0) take the mix; clearly side-facing
+            // faces (dot near ±1) take the corresponding room's colour.
+            float side = Vector3.Dot(normal, nAdj);
+            Vector3 col = side >  0.5f ? colA
+                        : side < -0.5f ? colB
+                        : colMix;
+            tris.Add(new Tri(v[ia], v[ib], v[ic], normal, col, doubleSided: false));
         }
     }
 
