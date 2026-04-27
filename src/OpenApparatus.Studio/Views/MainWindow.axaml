@@ -3,6 +3,7 @@
         xmlns:vm="using:OpenApparatus.Studio.ViewModels"
         xmlns:views="using:OpenApparatus.Studio.Views"
         xmlns:converters="using:OpenApparatus.Studio.Converters"
+        xmlns:behaviors="using:OpenApparatus.Studio.Behaviors"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="780"
@@ -578,14 +579,20 @@
                                 <Border Classes="sectionFlat">
                                     <Grid ColumnDefinitions="Auto,*"
                                           RowDefinitions="Auto,Auto,Auto" RowSpacing="6" ColumnSpacing="10">
-                                        <TextBlock Grid.Row="0" Grid.Column="0" Classes="propLabel" Text="Width (tiles)"/>
-                                        <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="compact"
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Classes="propLabel" Text="Width (tiles)"
+                                                   behaviors:DragScrub.Target="{Binding #gridWidthInput}"
+                                                   behaviors:DragScrub.Step="0.2"/>
+                                        <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="compact" Name="gridWidthInput"
                                                        Value="{Binding GridWidth}" Minimum="1" Maximum="64" FormatString="0"/>
-                                        <TextBlock Grid.Row="1" Grid.Column="0" Classes="propLabel" Text="Length (tiles)"/>
-                                        <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="compact"
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Classes="propLabel" Text="Length (tiles)"
+                                                   behaviors:DragScrub.Target="{Binding #gridLengthInput}"
+                                                   behaviors:DragScrub.Step="0.2"/>
+                                        <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="compact" Name="gridLengthInput"
                                                        Value="{Binding GridLength}" Minimum="1" Maximum="64" FormatString="0"/>
-                                        <TextBlock Grid.Row="2" Grid.Column="0" Classes="propLabel" Text="Tile size (m)"/>
-                                        <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="compact"
+                                        <TextBlock Grid.Row="2" Grid.Column="0" Classes="propLabel" Text="Tile size (m)"
+                                                   behaviors:DragScrub.Target="{Binding #tileSizeInput}"
+                                                   behaviors:DragScrub.Step="0.05"/>
+                                        <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="compact" Name="tileSizeInput"
                                                        Value="{Binding TileSize}" Minimum="0.5" Maximum="10" Increment="0.5" FormatString="0.0"/>
                                     </Grid>
                                 </Border>
@@ -594,11 +601,15 @@
                                 <Border Classes="sectionFlat">
                                     <Grid ColumnDefinitions="Auto,*"
                                           RowDefinitions="Auto,Auto" RowSpacing="6" ColumnSpacing="10">
-                                        <TextBlock Grid.Row="0" Grid.Column="0" Classes="propLabel" Text="Thickness (m)"/>
-                                        <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="compact"
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Classes="propLabel" Text="Thickness (m)"
+                                                   behaviors:DragScrub.Target="{Binding #wallThicknessInput}"
+                                                   behaviors:DragScrub.Step="0.01"/>
+                                        <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="compact" Name="wallThicknessInput"
                                                        Value="{Binding WallThickness}" Minimum="0.05" Maximum="2.0" Increment="0.05" FormatString="0.00"/>
-                                        <TextBlock Grid.Row="1" Grid.Column="0" Classes="propLabel" Text="Height (m)"/>
-                                        <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="compact"
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Classes="propLabel" Text="Height (m)"
+                                                   behaviors:DragScrub.Target="{Binding #wallHeightInput}"
+                                                   behaviors:DragScrub.Step="0.05"/>
+                                        <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="compact" Name="wallHeightInput"
                                                        Value="{Binding WallHeight}" Minimum="0.5" Maximum="6.0" Increment="0.5" FormatString="0.0"/>
                                     </Grid>
                                 </Border>
@@ -607,11 +618,15 @@
                                 <Border Classes="sectionFlat">
                                     <Grid ColumnDefinitions="Auto,*"
                                           RowDefinitions="Auto,Auto" RowSpacing="6" ColumnSpacing="10">
-                                        <TextBlock Grid.Row="0" Grid.Column="0" Classes="propLabel" Text="Width (m)"/>
-                                        <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="compact"
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Classes="propLabel" Text="Width (m)"
+                                                   behaviors:DragScrub.Target="{Binding #doorWidthInput}"
+                                                   behaviors:DragScrub.Step="0.02"/>
+                                        <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="compact" Name="doorWidthInput"
                                                        Value="{Binding DoorWidth}" Minimum="0.5" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
-                                        <TextBlock Grid.Row="1" Grid.Column="0" Classes="propLabel" Text="Height (m)"/>
-                                        <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="compact"
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Classes="propLabel" Text="Height (m)"
+                                                   behaviors:DragScrub.Target="{Binding #doorHeightInput}"
+                                                   behaviors:DragScrub.Step="0.02"/>
+                                        <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="compact" Name="doorHeightInput"
                                                        Value="{Binding DoorHeight}" Minimum="1.5" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
                                     </Grid>
                                 </Border>
@@ -620,14 +635,20 @@
                                 <Border Classes="sectionFlat">
                                     <Grid ColumnDefinitions="Auto,*"
                                           RowDefinitions="Auto,Auto,Auto" RowSpacing="6" ColumnSpacing="10">
-                                        <TextBlock Grid.Row="0" Grid.Column="0" Classes="propLabel" Text="Width (m)"/>
-                                        <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="compact"
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Classes="propLabel" Text="Width (m)"
+                                                   behaviors:DragScrub.Target="{Binding #winWidthInput}"
+                                                   behaviors:DragScrub.Step="0.02"/>
+                                        <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="compact" Name="winWidthInput"
                                                        Value="{Binding WindowWidth}" Minimum="0.3" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
-                                        <TextBlock Grid.Row="1" Grid.Column="0" Classes="propLabel" Text="Head height (m)"/>
-                                        <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="compact"
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Classes="propLabel" Text="Head height (m)"
+                                                   behaviors:DragScrub.Target="{Binding #winHeightInput}"
+                                                   behaviors:DragScrub.Step="0.02"/>
+                                        <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="compact" Name="winHeightInput"
                                                        Value="{Binding WindowHeight}" Minimum="1.0" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
-                                        <TextBlock Grid.Row="2" Grid.Column="0" Classes="propLabel" Text="Sill height (m)"/>
-                                        <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="compact"
+                                        <TextBlock Grid.Row="2" Grid.Column="0" Classes="propLabel" Text="Sill height (m)"
+                                                   behaviors:DragScrub.Target="{Binding #winSillInput}"
+                                                   behaviors:DragScrub.Step="0.02"/>
+                                        <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="compact" Name="winSillInput"
                                                        Value="{Binding WindowSillHeight}" Minimum="0.1" Maximum="2.5" Increment="0.1" FormatString="0.0"/>
                                     </Grid>
                                 </Border>
