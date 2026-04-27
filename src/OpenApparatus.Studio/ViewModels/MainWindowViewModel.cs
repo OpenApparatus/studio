@@ -249,6 +249,12 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     void DismissShortcutOverlay() => IsShortcutOverlayVisible = false;
 
+    /// <summary>Whether the command palette (Ctrl+K) is open.</summary>
+    [ObservableProperty] bool _isCommandPaletteOpen;
+
+    [RelayCommand]
+    void OpenCommandPalette() => IsCommandPaletteOpen = true;
+
     /// <summary>Tile-colour view used while in Layout mode. Floor shows each
     /// room's floor colour, Ceiling shows the ceiling colour. Has no effect in
     /// Object mode (always renders floor colours).</summary>

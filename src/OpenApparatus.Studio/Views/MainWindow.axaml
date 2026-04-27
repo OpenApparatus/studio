@@ -25,6 +25,7 @@
              handled in OnGlobalKey so it doesn't fire inside TextBoxes. -->
         <KeyBinding Gesture="Ctrl+D0" Command="{Binding ZoomActualSizeCommand}"/>
         <KeyBinding Gesture="Ctrl+D1" Command="{Binding ResetViewCommand}"/>
+        <KeyBinding Gesture="Ctrl+K" Command="{Binding OpenCommandPaletteCommand}"/>
     </Window.KeyBindings>
 
     <Window.Styles>
@@ -1114,7 +1115,29 @@
                 <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
                     <Border Grid.Column="0" Background="{StaticResource EditorBgBrush}">
                         <Grid>
-                            <views:GridEditorView EditVersion="{Binding EditVersion}" Margin="8"/>
+                            <views:GridEditorView EditVersion="{Binding EditVersion}" Margin="8">
+                                <views:GridEditorView.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="Frame selection (F)"
+                                                  Command="{Binding FrameSelectionCommand}"/>
+                                        <MenuItem Header="Reset view"
+                                                  Command="{Binding ResetViewCommand}"/>
+                                        <Separator/>
+                                        <MenuItem Header="Clear selection"
+                                                  Command="{Binding ClearSelectionCommand}"/>
+                                        <MenuItem Header="Random fill"
+                                                  IsVisible="{Binding IsLayoutMode}"
+                                                  Command="{Binding RandomFillCommand}"/>
+                                        <Separator/>
+                                        <MenuItem Header="Switch to Top view"
+                                                  IsVisible="{Binding IsIsoView}"
+                                                  Command="{Binding SetTopViewCommand}"/>
+                                        <MenuItem Header="Switch to 3D view"
+                                                  IsVisible="{Binding IsTopDownView}"
+                                                  Command="{Binding Set3DViewCommand}"/>
+                                    </ContextMenu>
+                                </views:GridEditorView.ContextMenu>
+                            </views:GridEditorView>
                             <!-- Floating Layout / Object segmented control,
                                  anchored top-centre over the editor. White
                                  rail with rounded ends; inactive half blends
@@ -1203,6 +1226,12 @@
 
     <!-- Toast layer — bottom-right transient confirmations + Undo. -->
     <views:ToastsLayer/>
+
+    <!-- Command palette overlay (Ctrl+K). Backdrop dim + centred input
+         + filtered command list. Hidden by default; shown via
+         IsOpen binding. -->
+    <views:CommandPalette x:Name="CommandPalette"
+                          IsOpen="{Binding IsCommandPaletteOpen, Mode=TwoWay}"/>
 
     <!-- Keyboard-shortcut help overlay. Toggled with F1; click the
          backdrop or press the close button to dismiss. -->
