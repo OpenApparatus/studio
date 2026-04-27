@@ -1,6 +1,5 @@
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
-using Avalonia.Layout;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 
@@ -14,11 +13,12 @@ public partial class WallColorDialog : Window
     public System.Numerics.Vector3 ChosenColor { get; private set; }
 
     Color _current = Color.FromRgb(199, 199, 204);
+    bool _internalUpdate;
 
     public WallColorDialog()
     {
         InitializeComponent();
-        BuildSwatches();
+
         var hex = this.FindControl<TextBox>("HexInput")!;
         hex.LostFocus += (_, _) => ApplyHex(hex.Text);
         hex.KeyUp += (_, e) =>
@@ -32,7 +32,7 @@ public partial class WallColorDialog : Window
     {
         var header = this.FindControl<TextBlock>("HeaderText")
             ?? throw new System.InvalidOperationException("HeaderText control missing.");
-        header.Text = $"Color for {roomLabel}";
+        header.Text = $"Colour for {roomLabel}";
 
         if (current.HasValue)
         {
@@ -41,47 +41,28 @@ public partial class WallColorDialog : Window
                 (byte)(current.Value.Y * 255),
                 (byte)(current.Value.Z * 255));
         }
+        SyncPickerToCurrent();
         UpdatePreview();
     }
 
-    void BuildSwatches()
+    /// <summary>Called when the user picks a colour via the ColorView.
+    /// Pushes the new value into _current + the hex field. The
+    /// _internalUpdate flag prevents feedback when SyncPickerToCurrent
+    /// programmatically writes to the picker.</summary>
+    void OnPickerColorChanged(object? sender, Avalonia.Controls.ColorChangedEventArgs e)
     {
-        // 18 swatches across 3 rows × 6 columns. Picked to cover warm/cool/neutral
-        // architectural palette without a full picker UI.
-        var palette = new[]
-        {
-            "#FFFFFF", "#D9D9D9", "#999999", "#555555", "#222222", "#000000",
-            "#F5DEB3", "#C19A6B", "#8B5A2B", "#5C3A1E", "#A0522D", "#704214",
-            "#FAD0C4", "#FF6B6B", "#E07B39", "#F2C744", "#80B918", "#52796F",
-        };
-        var grid = this.FindControl<UniformGrid>("Swatches")
-            ?? throw new System.InvalidOperationException("Swatches grid missing.");
-        foreach (var hex in palette)
-        {
-            var c = Color.Parse(hex);
-            var btn = new Button
-            {
-                Background = new SolidColorBrush(c),
-                BorderBrush = new SolidColorBrush(Color.FromRgb(60, 60, 60)),
-                BorderThickness = new Avalonia.Thickness(1),
-                Margin = new Avalonia.Thickness(2),
-                Padding = new Avalonia.Thickness(0),
-                MinHeight = 36,
-                MinWidth = 36,
-                HorizontalContentAlignment = HorizontalAlignment.Stretch,
-                VerticalContentAlignment = VerticalAlignment.Stretch,
-            };
-            ToolTip.SetTip(btn, hex);
-            var captured = c;
-            btn.Click += (_, _) =>
-            {
-                _current = captured;
-                UpdatePreview();
-                var hexInput = this.FindControl<TextBox>("HexInput");
-                if (hexInput != null) hexInput.Text = HexOf(captured);
-            };
-            grid.Children.Add(btn);
-        }
+        if (_internalUpdate) return;
+        _current = Color.FromRgb(e.NewColor.R, e.NewColor.G, e.NewColor.B);
+        UpdatePreview();
+    }
+
+    void SyncPickerToCurrent()
+    {
+        var picker = this.FindControl<ColorView>("Picker");
+        if (picker is null) return;
+        _internalUpdate = true;
+        try { picker.Color = _current; }
+        finally { _internalUpdate = false; }
     }
 
     void ApplyHex(string? text)
@@ -93,20 +74,22 @@ public partial class WallColorDialog : Window
         {
             var c = Color.Parse(t);
             _current = Color.FromRgb(c.R, c.G, c.B);
+            SyncPickerToCurrent();
             UpdatePreview();
         }
         catch
         {
-            // ignore — invalid hex; preview keeps its current value.
+            // invalid hex — leave preview alone
         }
     }
 
     void UpdatePreview()
     {
-        var preview = this.FindControl<Border>("Preview");
-        if (preview != null) preview.Background = new SolidColorBrush(_current);
-        var hex = this.FindControl<TextBox>("HexInput");
-        if (hex != null && (hex.Text ?? "") != HexOf(_current)) hex.Text = HexOf(_current);
+        if (this.FindControl<Border>("Preview") is { } preview)
+            preview.Background = new SolidColorBrush(_current);
+        if (this.FindControl<TextBox>("HexInput") is { } hex
+            && (hex.Text ?? "") != HexOf(_current))
+            hex.Text = HexOf(_current);
     }
 
     static string HexOf(Color c) => $"#{c.R:X2}{c.G:X2}{c.B:X2}";
