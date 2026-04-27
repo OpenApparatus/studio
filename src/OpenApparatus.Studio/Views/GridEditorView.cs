@@ -716,6 +716,8 @@ public class GridEditorView : Control
                 ctx.DrawRectangle(null, gridStroke, rect);
             }
 
+        DrawAxisMarkers(ctx, origin, tileSize, vm.GridWidth, vm.GridLength);
+
         // Objects-mode overlays: subdivision grid + selected-subcell highlight.
         // Drawn here (after tiles, before walls) so walls always render on top
         // of the sub-grid lines.
@@ -2037,6 +2039,57 @@ public class GridEditorView : Control
         double left = origin.X + x * tileSize;
         double top = origin.Y + (gridLength - z - 1) * tileSize;
         return new Rect(left, top, tileSize, tileSize);
+    }
+
+    static readonly int[] s_axisStrides = { 1, 2, 5, 10, 20, 50, 100 };
+
+    static void DrawAxisMarkers(DrawingContext ctx, Point origin, double tileSize,
+        int gridWidth, int gridLength)
+    {
+        if (tileSize <= 0 || gridWidth <= 0 || gridLength <= 0) return;
+
+        // Stride snaps so neighbouring labels stay >= ~32 px apart.
+        int stride = s_axisStrides[s_axisStrides.Length - 1];
+        foreach (var s in s_axisStrides)
+        {
+            if (s * tileSize >= 32) { stride = s; break; }
+        }
+
+        var typeface = new Typeface("Inter");
+        var labelBrush = new SolidColorBrush(Color.FromRgb(120, 124, 134));
+        var tickPen = new Pen(new SolidColorBrush(Color.FromRgb(160, 164, 174)), 1.0);
+        const double tickLen = 4.0;
+        const double labelGap = 2.0;
+
+        double bottomY = origin.Y + gridLength * tileSize;
+        double leftX = origin.X;
+
+        for (int x = 0; x < gridWidth; x += stride)
+        {
+            double cx = origin.X + (x + 0.5) * tileSize;
+            ctx.DrawLine(tickPen,
+                new Point(cx, bottomY),
+                new Point(cx, bottomY + tickLen));
+            var ft = new FormattedText(x.ToString(),
+                System.Globalization.CultureInfo.InvariantCulture,
+                FlowDirection.LeftToRight, typeface, 10, labelBrush);
+            ctx.DrawText(ft,
+                new Point(cx - ft.Width * 0.5, bottomY + tickLen + labelGap));
+        }
+
+        // z=0 is at the bottom of the grid; index increases upward.
+        for (int z = 0; z < gridLength; z += stride)
+        {
+            double cy = origin.Y + (gridLength - z - 0.5) * tileSize;
+            ctx.DrawLine(tickPen,
+                new Point(leftX - tickLen, cy),
+                new Point(leftX, cy));
+            var ft = new FormattedText(z.ToString(),
+                System.Globalization.CultureInfo.InvariantCulture,
+                FlowDirection.LeftToRight, typeface, 10, labelBrush);
+            ctx.DrawText(ft,
+                new Point(leftX - tickLen - labelGap - ft.Width, cy - ft.Height * 0.5));
+        }
     }
 
     public const double EditorPadding = 16.0;

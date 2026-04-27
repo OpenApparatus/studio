@@ -1087,90 +1087,116 @@
                             </Grid>
                         </Border>
 
-                        <!-- Document settings — set-once-and-forget dimensions
-                             grouped under a single collapsed Expander so the
-                             panel surfaces frequent actions instead of these. -->
-                        <Expander Header="Document settings" Margin="0 12 0 4">
-                            <StackPanel Spacing="0">
-                                <TextBlock Classes="label" Text="Grid"/>
-                                <Border Classes="sectionFlat">
-                                    <Grid ColumnDefinitions="Auto,*"
-                                          RowDefinitions="Auto,Auto,Auto" RowSpacing="6" ColumnSpacing="10">
-                                        <TextBlock Grid.Row="0" Grid.Column="0" Classes="propLabel" Text="Width (tiles)"
-                                                   behaviors:DragScrub.Target="{Binding #gridWidthInput}"
-                                                   behaviors:DragScrub.Step="0.2"/>
-                                        <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="compact" Name="gridWidthInput"
-                                                       Value="{Binding GridWidth}" Minimum="1" Maximum="64" FormatString="0"/>
-                                        <TextBlock Grid.Row="1" Grid.Column="0" Classes="propLabel" Text="Length (tiles)"
-                                                   behaviors:DragScrub.Target="{Binding #gridLengthInput}"
-                                                   behaviors:DragScrub.Step="0.2"/>
-                                        <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="compact" Name="gridLengthInput"
-                                                       Value="{Binding GridLength}" Minimum="1" Maximum="64" FormatString="0"/>
-                                        <TextBlock Grid.Row="2" Grid.Column="0" Classes="propLabel" Text="Tile size (m)"
-                                                   behaviors:DragScrub.Target="{Binding #tileSizeInput}"
-                                                   behaviors:DragScrub.Step="0.05"/>
-                                        <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="compact" Name="tileSizeInput"
-                                                       Value="{Binding TileSize}" Minimum="0.5" Maximum="10" Increment="0.5" FormatString="0.0"/>
-                                    </Grid>
-                                </Border>
+                        <!-- Document settings — flat cards, one per group.
+                             Numeric rows mirror ConstraintsPanel.NumericRow:
+                             a small label above a stock NumericUpDown so
+                             both panels read as one system. DragScrub is
+                             still wired through the labels. -->
+                        <TextBlock Classes="label" Text="Document settings"/>
 
-                                <TextBlock Classes="label" Text="Walls"/>
-                                <Border Classes="sectionFlat">
-                                    <Grid ColumnDefinitions="Auto,*"
-                                          RowDefinitions="Auto,Auto" RowSpacing="6" ColumnSpacing="10">
-                                        <TextBlock Grid.Row="0" Grid.Column="0" Classes="propLabel" Text="Thickness (m)"
-                                                   behaviors:DragScrub.Target="{Binding #wallThicknessInput}"
-                                                   behaviors:DragScrub.Step="0.01"/>
-                                        <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="compact" Name="wallThicknessInput"
-                                                       Value="{Binding WallThickness}" Minimum="0.05" Maximum="2.0" Increment="0.05" FormatString="0.00"/>
-                                        <TextBlock Grid.Row="1" Grid.Column="0" Classes="propLabel" Text="Height (m)"
-                                                   behaviors:DragScrub.Target="{Binding #wallHeightInput}"
-                                                   behaviors:DragScrub.Step="0.05"/>
-                                        <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="compact" Name="wallHeightInput"
-                                                       Value="{Binding WallHeight}" Minimum="0.5" Maximum="6.0" Increment="0.5" FormatString="0.0"/>
-                                    </Grid>
-                                </Border>
-
-                                <TextBlock Classes="label" Text="Doorways"/>
-                                <Border Classes="sectionFlat">
-                                    <Grid ColumnDefinitions="Auto,*"
-                                          RowDefinitions="Auto,Auto" RowSpacing="6" ColumnSpacing="10">
-                                        <TextBlock Grid.Row="0" Grid.Column="0" Classes="propLabel" Text="Width (m)"
-                                                   behaviors:DragScrub.Target="{Binding #doorWidthInput}"
-                                                   behaviors:DragScrub.Step="0.02"/>
-                                        <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="compact" Name="doorWidthInput"
-                                                       Value="{Binding DoorWidth}" Minimum="0.5" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
-                                        <TextBlock Grid.Row="1" Grid.Column="0" Classes="propLabel" Text="Height (m)"
-                                                   behaviors:DragScrub.Target="{Binding #doorHeightInput}"
-                                                   behaviors:DragScrub.Step="0.02"/>
-                                        <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="compact" Name="doorHeightInput"
-                                                       Value="{Binding DoorHeight}" Minimum="1.5" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
-                                    </Grid>
-                                </Border>
-
-                                <TextBlock Classes="label" Text="Windows"/>
-                                <Border Classes="sectionFlat">
-                                    <Grid ColumnDefinitions="Auto,*"
-                                          RowDefinitions="Auto,Auto,Auto" RowSpacing="6" ColumnSpacing="10">
-                                        <TextBlock Grid.Row="0" Grid.Column="0" Classes="propLabel" Text="Width (m)"
-                                                   behaviors:DragScrub.Target="{Binding #winWidthInput}"
-                                                   behaviors:DragScrub.Step="0.02"/>
-                                        <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="compact" Name="winWidthInput"
-                                                       Value="{Binding WindowWidth}" Minimum="0.3" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
-                                        <TextBlock Grid.Row="1" Grid.Column="0" Classes="propLabel" Text="Head height (m)"
-                                                   behaviors:DragScrub.Target="{Binding #winHeightInput}"
-                                                   behaviors:DragScrub.Step="0.02"/>
-                                        <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="compact" Name="winHeightInput"
-                                                       Value="{Binding WindowHeight}" Minimum="1.0" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
-                                        <TextBlock Grid.Row="2" Grid.Column="0" Classes="propLabel" Text="Sill height (m)"
-                                                   behaviors:DragScrub.Target="{Binding #winSillInput}"
-                                                   behaviors:DragScrub.Step="0.02"/>
-                                        <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="compact" Name="winSillInput"
-                                                       Value="{Binding WindowSillHeight}" Minimum="0.1" Maximum="2.5" Increment="0.1" FormatString="0.0"/>
-                                    </Grid>
-                                </Border>
+                        <Border Classes="section">
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="Grid" FontWeight="SemiBold" Margin="0 0 0 2"/>
+                                <StackPanel Margin="0 0 0 4">
+                                    <TextBlock Classes="propLabel" Text="Width (tiles)"
+                                               FontSize="11" Margin="0 0 0 2"
+                                               behaviors:DragScrub.Target="{Binding #gridWidthInput}"
+                                               behaviors:DragScrub.Step="0.2"/>
+                                    <NumericUpDown Name="gridWidthInput"
+                                                   Value="{Binding GridWidth}" Minimum="1" Maximum="64" FormatString="0"/>
+                                </StackPanel>
+                                <StackPanel Margin="0 0 0 4">
+                                    <TextBlock Classes="propLabel" Text="Length (tiles)"
+                                               FontSize="11" Margin="0 0 0 2"
+                                               behaviors:DragScrub.Target="{Binding #gridLengthInput}"
+                                               behaviors:DragScrub.Step="0.2"/>
+                                    <NumericUpDown Name="gridLengthInput"
+                                                   Value="{Binding GridLength}" Minimum="1" Maximum="64" FormatString="0"/>
+                                </StackPanel>
+                                <StackPanel>
+                                    <TextBlock Classes="propLabel" Text="Tile size (m)"
+                                               FontSize="11" Margin="0 0 0 2"
+                                               behaviors:DragScrub.Target="{Binding #tileSizeInput}"
+                                               behaviors:DragScrub.Step="0.05"/>
+                                    <NumericUpDown Name="tileSizeInput"
+                                                   Value="{Binding TileSize}" Minimum="0.5" Maximum="10" Increment="0.5" FormatString="0.0"/>
+                                </StackPanel>
                             </StackPanel>
-                        </Expander>
+                        </Border>
+
+                        <Border Classes="section">
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="Walls" FontWeight="SemiBold" Margin="0 0 0 2"/>
+                                <StackPanel Margin="0 0 0 4">
+                                    <TextBlock Classes="propLabel" Text="Thickness (m)"
+                                               FontSize="11" Margin="0 0 0 2"
+                                               behaviors:DragScrub.Target="{Binding #wallThicknessInput}"
+                                               behaviors:DragScrub.Step="0.01"/>
+                                    <NumericUpDown Name="wallThicknessInput"
+                                                   Value="{Binding WallThickness}" Minimum="0.05" Maximum="2.0" Increment="0.05" FormatString="0.00"/>
+                                </StackPanel>
+                                <StackPanel>
+                                    <TextBlock Classes="propLabel" Text="Height (m)"
+                                               FontSize="11" Margin="0 0 0 2"
+                                               behaviors:DragScrub.Target="{Binding #wallHeightInput}"
+                                               behaviors:DragScrub.Step="0.05"/>
+                                    <NumericUpDown Name="wallHeightInput"
+                                                   Value="{Binding WallHeight}" Minimum="0.5" Maximum="6.0" Increment="0.5" FormatString="0.0"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Classes="section">
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="Doorways" FontWeight="SemiBold" Margin="0 0 0 2"/>
+                                <StackPanel Margin="0 0 0 4">
+                                    <TextBlock Classes="propLabel" Text="Width (m)"
+                                               FontSize="11" Margin="0 0 0 2"
+                                               behaviors:DragScrub.Target="{Binding #doorWidthInput}"
+                                               behaviors:DragScrub.Step="0.02"/>
+                                    <NumericUpDown Name="doorWidthInput"
+                                                   Value="{Binding DoorWidth}" Minimum="0.5" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
+                                </StackPanel>
+                                <StackPanel>
+                                    <TextBlock Classes="propLabel" Text="Height (m)"
+                                               FontSize="11" Margin="0 0 0 2"
+                                               behaviors:DragScrub.Target="{Binding #doorHeightInput}"
+                                               behaviors:DragScrub.Step="0.02"/>
+                                    <NumericUpDown Name="doorHeightInput"
+                                                   Value="{Binding DoorHeight}" Minimum="1.5" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Classes="section">
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="Windows" FontWeight="SemiBold" Margin="0 0 0 2"/>
+                                <StackPanel Margin="0 0 0 4">
+                                    <TextBlock Classes="propLabel" Text="Width (m)"
+                                               FontSize="11" Margin="0 0 0 2"
+                                               behaviors:DragScrub.Target="{Binding #winWidthInput}"
+                                               behaviors:DragScrub.Step="0.02"/>
+                                    <NumericUpDown Name="winWidthInput"
+                                                   Value="{Binding WindowWidth}" Minimum="0.3" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
+                                </StackPanel>
+                                <StackPanel Margin="0 0 0 4">
+                                    <TextBlock Classes="propLabel" Text="Head height (m)"
+                                               FontSize="11" Margin="0 0 0 2"
+                                               behaviors:DragScrub.Target="{Binding #winHeightInput}"
+                                               behaviors:DragScrub.Step="0.02"/>
+                                    <NumericUpDown Name="winHeightInput"
+                                                   Value="{Binding WindowHeight}" Minimum="1.0" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
+                                </StackPanel>
+                                <StackPanel>
+                                    <TextBlock Classes="propLabel" Text="Sill height (m)"
+                                               FontSize="11" Margin="0 0 0 2"
+                                               behaviors:DragScrub.Target="{Binding #winSillInput}"
+                                               behaviors:DragScrub.Step="0.02"/>
+                                    <NumericUpDown Name="winSillInput"
+                                                   Value="{Binding WindowSillHeight}" Minimum="0.1" Maximum="2.5" Increment="0.1" FormatString="0.0"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
 
                         <!-- First-run helper. Hides once the user creates
                              their first room. Each tip uses the same
