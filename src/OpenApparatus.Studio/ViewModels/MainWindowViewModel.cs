@@ -488,6 +488,60 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] System.Numerics.Vector3 _pathColor = new(0.125f, 0.66f, 0.376f);
     partial void OnPathColorChanged(System.Numerics.Vector3 value) => EditVersion++;
 
+    /// <summary>When true the path overlay animates from the start room
+    /// outward, looping. When false the full overlay renders statically.</summary>
+    [ObservableProperty] bool _isPathAnimating;
+
+    /// <summary>0..1 progress through one animation cycle. Loops back to 0
+    /// when it crosses 1.0 while <see cref="IsPathAnimating"/> is true.</summary>
+    [ObservableProperty] double _pathAnimationProgress;
+
+    Avalonia.Threading.DispatcherTimer? _pathTimer;
+    System.DateTime _pathTimerLastTick;
+    /// <summary>Total seconds for one full sweep through every BFS edge.</summary>
+    const double PathAnimationDuration = 4.0;
+
+    [RelayCommand]
+    void TogglePathAnimation()
+    {
+        if (IsPathAnimating)
+        {
+            _pathTimer?.Stop();
+            IsPathAnimating = false;
+            EditVersion++;
+            return;
+        }
+
+        // Switching on starts a fresh sweep.
+        PathAnimationProgress = 0;
+        if (_pathTimer is null)
+        {
+            _pathTimer = new Avalonia.Threading.DispatcherTimer
+            {
+                Interval = System.TimeSpan.FromMilliseconds(33),
+            };
+            _pathTimer.Tick += OnPathTick;
+        }
+        _pathTimerLastTick = System.DateTime.UtcNow;
+        _pathTimer.Start();
+        IsPathAnimating = true;
+        // Force ShowPaths on so the user sees something — otherwise pressing
+        // Play with paths hidden does nothing visible.
+        ShowPaths = true;
+        EditVersion++;
+    }
+
+    void OnPathTick(object? sender, System.EventArgs e)
+    {
+        var now = System.DateTime.UtcNow;
+        var dt = (now - _pathTimerLastTick).TotalSeconds;
+        _pathTimerLastTick = now;
+        var p = PathAnimationProgress + dt / PathAnimationDuration;
+        if (p >= 1.0) p -= 1.0; // loop
+        PathAnimationProgress = p;
+        EditVersion++;
+    }
+
     /// <summary>Master toggle for the measurement overlay (door→object lines
     /// with angle, plus inter-object distance lines). On by default.</summary>
     [ObservableProperty] bool _showMeasurements = true;

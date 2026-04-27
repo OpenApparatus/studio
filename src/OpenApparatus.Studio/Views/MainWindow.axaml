@@ -212,6 +212,11 @@
                                     Click="OnPickPathColor"
                                     VerticalAlignment="Center"
                                     ToolTip.Tip="Path overlay colour"/>
+                            <Button Width="22" Height="22" Padding="0"
+                                    Command="{Binding TogglePathAnimationCommand}"
+                                    VerticalAlignment="Center"
+                                    Content="{Binding IsPathAnimating, Converter={x:Static converters:BoolToTextConverter.Instance}, ConverterParameter='■|▶'}"
+                                    ToolTip.Tip="Animate the path overlay outward from the start room. Loops while running."/>
                         </StackPanel>
                     </StackPanel>
                 </Border>

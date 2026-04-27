@@ -170,6 +170,203 @@ public class GridEditorView : Control
         e.Handled = true;
     }
 
+    /// <summary>One leg of the connectivity graph — used by both the static
+    /// and animated path renderers.</summary>
+    readonly struct PathEdge
+    {
+        public readonly System.Numerics.Vector2 AWorld;
+        public readonly System.Numerics.Vector2 DoorWorld;
+        public readonly System.Numerics.Vector2 BWorld;
+        public readonly int ARoom;
+        public readonly int BRoom;
+        public PathEdge(int aRoom, System.Numerics.Vector2 a, System.Numerics.Vector2 d, int bRoom, System.Numerics.Vector2 b)
+        { ARoom = aRoom; AWorld = a; DoorWorld = d; BRoom = bRoom; BWorld = b; }
+    }
+
+    /// <summary>Returns every connectivity edge in the environment — one per
+    /// traversable adjacency / opening combination. Order is unspecified.</summary>
+    static System.Collections.Generic.List<PathEdge> CollectAllPathEdges(MainWindowViewModel vm, OpenApparatus.Topology.MultiRoomEnvironment env)
+    {
+        var list = new System.Collections.Generic.List<PathEdge>();
+        foreach (var adj in env.Adjacencies)
+        {
+            if (!adj.IsInternal) continue;
+            if (adj.Passage is OpenApparatus.Topology.Passage.Closed) continue;
+            var aWorld = RoomCenterWorld(adj.RoomA);
+            var bWorld = RoomCenterWorld(adj.RoomB!);
+            var seg = adj.SharedSegment;
+            if (adj.Passage is OpenApparatus.Topology.Passage.Doorway dw)
+            {
+                foreach (var op in dw.Openings)
+                {
+                    var door = seg.Start + seg.Direction * (op.OffsetAlongEdge + op.Width * 0.5f);
+                    list.Add(new PathEdge(adj.RoomA.Id, aWorld, door, adj.RoomB!.Id, bWorld));
+                }
+            }
+            else
+            {
+                list.Add(new PathEdge(adj.RoomA.Id, aWorld, seg.Midpoint, adj.RoomB!.Id, bWorld));
+            }
+        }
+        return list;
+    }
+
+    /// <summary>Orders the path edges for the animation: BFS outward from the
+    /// lowest-id room (the start), so reveal proceeds room by room.</summary>
+    static System.Collections.Generic.List<PathEdge> OrderEdgesBfs(
+        OpenApparatus.Topology.MultiRoomEnvironment env,
+        System.Collections.Generic.List<PathEdge> all)
+    {
+        var ordered = new System.Collections.Generic.List<PathEdge>();
+        if (env.Rooms.Count == 0) return ordered;
+        // Starting room: lowest id present.
+        int startId = int.MaxValue;
+        foreach (var r in env.Rooms) if (r.Id < startId) startId = r.Id;
+        var visited = new System.Collections.Generic.HashSet<int> { startId };
+        var queue = new System.Collections.Generic.Queue<int>();
+        queue.Enqueue(startId);
+        while (queue.Count > 0)
+        {
+            int cur = queue.Dequeue();
+            // Edges leaving cur to unvisited rooms first; the rest fall to the tail.
+            foreach (var e in all)
+            {
+                int? other = e.ARoom == cur ? e.BRoom :
+                             e.BRoom == cur ? e.ARoom : (int?)null;
+                if (other is int o && !visited.Contains(o))
+                {
+                    // Re-orient the edge so it always goes from `cur` outward.
+                    var orient = e.ARoom == cur
+                        ? e
+                        : new PathEdge(e.BRoom, e.BWorld, e.DoorWorld, e.ARoom, e.AWorld);
+                    ordered.Add(orient);
+                    visited.Add(o);
+                    queue.Enqueue(o);
+                }
+            }
+        }
+        // Append edges that connect already-visited rooms (cycles) so cyclical
+        // graphs still draw every connection. Skip duplicates.
+        foreach (var e in all)
+        {
+            bool already = false;
+            foreach (var oe in ordered)
+                if ((oe.ARoom == e.ARoom && oe.BRoom == e.BRoom)
+                 || (oe.ARoom == e.BRoom && oe.BRoom == e.ARoom))
+                {
+                    if (oe.DoorWorld == e.DoorWorld) { already = true; break; }
+                }
+            if (!already) ordered.Add(e);
+        }
+        return ordered;
+    }
+
+    static void DrawStaticPaths(
+        DrawingContext ctx, MainWindowViewModel vm, OpenApparatus.Topology.MultiRoomEnvironment env,
+        System.Func<System.Numerics.Vector2, Point> ToScreen,
+        IBrush pathBrush, Pen pathPen, Pen nodePen, IBrush nodeFill)
+    {
+        var roomCentres = new System.Collections.Generic.Dictionary<int, Point>();
+        foreach (var e in CollectAllPathEdges(vm, env))
+        {
+            var aScr = ToScreen(e.AWorld);
+            var bScr = ToScreen(e.BWorld);
+            var dScr = ToScreen(e.DoorWorld);
+            roomCentres[e.ARoom] = aScr;
+            roomCentres[e.BRoom] = bScr;
+            ctx.DrawLine(pathPen, aScr, dScr);
+            ctx.DrawLine(pathPen, dScr, bScr);
+            ctx.DrawEllipse(pathBrush, null, dScr, 3, 3);
+        }
+        const double NodeRadius = 13.0;
+        foreach (var centre in roomCentres.Values)
+            ctx.DrawEllipse(nodeFill, nodePen, centre, NodeRadius, NodeRadius);
+    }
+
+    /// <summary>
+    /// Path overlay with the leading edge clipped to the current animation
+    /// progress. Edges are revealed in BFS order from the lowest-id room.
+    /// Room nodes appear as their inbound edge becomes fully drawn so the
+    /// reveal feels like a wavefront propagating outward.
+    /// </summary>
+    static void DrawAnimatedPaths(
+        DrawingContext ctx, MainWindowViewModel vm, OpenApparatus.Topology.MultiRoomEnvironment env,
+        System.Func<System.Numerics.Vector2, Point> ToScreen,
+        IBrush pathBrush, Pen pathPen, Pen nodePen, IBrush nodeFill)
+    {
+        var ordered = OrderEdgesBfs(env, CollectAllPathEdges(vm, env));
+        if (ordered.Count == 0) return;
+
+        // 0..1 → which edge index is "in progress", and how far through it.
+        double total = ordered.Count;
+        double pos = vm.PathAnimationProgress * total;
+        int leadIdx = (int)System.Math.Floor(pos);
+        double leadFrac = pos - leadIdx;
+
+        var visibleRooms = new System.Collections.Generic.HashSet<int>();
+        // Always draw the start node so it's visible from t=0.
+        if (ordered.Count > 0) visibleRooms.Add(ordered[0].ARoom);
+
+        const double NodeRadius = 13.0;
+
+        for (int i = 0; i < ordered.Count; i++)
+        {
+            var e = ordered[i];
+            var aScr = ToScreen(e.AWorld);
+            var bScr = ToScreen(e.BWorld);
+            var dScr = ToScreen(e.DoorWorld);
+
+            if (i < leadIdx)
+            {
+                // Fully drawn.
+                ctx.DrawLine(pathPen, aScr, dScr);
+                ctx.DrawLine(pathPen, dScr, bScr);
+                ctx.DrawEllipse(pathBrush, null, dScr, 3, 3);
+                visibleRooms.Add(e.ARoom);
+                visibleRooms.Add(e.BRoom);
+            }
+            else if (i == leadIdx && leadFrac > 0)
+            {
+                // Partially drawn — reveal A → door → B in path-length order.
+                double aToDoor = System.Math.Sqrt((dScr.X - aScr.X) * (dScr.X - aScr.X) + (dScr.Y - aScr.Y) * (dScr.Y - aScr.Y));
+                double doorToB = System.Math.Sqrt((bScr.X - dScr.X) * (bScr.X - dScr.X) + (bScr.Y - dScr.Y) * (bScr.Y - dScr.Y));
+                double total2 = aToDoor + doorToB;
+                if (total2 > 1e-6)
+                {
+                    double sweep = total2 * leadFrac;
+                    if (sweep <= aToDoor)
+                    {
+                        double t = sweep / aToDoor;
+                        var tip = new Point(aScr.X + (dScr.X - aScr.X) * t, aScr.Y + (dScr.Y - aScr.Y) * t);
+                        ctx.DrawLine(pathPen, aScr, tip);
+                    }
+                    else
+                    {
+                        ctx.DrawLine(pathPen, aScr, dScr);
+                        ctx.DrawEllipse(pathBrush, null, dScr, 3, 3);
+                        double t = (sweep - aToDoor) / doorToB;
+                        var tip = new Point(dScr.X + (bScr.X - dScr.X) * t, dScr.Y + (bScr.Y - dScr.Y) * t);
+                        ctx.DrawLine(pathPen, dScr, tip);
+                    }
+                }
+                visibleRooms.Add(e.ARoom);
+            }
+            // else: not yet revealed.
+        }
+
+        // Room nodes — drawn after the lines so they paint over leading-edge
+        // tips for a clean look.
+        foreach (var rid in visibleRooms)
+        {
+            // Pick any centre for this room from the ordered edges.
+            foreach (var e in ordered)
+            {
+                if (e.ARoom == rid) { ctx.DrawEllipse(nodeFill, nodePen, ToScreen(e.AWorld), NodeRadius, NodeRadius); break; }
+                if (e.BRoom == rid) { ctx.DrawEllipse(nodeFill, nodePen, ToScreen(e.BWorld), NodeRadius, NodeRadius); break; }
+            }
+        }
+    }
+
     static System.Numerics.Vector2 RoomCenterWorld(OpenApparatus.Topology.Room room)
     {
         var b = room.GetWorldBounds();
@@ -686,49 +883,10 @@ public class GridEditorView : Control
                 var nodePen = new Pen(pathBrush, 2.0);
                 var nodeFill = new SolidColorBrush(Color.FromRgb(255, 255, 255));
 
-                // Pass 1: lines + door midpoint dots. Lines drawn first so the
-                // room-centre circles can paint over their endpoints — that way
-                // the line never bleeds into the room number.
-                var roomCentres = new System.Collections.Generic.Dictionary<int, Point>();
-                foreach (var adj in env.Adjacencies)
-                {
-                    if (!adj.IsInternal) continue;
-                    if (adj.Passage is OpenApparatus.Topology.Passage.Closed) continue;
-
-                    var aWorld = RoomCenterWorld(adj.RoomA);
-                    var bWorld = RoomCenterWorld(adj.RoomB!);
-                    var aScr = ToScreen(aWorld);
-                    var bScr = ToScreen(bWorld);
-                    roomCentres[adj.RoomA.Id] = aScr;
-                    roomCentres[adj.RoomB!.Id] = bScr;
-
-                    var seg = adj.SharedSegment;
-                    var dir2 = seg.Direction;
-                    var doorPoints = new System.Collections.Generic.List<System.Numerics.Vector2>();
-                    if (adj.Passage is OpenApparatus.Topology.Passage.Doorway dw)
-                    {
-                        foreach (var op in dw.Openings)
-                            doorPoints.Add(seg.Start + dir2 * (op.OffsetAlongEdge + op.Width * 0.5f));
-                    }
-                    else
-                    {
-                        doorPoints.Add(seg.Midpoint);
-                    }
-
-                    foreach (var dp in doorPoints)
-                    {
-                        var midScr = ToScreen(dp);
-                        ctx.DrawLine(pathPen, aScr, midScr);
-                        ctx.DrawLine(pathPen, midScr, bScr);
-                        ctx.DrawEllipse(pathBrush, null, midScr, 3, 3);
-                    }
-                }
-
-                // Pass 2: room-centre nodes. White fill + path-colour outline so
-                // the room-id label (drawn later in Render()) stays legible.
-                const double NodeRadius = 13.0;
-                foreach (var centre in roomCentres.Values)
-                    ctx.DrawEllipse(nodeFill, nodePen, centre, NodeRadius, NodeRadius);
+                if (vm.IsPathAnimating)
+                    DrawAnimatedPaths(ctx, vm, env, ToScreen, pathBrush, pathPen, nodePen, nodeFill);
+                else
+                    DrawStaticPaths(ctx, vm, env, ToScreen, pathBrush, pathPen, nodePen, nodeFill);
             }
 
             // Selected wall: draw markers at every door-anchor candidate, with the
