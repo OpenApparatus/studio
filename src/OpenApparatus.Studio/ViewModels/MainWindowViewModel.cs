@@ -1091,6 +1091,20 @@ public partial class MainWindowViewModel : ViewModelBase
     /// state.</summary>
     public void RaiseEditVersion() => EditVersion++;
 
+    /// <summary>Project title displayed in the top action bar. Defaults
+    /// to "Untitled scene"; persistence + filename binding is a future
+    /// follow-up.</summary>
+    [ObservableProperty] string _projectTitle = "Untitled scene";
+
+    /// <summary>True while the in-memory scene has edits not yet exported
+    /// or saved. The top bar's indicator dot lights brand-blue when set,
+    /// transparent when clean. Toggled by the same code that bumps
+    /// EditVersion, with a dedicated reset on export.</summary>
+    [ObservableProperty] bool _hasUnsavedChanges;
+
+    [RelayCommand]
+    void MarkSaved() => HasUnsavedChanges = false;
+
     // ---- Undo / redo state. Snapshots are deep copies of authored state; we
     // push one before every user-initiated mutation. Selection / view state is
     // excluded so undo doesn't move the camera.

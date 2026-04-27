@@ -491,44 +491,80 @@
     <Grid>
     <DockPanel LastChildFill="True">
 
-        <!-- Top action bar. Undo/Redo as tool-palette icon buttons (glyphs
-             only). Random Fill stays visible in Layout mode. Reset All is
-             demoted into an overflow menu (destructive, rarely used).
-             Export glTF is the primary filled action; JSON export is the
-             secondary alongside it. -->
-        <Border DockPanel.Dock="Top" Background="{StaticResource SurfaceSecondaryBrush}" BorderBrush="{StaticResource BorderHairlineBrush}" BorderThickness="0 0 0 1" Padding="12 6">
-            <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right" VerticalAlignment="Center">
-                <Button Classes="toolIcon" Content="↶"
-                        Command="{Binding UndoCommand}" IsEnabled="{Binding CanUndo}"
-                        ToolTip.Tip="Undo (Ctrl+Z)"/>
-                <Button Classes="toolIcon" Content="↷"
-                        Command="{Binding RedoCommand}" IsEnabled="{Binding CanRedo}"
-                        ToolTip.Tip="Redo (Ctrl+Y / Ctrl+Shift+Z)"/>
-                <Border Classes="vsep" Margin="6 4"/>
-                <Button Content="Random Fill" Command="{Binding RandomFillCommand}"
-                        IsVisible="{Binding IsLayoutMode}"
-                        Padding="10 5"
-                        ToolTip.Tip="Generate a random room layout"/>
-                <Button Classes="toolIcon" Content="⋯" ToolTip.Tip="More actions">
-                    <Button.Flyout>
-                        <MenuFlyout>
-                            <MenuItem Header="Reset all" Command="{Binding ResetAllCommand}"/>
-                        </MenuFlyout>
-                    </Button.Flyout>
-                </Button>
-                <Border Classes="vsep" Margin="6 4"/>
-                <Button Content="Export glTF…" Classes="primary"
-                        Padding="12 5"
-                        HorizontalAlignment="Center"
-                        Command="{Binding ExportGltfCommand}"
-                        CommandParameter="{Binding $parent[Window]}"
-                        ToolTip.Tip="Export as glTF with per-room scene hierarchy"/>
-                <Button Content="Export JSON…"
-                        Padding="10 5"
-                        Command="{Binding ExportJsonCommand}"
-                        CommandParameter="{Binding $parent[Window]}"
-                        ToolTip.Tip="Save the authored scene as JSON"/>
-            </StackPanel>
+        <!-- Top action bar. Document title + unsaved indicator on the
+             left, command cluster on the right. Undo/Redo are glyph-only
+             icon buttons; Random Fill is text (Layout-mode only); Reset
+             is demoted into an overflow menu; Export is one SplitButton-
+             style flyout (glTF is the goal-state, JSON is alternate). -->
+        <Border DockPanel.Dock="Top" Background="{StaticResource SurfaceSecondaryBrush}" BorderBrush="{StaticResource BorderHairlineBrush}" BorderThickness="0 0 0 1" Padding="14 6">
+            <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
+                <!-- Brand / project title. Editable would require a TextBox;
+                     start with a static label that's easy to swap out later. -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <!-- Unsaved-changes indicator. Ellipse fills brand-blue
+                         when there are unsaved edits, transparent when
+                         clean, and the tooltip narrates which state. -->
+                    <Ellipse Width="8" Height="8"
+                             Fill="{StaticResource AccentBrush}"
+                             IsVisible="{Binding HasUnsavedChanges}"
+                             VerticalAlignment="Center"
+                             ToolTip.Tip="Unsaved changes"/>
+                    <TextBlock Text="OpenApparatus Studio"
+                               FontWeight="SemiBold"
+                               FontSize="{StaticResource FontBodyStrong}"
+                               Foreground="{StaticResource TextPrimaryBrush}"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Text="·"
+                               Foreground="{StaticResource TextMutedBrush}"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding ProjectTitle}"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               FontSize="{StaticResource FontBody}"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- Action cluster. -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                    <Button Classes="toolIcon" Content="↶"
+                            Command="{Binding UndoCommand}" IsEnabled="{Binding CanUndo}"
+                            ToolTip.Tip="Undo (Ctrl+Z)"/>
+                    <Button Classes="toolIcon" Content="↷"
+                            Command="{Binding RedoCommand}" IsEnabled="{Binding CanRedo}"
+                            ToolTip.Tip="Redo (Ctrl+Y / Ctrl+Shift+Z)"/>
+                    <Border Classes="vsep" Margin="6 4"/>
+                    <Button Content="Random Fill" Command="{Binding RandomFillCommand}"
+                            IsVisible="{Binding IsLayoutMode}"
+                            Padding="10 5"
+                            ToolTip.Tip="Generate a random room layout"/>
+                    <Button Classes="toolIcon" Content="⋯" ToolTip.Tip="More actions">
+                        <Button.Flyout>
+                            <MenuFlyout>
+                                <MenuItem Header="Reset all" Command="{Binding ResetAllCommand}"/>
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+                    <Border Classes="vsep" Margin="6 4"/>
+                    <!-- Single Export entry-point; the flyout offers the two
+                         formats so the bar isn't dominated by export buttons. -->
+                    <Button Classes="primary" Padding="14 5"
+                            ToolTip.Tip="Export the scene…">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="Export"/>
+                            <TextBlock Text="▾" FontSize="10" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <Button.Flyout>
+                            <MenuFlyout>
+                                <MenuItem Header="Export glTF…"
+                                          Command="{Binding ExportGltfCommand}"
+                                          CommandParameter="{Binding $parent[Window]}"/>
+                                <MenuItem Header="Export JSON…"
+                                          Command="{Binding ExportJsonCommand}"
+                                          CommandParameter="{Binding $parent[Window]}"/>
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+                </StackPanel>
+            </Grid>
         </Border>
 
         <!-- Modern single-row settings strip. Sections separated by hairline
