@@ -246,6 +246,18 @@ public class GridEditorView : Control
             origin.Y + (vm.GridLength - zTile) * tilePxSize);
     }
 
+    /// <summary>Lerp the colour toward its luminance-preserving grey by
+    /// (1 - sat). sat == 1 returns the original colour; sat == 0 returns the
+    /// greyscale version. Matches the editor's TileSaturation slider.</summary>
+    static System.Numerics.Vector3 DesaturateRgb(System.Numerics.Vector3 rgb, float sat)
+    {
+        float lum = 0.299f * rgb.X + 0.587f * rgb.Y + 0.114f * rgb.Z;
+        return new System.Numerics.Vector3(
+            lum + (rgb.X - lum) * sat,
+            lum + (rgb.Y - lum) * sat,
+            lum + (rgb.Z - lum) * sat);
+    }
+
     static (Point A, Point B) ShrinkSegment(Point a, Point b, double pixels)
     {
         double dx = b.X - a.X, dy = b.Y - a.Y;
@@ -353,6 +365,10 @@ public class GridEditorView : Control
                     var rgb = perRoom.TryGetValue(id, out var c)
                         ? c
                         : MainWindowViewModel.RoomColorRgb(id);
+                    // Apply the global tile-saturation slider. 1 = full
+                    // colour, 0 = greyscale (luminance-preserving).
+                    if (vm.TileSaturation < 0.999)
+                        rgb = DesaturateRgb(rgb, (float)vm.TileSaturation);
                     fill = new SolidColorBrush(Color.FromRgb(
                         (byte)(rgb.X * 255), (byte)(rgb.Y * 255), (byte)(rgb.Z * 255)));
                 }
@@ -448,6 +464,7 @@ public class GridEditorView : Control
             // Square caps so wall ends look architectural rather than rounded;
             // inset both ends by the offset distance so two perpendicular
             // borders don't overlap at the inside corner of a room.
+            if (vm.ShowWallBorders)
             foreach (var adj in env.Adjacencies)
             {
                 var seg = adj.SharedSegment;
@@ -740,9 +757,12 @@ public class GridEditorView : Control
             }
         }
 
-        // Room id labels.
+        // Room id labels — gated by ShowRoomLabels. Even when off we still
+        // need typeface for layout-measurement labels later, so it's
+        // declared at this scope.
         var labelBrush = new SolidColorBrush(Color.FromRgb(30, 30, 30));
         var typeface = new Typeface("Inter");
+        if (vm.ShowRoomLabels)
         for (int rId = 0; rId < 1000; rId++)
         {
             // Only labels rooms that exist in the grid.
