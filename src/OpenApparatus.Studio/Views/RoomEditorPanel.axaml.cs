@@ -96,59 +96,84 @@ public partial class RoomEditorPanel : UserControl
         BuildRoomEditor();
     }
 
-    void BuildObjectModePlaceholder()
+    // Inspector design tokens — duplicated from Themes/Tokens.axaml so the
+    // code-behind builders can match the XAML palette without round-tripping
+    // through Application.Resources.
+    static readonly IBrush TextPrimary   = new SolidColorBrush(Color.FromRgb(0x23, 0x26, 0x2E));
+    static readonly IBrush TextSecondary = new SolidColorBrush(Color.FromRgb(0x5A, 0x62, 0x70));
+    static readonly IBrush TextMuted     = new SolidColorBrush(Color.FromRgb(0x7A, 0x80, 0x8C));
+    static readonly IBrush BorderHair    = new SolidColorBrush(Color.FromRgb(0xD3, 0xD7, 0xDF));
+    static readonly IBrush SurfaceRaised = new SolidColorBrush(Colors.White);
+
+    /// <summary>Inspector header — title + optional subtitle, separated from
+    /// the body by a hairline rule. Used by every Build* state so the
+    /// inspector reads as one consistent surface across selections.</summary>
+    void AddInspectorHeader(string title, string? subtitle = null)
     {
         BodyPanel.Children.Add(new TextBlock
         {
-            Text = "No selection",
+            Text = title,
             FontWeight = FontWeight.SemiBold,
             FontSize = 14,
-            Foreground = new SolidColorBrush(Color.FromRgb(120, 120, 130)),
-            Margin = new Thickness(0, 8, 0, 8),
+            Foreground = TextPrimary,
+            Margin = new Thickness(0, 0, 0, subtitle is null ? 8 : 2),
         });
+        if (subtitle is not null)
+        {
+            BodyPanel.Children.Add(new TextBlock
+            {
+                Text = subtitle,
+                FontSize = 11,
+                Foreground = TextMuted,
+                Margin = new Thickness(0, 0, 0, 8),
+            });
+        }
+        BodyPanel.Children.Add(new Border
+        {
+            Height = 1,
+            Background = BorderHair,
+            Margin = new Thickness(0, 0, 0, 12),
+        });
+    }
+
+    /// <summary>Empty-state body copy. Wraps long text to the panel width and
+    /// uses muted colour so the placeholder reads as not-interactive.</summary>
+    void AddPlaceholderBody(string text)
+    {
         BodyPanel.Children.Add(new TextBlock
         {
-            Text = "Click an object to edit its type, position, or rotation. Click a tile in a room to view all of that room's objects together.",
+            Text = text,
             TextWrapping = TextWrapping.Wrap,
-            Foreground = new SolidColorBrush(Color.FromRgb(110, 110, 120)),
+            Foreground = TextMuted,
             FontSize = 12,
         });
     }
 
+    void BuildObjectModePlaceholder()
+    {
+        AddInspectorHeader("No selection");
+        AddPlaceholderBody("Click an object to edit its type, position, or rotation. Click a tile in a room to view all of that room's objects together.");
+    }
+
     void BuildSingleObjectEditor(int idx)
     {
-        BodyPanel.Children.Add(new TextBlock
-        {
-            Text = "Selected object",
-            FontWeight = FontWeight.SemiBold,
-            FontSize = 16,
-            Margin = new Thickness(0, 0, 0, 12),
-        });
+        AddInspectorHeader("Selected object", $"slot {_vm!.Objects[idx].Slot}");
         BuildObjectEditorRows(idx);
     }
 
     void BuildStackedObjectsForRoom(int roomId)
     {
-        BodyPanel.Children.Add(new TextBlock
-        {
-            Text = $"Room {roomId} objects",
-            FontWeight = FontWeight.SemiBold,
-            FontSize = 16,
-            Margin = new Thickness(0, 0, 0, 8),
-        });
         var indices = new System.Collections.Generic.List<int>();
         for (int i = 0; i < _vm!.Objects.Count; i++)
             if (_vm.Objects[i].OwningRoomId == roomId) indices.Add(i);
 
+        AddInspectorHeader(
+            $"Room {roomId} objects",
+            indices.Count == 1 ? "1 object" : $"{indices.Count} objects");
+
         if (indices.Count == 0)
         {
-            BodyPanel.Children.Add(new TextBlock
-            {
-                Text = "No objects in this room yet. Switch to a sub-cell and press 1–9 to place one.",
-                TextWrapping = TextWrapping.Wrap,
-                Foreground = new SolidColorBrush(Color.FromRgb(110, 110, 120)),
-                FontSize = 12,
-            });
+            AddPlaceholderBody("No objects in this room yet. Switch to a sub-cell and press 1–9 to place one.");
             return;
         }
 
@@ -156,11 +181,11 @@ public partial class RoomEditorPanel : UserControl
         {
             BodyPanel.Children.Add(new Border
             {
-                Background = new SolidColorBrush(Color.FromRgb(248, 248, 252)),
-                BorderBrush = new SolidColorBrush(Color.FromRgb(210, 210, 220)),
+                Background = SurfaceRaised,
+                BorderBrush = BorderHair,
                 BorderThickness = new Thickness(1),
-                CornerRadius = new Avalonia.CornerRadius(6),
-                Padding = new Thickness(8),
+                CornerRadius = new Avalonia.CornerRadius(8),
+                Padding = new Thickness(10),
                 Margin = new Thickness(0, 0, 0, 8),
                 Child = BuildObjectCard(i),
             });
@@ -356,34 +381,17 @@ public partial class RoomEditorPanel : UserControl
 
     void BuildPlaceholder()
     {
-        BodyPanel.Children.Add(new TextBlock
-        {
-            Text = "No selection",
-            FontWeight = FontWeight.SemiBold,
-            FontSize = 14,
-            Foreground = new SolidColorBrush(Color.FromRgb(120, 120, 130)),
-            Margin = new Thickness(0, 8, 0, 8),
-        });
-        BodyPanel.Children.Add(new TextBlock
-        {
-            Text = "Click a tile in a room to edit its appearance, or click a wall and add a door / window to edit it.",
-            TextWrapping = TextWrapping.Wrap,
-            Foreground = new SolidColorBrush(Color.FromRgb(110, 110, 120)),
-            FontSize = 12,
-        });
+        AddInspectorHeader("No selection");
+        AddPlaceholderBody("Click a tile in a room to edit its appearance, or click a wall and add a door / window to edit it.");
     }
 
     void BuildRoomEditor()
     {
         int roomId = _vm!.SelectedRoomId;
 
-        BodyPanel.Children.Add(new TextBlock
-        {
-            Text = roomId == 0 ? "Room 0 (start)" : $"Room {roomId}",
-            FontWeight = FontWeight.SemiBold,
-            FontSize = 16,
-            Margin = new Thickness(0, 0, 0, 8),
-        });
+        AddInspectorHeader(
+            $"Room {roomId}",
+            roomId == 0 ? "start room" : null);
 
         // Start-room marker. The button is hidden when this room is already
         // the start (id 0) so the panel doesn't show a dead-action button.
@@ -486,13 +494,8 @@ public partial class RoomEditorPanel : UserControl
         bool isWindow = op.IsWindow;
         string label = isWindow ? "Window" : "Door";
 
-        BodyPanel.Children.Add(new TextBlock
-        {
-            Text = label,
-            FontWeight = FontWeight.SemiBold,
-            FontSize = 16,
-            Margin = new Thickness(0, 0, 0, 12),
-        });
+        AddInspectorHeader(label,
+            isWindow ? "in selected wall" : "in selected wall");
 
         // Width
         BodyPanel.Children.Add(NumericRow(
