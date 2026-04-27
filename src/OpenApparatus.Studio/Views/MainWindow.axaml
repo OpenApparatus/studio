@@ -1024,7 +1024,14 @@
                             </Border>
                         </Grid>
                     </Border>
-                    <Border Grid.Column="1" Background="{StaticResource SurfaceSecondaryBrush}" BorderBrush="{StaticResource BorderHairlineBrush}" BorderThickness="1 0 0 0" Padding="6 10" Width="48">
+                    <!-- Zoom rail (top-down only). In 3D the wheel handles
+                         dolly distance and a separate slider would be
+                         duplicative + take 48 px. -->
+                    <Border Grid.Column="1"
+                            Background="{StaticResource SurfaceSecondaryBrush}"
+                            BorderBrush="{StaticResource BorderHairlineBrush}"
+                            BorderThickness="1 0 0 0" Padding="6 10" Width="48"
+                            IsVisible="{Binding IsTopDownView}">
                         <DockPanel>
                             <TextBlock DockPanel.Dock="Top" Text="Zoom" HorizontalAlignment="Center"
                                        Foreground="{StaticResource TextSecondaryBrush}"
@@ -1034,10 +1041,18 @@
                                        FontSize="{StaticResource FontCaption}"
                                        Margin="0 0 0 4"
                                        Text="{Binding ZoomFactor, StringFormat={}{0:0.0}×}"/>
+                            <!-- Fit + Reset stacked at the bottom. Fit
+                                 shrinks the view to encompass the entire
+                                 grid; Reset returns to the default 1× view. -->
                             <Button DockPanel.Dock="Bottom" Content="Reset" FontSize="10" Padding="4 2"
                                     HorizontalAlignment="Stretch"
+                                    Margin="0 4 0 0"
                                     Command="{Binding ResetViewCommand}"
                                     ToolTip.Tip="Reset zoom and pan to fit-to-view."/>
+                            <Button DockPanel.Dock="Bottom" Content="Fit" FontSize="10" Padding="4 2"
+                                    HorizontalAlignment="Stretch"
+                                    Command="{Binding ResetViewCommand}"
+                                    ToolTip.Tip="Fit the entire grid in the viewport."/>
                             <Slider Orientation="Vertical"
                                     Minimum="0.5" Maximum="8.0"
                                     Value="{Binding ZoomFactor, Mode=TwoWay}"
