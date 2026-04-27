@@ -157,9 +157,85 @@ public partial class RoomEditorPanel : UserControl
 
     void BuildSingleObjectEditor(int idx)
     {
-        AddInspectorHeader("Selected object", $"slot {_vm!.Objects[idx].Slot}");
+        // Header carries a small shape+colour preview so the user
+        // recognises which object they're editing without having to
+        // glance back at the canvas.
+        var sel = _vm!.Objects[idx];
+        var t = _vm.GetObjectType(sel.Slot);
+        AddInspectorHeaderWithObjectPreview(
+            t?.Name ?? "Selected object",
+            $"slot {sel.Slot}  ·  room {(sel.OwningRoomId < 0 ? "outside" : sel.OwningRoomId.ToString())}",
+            t);
         BuildObjectEditorRows(idx);
     }
+
+    /// <summary>Same chrome as AddInspectorHeader, but with a 26-px swatch
+    /// preview on the left showing the object type's colour + a glyph
+    /// for its shape. Only used for object selections.</summary>
+    void AddInspectorHeaderWithObjectPreview(string title, string? subtitle, OpenApparatus.Studio.ViewModels.ObjectType? type)
+    {
+        var headerStack = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, Margin = new Thickness(0, 0, 0, subtitle is null ? 8 : 2) };
+        if (type is not null)
+        {
+            float lum = type.Color.X * 0.299f + type.Color.Y * 0.587f + type.Color.Z * 0.114f;
+            var glyphBrush = new SolidColorBrush(lum > 0.6f ? Color.FromRgb(20, 20, 26) : Colors.White);
+            headerStack.Children.Add(new Border
+            {
+                Width = 26, Height = 26,
+                Background = new SolidColorBrush(Color.FromRgb(
+                    (byte)(type.Color.X * 255), (byte)(type.Color.Y * 255), (byte)(type.Color.Z * 255))),
+                BorderBrush = BorderHair,
+                BorderThickness = new Thickness(1),
+                CornerRadius = new Avalonia.CornerRadius(4),
+                VerticalAlignment = VerticalAlignment.Center,
+                Child = new TextBlock
+                {
+                    Text = ShapeGlyph(type.Shape),
+                    FontSize = 14,
+                    Foreground = glyphBrush,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                },
+            });
+        }
+        headerStack.Children.Add(new TextBlock
+        {
+            Text = title,
+            FontWeight = FontWeight.SemiBold,
+            FontSize = 14,
+            Foreground = TextPrimary,
+            VerticalAlignment = VerticalAlignment.Center,
+        });
+        BodyPanel.Children.Add(headerStack);
+        if (subtitle is not null)
+        {
+            BodyPanel.Children.Add(new TextBlock
+            {
+                Text = subtitle,
+                FontSize = 11,
+                Foreground = TextMuted,
+                Margin = new Thickness(0, 0, 0, 8),
+            });
+        }
+        BodyPanel.Children.Add(new Border
+        {
+            Height = 1,
+            Background = BorderHair,
+            Margin = new Thickness(0, 0, 0, 12),
+        });
+    }
+
+    static string ShapeGlyph(OpenApparatus.Studio.ViewModels.ObjectShape shape) => shape switch
+    {
+        OpenApparatus.Studio.ViewModels.ObjectShape.Cube          => "■",
+        OpenApparatus.Studio.ViewModels.ObjectShape.Sphere        => "●",
+        OpenApparatus.Studio.ViewModels.ObjectShape.Cylinder      => "▮",
+        OpenApparatus.Studio.ViewModels.ObjectShape.SquatCylinder => "▬",
+        OpenApparatus.Studio.ViewModels.ObjectShape.Cone          => "▲",
+        OpenApparatus.Studio.ViewModels.ObjectShape.Capsule       => "⬭",
+        OpenApparatus.Studio.ViewModels.ObjectShape.Pyramid       => "◆",
+        _ => "?",
+    };
 
     void BuildStackedObjectsForRoom(int roomId)
     {
@@ -252,12 +328,20 @@ public partial class RoomEditorPanel : UserControl
         host.Children.Add(NumericRow("Rotation (°)", sel.Rotation * (180.0 / System.Math.PI), -360, 360, 5,
             v => { sel.Rotation = (float)(v * System.Math.PI / 180.0); _vm.OnEditedSelectedObject(); }));
 
+        // Destructive button styled with warning red so the user
+        // recognises this isn't a routine action.
         var deleteBtn = new Button
         {
             Content = "Delete object",
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Center,
-            Margin = new Thickness(0, 6, 0, 0),
+            Margin = new Thickness(0, 12, 0, 0),
+            Background = new SolidColorBrush(Color.FromRgb(0xFD, 0xEC, 0xEC)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(0xE3, 0xB6, 0xB6)),
+            BorderThickness = new Thickness(1),
+            Foreground = new SolidColorBrush(Color.FromRgb(0xC8, 0x28, 0x28)),
+            FontWeight = FontWeight.SemiBold,
+            Padding = new Thickness(10, 6),
         };
         int capturedIdx = idx;
         deleteBtn.Click += (_, _) =>
