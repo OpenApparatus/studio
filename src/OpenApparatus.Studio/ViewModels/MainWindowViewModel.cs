@@ -214,8 +214,86 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>Default colour applied to newly-created rooms' walls.
     /// Stored as the per-room single-wall colour so the visual matches
     /// what RoomEditorPanel's Wall colour row shows. The value can
-    /// still be overridden per-wall later.</summary>
+    /// still be overridden per-wall later. Ignored when
+    /// <see cref="UseRandomDefaultWallColor"/> is on.</summary>
     [ObservableProperty] System.Numerics.Vector3 _defaultWallColor    = new(0.84f, 0.85f, 0.87f);
+
+    /// <summary>When on, each newly-created room is assigned a random
+    /// HSV-rotated wall colour instead of <see cref="DefaultWallColor"/>.
+    /// Surfaced in the UI as a rainbow-gradient swatch.</summary>
+    [ObservableProperty] bool _useRandomDefaultWallColor;
+
+    /// <summary>Brush displayed in the wall-default swatch — either a
+    /// solid colour or a rainbow gradient when random-mode is on.
+    /// Notified whenever either underlying property changes.</summary>
+    public Avalonia.Media.IBrush WallDefaultBrush =>
+        UseRandomDefaultWallColor
+            ? BuildRainbowBrush()
+            : (Avalonia.Media.IBrush)new Avalonia.Media.SolidColorBrush(
+                Avalonia.Media.Color.FromRgb(
+                    (byte)(DefaultWallColor.X * 255),
+                    (byte)(DefaultWallColor.Y * 255),
+                    (byte)(DefaultWallColor.Z * 255)));
+
+    static Avalonia.Media.IBrush BuildRainbowBrush()
+    {
+        var b = new Avalonia.Media.LinearGradientBrush
+        {
+            StartPoint = new Avalonia.RelativePoint(0, 0.5, Avalonia.RelativeUnit.Relative),
+            EndPoint   = new Avalonia.RelativePoint(1, 0.5, Avalonia.RelativeUnit.Relative),
+        };
+        // Hue sweep 0 → 360 in 7 stops, taken at S=0.55, V=0.85 so the
+        // rainbow signals "any colour" without screaming saturation.
+        var stops = new[] {
+            (0.00, 0xE2, 0x74, 0x74),  // red
+            (0.16, 0xE2, 0xB6, 0x74),  // orange
+            (0.33, 0xE2, 0xDC, 0x74),  // yellow
+            (0.50, 0x8E, 0xC8, 0x6E),  // green
+            (0.66, 0x6E, 0xB1, 0xCC),  // cyan
+            (0.83, 0x82, 0x7C, 0xD0),  // indigo
+            (1.00, 0xCB, 0x7B, 0xC4),  // magenta
+        };
+        foreach (var (off, r, g, bb) in stops)
+            b.GradientStops.Add(new Avalonia.Media.GradientStop(
+                Avalonia.Media.Color.FromRgb((byte)r, (byte)g, (byte)bb), off));
+        return b;
+    }
+
+    partial void OnDefaultWallColorChanged(System.Numerics.Vector3 value)
+        => OnPropertyChanged(nameof(WallDefaultBrush));
+    partial void OnUseRandomDefaultWallColorChanged(bool value)
+        => OnPropertyChanged(nameof(WallDefaultBrush));
+
+    /// <summary>Hue-rotated random Vector3 colour at S=0.55, V=0.82.
+    /// Bright enough to be distinguishable but desaturated enough not to
+    /// clash with floor / ceiling palettes.</summary>
+    static System.Numerics.Vector3 PickRandomWallColor()
+    {
+        // Use a deterministic-seeded RNG that rolls forward each call so
+        // adjacent rooms get visibly different hues.
+        s_wallRng ??= new System.Random();
+        float h = (float)s_wallRng.NextDouble();
+        return HsvToRgbVec3(h, 0.55f, 0.82f);
+    }
+    static System.Random? s_wallRng;
+    static System.Numerics.Vector3 HsvToRgbVec3(float h, float s, float v)
+    {
+        h = (h % 1f + 1f) % 1f;
+        float c = v * s;
+        float x = c * (1f - System.MathF.Abs((h * 6f) % 2f - 1f));
+        float m = v - c;
+        float r = 0, g = 0, b = 0;
+        int seg = (int)System.Math.Floor(h * 6f);
+        switch (seg) {
+            case 0: r = c; g = x; b = 0; break;
+            case 1: r = x; g = c; b = 0; break;
+            case 2: r = 0; g = c; b = x; break;
+            case 3: r = 0; g = x; b = c; break;
+            case 4: r = x; g = 0; b = c; break;
+            default: r = c; g = 0; b = x; break;
+        }
+        return new System.Numerics.Vector3(r + m, g + m, b + m);
+    }
 
     /// <summary>The user-facing edit mode. Layout mode is for authoring the
     /// floor plan (rooms, walls, doors, windows). Object mode is for placing
@@ -1996,7 +2074,11 @@ public partial class MainWindowViewModel : ViewModelBase
         _roomSingleWallColors[id] = RoomColorRgb(id);
         _roomFloorColors[id]      = DefaultFloorColor;
         _roomCeilingColors[id]    = DefaultCeilingColor;
-        _roomSingleWallColors[id] = DefaultWallColor;
+        // Random-default mode rolls a fresh hue per room; otherwise use
+        // the chosen flat colour.
+        _roomSingleWallColors[id] = UseRandomDefaultWallColor
+            ? PickRandomWallColor()
+            : DefaultWallColor;
 
         SelectedTiles.Clear();
         RefreshSelectionState();

@@ -531,7 +531,11 @@
             <Setter Property="Opacity" Value="0.5"/>
         </Style>
 
-        <!-- Keyboard-shortcut overlay styles. -->
+        <!-- Keyboard-shortcut chip. Sized to its content; vertically
+             centered in its row so a one-letter chip ("R") doesn't
+             stretch to match a multi-line description in the same
+             row. The inner TextBlock is NoWrap so a long shortcut
+             ("Ctrl + Shift + Z") stays on one line. -->
         <Style Selector="Border.kbd">
             <Setter Property="Background" Value="{DynamicResource SurfacePrimaryBrush}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource BorderHairlineBrush}"/>
@@ -539,11 +543,14 @@
             <Setter Property="CornerRadius" Value="{StaticResource CornerSm}"/>
             <Setter Property="Padding" Value="6 2"/>
             <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
         <Style Selector="Border.kbd > TextBlock">
             <Setter Property="FontFamily" Value="Consolas, 'Courier New', monospace"/>
             <Setter Property="FontSize" Value="11"/>
             <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+            <Setter Property="TextWrapping" Value="NoWrap"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
         <Style Selector="TextBlock.kbdDesc">
             <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
@@ -1052,14 +1059,31 @@
                                         Background="{Binding DefaultCeilingColor, Converter={x:Static converters:Vector3ToBrushConverter.Instance}}"
                                         ToolTip.Tip="Click to change. Used when a new room is created."/>
                                 <TextBlock Grid.Row="2" Grid.Column="0" Classes="propLabel" Text="Walls"/>
-                                <Button Grid.Row="2" Grid.Column="1"
-                                        Click="OnPickDefaultWall"
-                                        Padding="0" MinHeight="0" Height="24"
-                                        HorizontalAlignment="Stretch"
-                                        BorderBrush="{DynamicResource BorderHairlineBrush}" BorderThickness="1"
-                                        CornerRadius="4"
-                                        Background="{Binding DefaultWallColor, Converter={x:Static converters:Vector3ToBrushConverter.Instance}}"
-                                        ToolTip.Tip="Click to change. Applied to every wall of new rooms."/>
+                                <!-- Wall row: swatch on the left, "Random"
+                                     toggle on the right. When Random is on,
+                                     the swatch shows a horizontal rainbow
+                                     gradient signalling "every new room
+                                     gets its own hue"; clicks still open
+                                     the colour picker for the fallback
+                                     fixed-colour value. -->
+                                <Grid Grid.Row="2" Grid.Column="1"
+                                      ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                                    <Button Grid.Column="0"
+                                            Click="OnPickDefaultWall"
+                                            Padding="0" MinHeight="0" Height="24"
+                                            HorizontalAlignment="Stretch"
+                                            BorderBrush="{DynamicResource BorderHairlineBrush}" BorderThickness="1"
+                                            CornerRadius="4"
+                                            Background="{Binding WallDefaultBrush}"
+                                            ToolTip.Tip="Click to change the fixed colour. The rainbow appears when Random is on; new rooms then get a fresh hue each."/>
+                                    <ToggleButton Grid.Column="1"
+                                                  Classes="pill"
+                                                  Content="Random"
+                                                  Padding="8 2"
+                                                  Margin="0"
+                                                  IsChecked="{Binding UseRandomDefaultWallColor, Mode=TwoWay}"
+                                                  ToolTip.Tip="Roll a fresh hue for every new room's walls."/>
+                                </Grid>
                             </Grid>
                         </Border>
 
@@ -1171,9 +1195,19 @@
                                 <TextBlock Grid.Row="1" Grid.Column="1" Classes="kbdDesc"
                                            Text="Turn the selection into a room."
                                            TextWrapping="Wrap"/>
-                                <Border Grid.Row="2" Grid.Column="0" Classes="kbd"><TextBlock Text="D · W · O · C"/></Border>
+                                <!-- Each opening-mode key gets its own kbd chip
+                                     so they read as four discrete keys instead
+                                     of one mashed gesture. -->
+                                <StackPanel Grid.Row="2" Grid.Column="0"
+                                            Orientation="Horizontal" Spacing="3"
+                                            VerticalAlignment="Center">
+                                    <Border Classes="kbd"><TextBlock Text="D"/></Border>
+                                    <Border Classes="kbd"><TextBlock Text="W"/></Border>
+                                    <Border Classes="kbd"><TextBlock Text="O"/></Border>
+                                    <Border Classes="kbd"><TextBlock Text="C"/></Border>
+                                </StackPanel>
                                 <TextBlock Grid.Row="2" Grid.Column="1" Classes="kbdDesc"
-                                           Text="On a selected wall: door · window · open · closed."
+                                           Text="With a wall selected: door · window · open · closed."
                                            TextWrapping="Wrap"/>
                                 <Border Grid.Row="3" Grid.Column="0" Classes="kbd"><TextBlock Text="F1"/></Border>
                                 <TextBlock Grid.Row="3" Grid.Column="1" Classes="kbdDesc"

@@ -32,6 +32,10 @@
 
     <Application.Styles>
         <FluentTheme />
+        <!-- ColorPicker theme — the Avalonia.Controls.ColorPicker
+             package ships separately from FluentTheme and needs its
+             own style registration before <ColorView /> renders. -->
+        <StyleInclude Source="avares://Avalonia.Controls.ColorPicker/Themes/Fluent/Fluent.xaml"/>
         <!-- Studio control theme — overrides Avalonia FluentTheme defaults
              for ScrollBar / ComboBox / TextBox / Button / MenuFlyout /
              ToolTip / Expander so the entire app matches the design
