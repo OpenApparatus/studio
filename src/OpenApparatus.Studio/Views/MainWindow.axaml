@@ -70,8 +70,8 @@
             <Setter Property="BorderBrush" Value="#cdd1d9"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="5"/>
-            <Setter Property="Padding" Value="8 6"/>
-            <Setter Property="Margin" Value="0 0 6 0"/>
+            <Setter Property="Padding" Value="10 6"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
         </Style>
         <Style Selector="Border.card CheckBox">
             <Setter Property="FontSize" Value="11"/>
@@ -128,17 +128,17 @@
             </Grid>
         </Border>
 
-        <!-- Toolbar cards strip: View / Layout meas. / Object meas. Tightly
-             packed so all three fit on one horizontal line at standard
-             widths. Two-column layout inside each card keeps it compact. -->
-        <Border DockPanel.Dock="Top" Background="#eef0f5" BorderBrush="#cdd1d9" BorderThickness="0 0 0 1" Padding="8 8 2 8">
-            <StackPanel Orientation="Horizontal">
+        <!-- Toolbar cards strip: View / Layout meas. / Object meas. / Paths.
+             The four cards share the window width via star columns so each
+             takes a quarter of the bar. -->
+        <Border DockPanel.Dock="Top" Background="#eef0f5" BorderBrush="#cdd1d9" BorderThickness="0 0 0 1" Padding="8">
+            <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="6">
 
                 <!-- View card -->
-                <Border Classes="card">
+                <Border Grid.Column="0" Classes="card">
                     <StackPanel Spacing="2">
                         <TextBlock Classes="cardHdr" Text="VIEW"/>
-                        <Grid ColumnDefinitions="Auto,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="14" RowSpacing="2">
+                        <Grid ColumnDefinitions="Auto,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="14" RowSpacing="2">
                             <CheckBox Grid.Row="0" Grid.Column="0" Content="Wall borders"
                                       IsChecked="{Binding ShowWallBorders}"
                                       ToolTip.Tip="14-px coloured ribbons just inside each wall."/>
@@ -158,24 +158,12 @@
                                         Value="{Binding TileSaturation, Mode=TwoWay}"
                                         ToolTip.Tip="Mute room tile colours."/>
                             </StackPanel>
-                            <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="4">
-                                <CheckBox Content="Paths"
-                                          IsChecked="{Binding ShowPaths}"
-                                          VerticalAlignment="Center"
-                                          ToolTip.Tip="Connectivity polyline through traversable walls."/>
-                                <Button Width="16" Height="16" Padding="0"
-                                        BorderBrush="#888" BorderThickness="1"
-                                        Background="{Binding PathColor, Converter={x:Static converters:Vector3ToBrushConverter.Instance}}"
-                                        Click="OnPickPathColor"
-                                        VerticalAlignment="Center"
-                                        ToolTip.Tip="Path colour"/>
-                            </StackPanel>
                         </Grid>
                     </StackPanel>
                 </Border>
 
                 <!-- Layout measurements card -->
-                <Border Classes="card">
+                <Border Grid.Column="1" Classes="card">
                     <StackPanel Spacing="2">
                         <TextBlock Classes="cardHdr" Text="LAYOUT MEASUREMENTS"/>
                         <Grid ColumnDefinitions="Auto,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="14" RowSpacing="2">
@@ -196,7 +184,7 @@
                 </Border>
 
                 <!-- Object measurements card -->
-                <Border Classes="card">
+                <Border Grid.Column="2" Classes="card">
                     <StackPanel Spacing="2">
                         <TextBlock Classes="cardHdr" Text="OBJECT MEASUREMENTS"/>
                         <CheckBox Content="Show measurements"
@@ -209,7 +197,26 @@
                     </StackPanel>
                 </Border>
 
-            </StackPanel>
+                <!-- Paths card — connectivity overlay between rooms. -->
+                <Border Grid.Column="3" Classes="card">
+                    <StackPanel Spacing="2">
+                        <TextBlock Classes="cardHdr" Text="PATHS"/>
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <CheckBox Content="Show paths"
+                                      IsChecked="{Binding ShowPaths}"
+                                      VerticalAlignment="Center"
+                                      ToolTip.Tip="Polyline through every traversable wall (open / doorway)."/>
+                            <Button Width="18" Height="18" Padding="0"
+                                    BorderBrush="#888" BorderThickness="1"
+                                    Background="{Binding PathColor, Converter={x:Static converters:Vector3ToBrushConverter.Instance}}"
+                                    Click="OnPickPathColor"
+                                    VerticalAlignment="Center"
+                                    ToolTip.Tip="Path overlay colour"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+            </Grid>
         </Border>
 
         <!-- Status bar -->
