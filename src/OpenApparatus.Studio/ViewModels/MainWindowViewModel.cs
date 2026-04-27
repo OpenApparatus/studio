@@ -231,6 +231,7 @@ public partial class MainWindowViewModel : ViewModelBase
         EditVersion++;
         OnPropertyChanged(nameof(IsObjectsMode));
         OnPropertyChanged(nameof(IsLayoutMode));
+        OnPropertyChanged(nameof(ShowFloorCeilingTabs));
     }
 
     public bool IsObjectsMode => EditMode == EditModeKind.Object;
@@ -259,10 +260,29 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] CameraKind _cameraView = CameraKind.TopDown;
     public bool IsTopDownView => CameraView == CameraKind.TopDown;
     public bool IsIsoView      => CameraView == CameraKind.Iso;
+    /// <summary>True when the Floor/Ceiling surface pills should appear in
+    /// the toolbar (top-down + Layout mode).</summary>
+    public bool ShowFloorCeilingTabs => IsTopDownView && IsLayoutMode;
+    /// <summary>True when the Opacity slider should appear (top-down +
+    /// Borders enabled).</summary>
+    public bool ShowOpacitySlider   => IsTopDownView && ShowWallBorders;
+    /// <summary>True when LAYOUT measurements section is meaningful (only
+    /// in top-down — they're 2D-canvas overlays).</summary>
+    public bool ShowLayoutMeasurements => IsTopDownView;
+    /// <summary>True when OBJECT measurements section is meaningful.</summary>
+    public bool ShowObjectMeasurements => IsTopDownView;
+    /// <summary>True when the PATHS section is meaningful (paths overlay
+    /// is currently 2D-only; future 3D-pass would relax this).</summary>
+    public bool ShowPathsSection => IsTopDownView;
     partial void OnCameraViewChanged(CameraKind value)
     {
         OnPropertyChanged(nameof(IsTopDownView));
         OnPropertyChanged(nameof(IsIsoView));
+        OnPropertyChanged(nameof(ShowFloorCeilingTabs));
+        OnPropertyChanged(nameof(ShowOpacitySlider));
+        OnPropertyChanged(nameof(ShowLayoutMeasurements));
+        OnPropertyChanged(nameof(ShowObjectMeasurements));
+        OnPropertyChanged(nameof(ShowPathsSection));
         EditVersion++;
     }
 
@@ -872,7 +892,11 @@ public partial class MainWindowViewModel : ViewModelBase
     partial void OnShowRoomLabelsChanged(bool value) => EditVersion++;
 
     [ObservableProperty] bool _showWallBorders = true;
-    partial void OnShowWallBordersChanged(bool value) => EditVersion++;
+    partial void OnShowWallBordersChanged(bool value)
+    {
+        EditVersion++;
+        OnPropertyChanged(nameof(ShowOpacitySlider));
+    }
 
     /// <summary>0..1 multiplier on the saturation of room tile fills. 1 =
     /// full colour, 0 = greyscale. Useful in Object mode so the room hues

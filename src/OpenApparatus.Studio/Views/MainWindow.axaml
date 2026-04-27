@@ -572,10 +572,8 @@
         <Border DockPanel.Dock="Top" Background="{StaticResource SurfacePrimaryBrush}" BorderBrush="{StaticResource BorderHairlineBrush}" BorderThickness="0 0 0 1" Padding="14 8">
                 <StackPanel Orientation="Horizontal" Spacing="0" VerticalAlignment="Center">
 
-                    <!-- VIEW -->
+                    <!-- ── VIEW (camera) — always visible ── -->
                     <TextBlock Classes="sectionLabel" Text="VIEW"/>
-                    <!-- Camera projection: top-down (the authoritative
-                         editing view) or 3D (axonometric preview). -->
                     <RadioButton GroupName="CameraView"
                                  Classes="pill"
                                  Content="Top"
@@ -586,33 +584,40 @@
                                  Content="3D"
                                  Margin="0 0 6 0"
                                  IsChecked="{Binding CameraView, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=Iso}"
-                                 ToolTip.Tip="Axonometric 3D preview (read-only)."/>
-                    <!-- Floor / Ceiling surface toggle (Layout mode only). It's
-                         a viewport setting, so it lives in the top strip — not
-                         the global authoring panel where it used to sit. -->
+                                 ToolTip.Tip="Real-mesh 3D viewer (orbit / pan / zoom, read-only)."/>
+
+                    <!-- ── SURFACE (top-down only) — surface kind toggle +
+                         per-room visual layers. Hidden in 3D where these
+                         have no meaning (3D paints the actual mesh). -->
+                    <Border Classes="vsep" IsVisible="{Binding IsTopDownView}"/>
+                    <TextBlock Classes="sectionLabel" Text="SURFACE"
+                               IsVisible="{Binding IsTopDownView}"/>
                     <RadioButton GroupName="ViewSurface"
                                  Classes="pill"
                                  Content="Floor"
-                                 IsVisible="{Binding IsLayoutMode}"
+                                 IsVisible="{Binding ShowFloorCeilingTabs}"
                                  IsChecked="{Binding ViewMode, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=Floor}"
-                                 ToolTip.Tip="Show the floor surface tile colours."/>
+                                 ToolTip.Tip="Show floor tile colours."/>
                     <RadioButton GroupName="ViewSurface"
                                  Classes="pill"
                                  Content="Ceiling"
                                  Margin="0 0 6 0"
-                                 IsVisible="{Binding IsLayoutMode}"
+                                 IsVisible="{Binding ShowFloorCeilingTabs}"
                                  IsChecked="{Binding ViewMode, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=Ceiling}"
-                                 ToolTip.Tip="Show the ceiling surface tile colours."/>
+                                 ToolTip.Tip="Show ceiling tile colours."/>
                     <ToggleButton Classes="pill" Content="Borders"
+                                  IsVisible="{Binding IsTopDownView}"
                                   IsChecked="{Binding ShowWallBorders}"
                                   ToolTip.Tip="14-px coloured ribbons inside each wall."/>
                     <ToggleButton Classes="pill" Content="Labels"
+                                  IsVisible="{Binding IsTopDownView}"
                                   IsChecked="{Binding ShowRoomLabels}"
                                   ToolTip.Tip="Room id + name at room centre."/>
-                    <!-- Opacity slider only meaningful when Borders is on; the
-                         whole label/slider/readout group hides when off. -->
+                    <!-- Opacity only meaningful when Borders is on AND
+                         we're in top-down. Saturation only matters in
+                         top-down (3D doesn't tint tiles). -->
                     <StackPanel Orientation="Horizontal" Spacing="0" VerticalAlignment="Center"
-                                IsVisible="{Binding ShowWallBorders}">
+                                IsVisible="{Binding ShowOpacitySlider}">
                         <TextBlock Classes="sliderLabel" Text="Opacity"/>
                         <Slider Width="76" Minimum="0" Maximum="1"
                                 Value="{Binding WallBorderOpacity, Mode=TwoWay}"
@@ -621,7 +626,8 @@
                         <TextBlock Classes="sliderValue"
                                    Text="{Binding WallBorderOpacity, StringFormat={}{0:0.00}}"/>
                     </StackPanel>
-                    <StackPanel Orientation="Horizontal" Spacing="0" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="0" VerticalAlignment="Center"
+                                IsVisible="{Binding IsTopDownView}">
                         <TextBlock Classes="sliderLabel" Text="Saturation"/>
                         <Slider Width="76" Minimum="0" Maximum="1"
                                 Value="{Binding TileSaturation, Mode=TwoWay}"
@@ -631,43 +637,56 @@
                                    Text="{Binding TileSaturation, StringFormat={}{0:0.00}}"/>
                     </StackPanel>
 
-                    <Border Classes="vsep"/>
+                    <Border Classes="vsep" IsVisible="{Binding ShowLayoutMeasurements}"/>
 
-                    <!-- LAYOUT -->
-                    <TextBlock Classes="sectionLabel" Text="LAYOUT"/>
+                    <!-- ── ROOM measurements (top-down only) ── -->
+                    <TextBlock Classes="sectionLabel" Text="ROOM"
+                               IsVisible="{Binding ShowLayoutMeasurements}"/>
                     <ToggleButton Classes="pill" Content="Dimensions"
+                                  IsVisible="{Binding ShowLayoutMeasurements}"
                                   IsChecked="{Binding ShowRoomDimensions}"
                                   ToolTip.Tip="W × D label per room."/>
                     <ToggleButton Classes="pill" Content="Area"
+                                  IsVisible="{Binding ShowLayoutMeasurements}"
                                   IsChecked="{Binding ShowFloorAreaLabels}"
                                   ToolTip.Tip="m² label per room."/>
                     <ToggleButton Classes="pill" Content="Openings"
+                                  IsVisible="{Binding ShowLayoutMeasurements}"
                                   IsChecked="{Binding ShowOpeningSizeLabels}"
                                   ToolTip.Tip="Width × height per door / window."/>
 
-                    <Border Classes="vsep"/>
+                    <Border Classes="vsep" IsVisible="{Binding ShowObjectMeasurements}"/>
 
-                    <!-- OBJECTS -->
-                    <TextBlock Classes="sectionLabel" Text="OBJECTS"/>
-                    <ToggleButton Classes="pill" Content="Distances"
+                    <!-- ── OBJECT measurements (top-down only). Renamed
+                         "Distances" → "Object distances" to disambiguate
+                         from the door-related entries beside it. -->
+                    <TextBlock Classes="sectionLabel" Text="MEASURE"
+                               IsVisible="{Binding ShowObjectMeasurements}"/>
+                    <ToggleButton Classes="pill" Content="Object distances"
+                                  IsVisible="{Binding ShowObjectMeasurements}"
                                   IsChecked="{Binding ShowObjectDistances}"
                                   ToolTip.Tip="Inter-object distance line + label."/>
                     <ToggleButton Classes="pill" Content="Door angles"
+                                  IsVisible="{Binding ShowObjectMeasurements}"
                                   IsChecked="{Binding ShowDoorAngles}"
                                   ToolTip.Tip="Angle arc + |angle| label at every door, plus 0° tick."/>
                     <ToggleButton Classes="pill" Content="Door distances"
+                                  IsVisible="{Binding ShowObjectMeasurements}"
                                   IsChecked="{Binding ShowDoorDistances}"
                                   ToolTip.Tip="Door→object line + distance label."/>
 
-                    <Border Classes="vsep"/>
+                    <Border Classes="vsep" IsVisible="{Binding ShowPathsSection}"/>
 
-                    <!-- PATHS -->
-                    <TextBlock Classes="sectionLabel" Text="PATHS"/>
+                    <!-- ── PATHS (top-down only) ── -->
+                    <TextBlock Classes="sectionLabel" Text="PATHS"
+                               IsVisible="{Binding ShowPathsSection}"/>
                     <ToggleButton Classes="pill" Content="Show"
+                                  IsVisible="{Binding ShowPathsSection}"
                                   IsChecked="{Binding ShowPaths}"
                                   ToolTip.Tip="Polyline through every traversable wall (open / doorway)."/>
                     <!-- Round colour swatch — matches its semantic ("colour") -->
                     <Button Classes="icon" Margin="2 0 0 0"
+                            IsVisible="{Binding ShowPathsSection}"
                             BorderBrush="{StaticResource BorderHairlineBrush}" BorderThickness="1"
                             Background="{Binding PathColor, Converter={x:Static converters:Vector3ToBrushConverter.Instance}}"
                             Click="OnPickPathColor"
@@ -676,6 +695,7 @@
                          metaphor and is visually distinct from the round
                          swatch beside it. -->
                     <Button Classes="play" Margin="4 0 0 0"
+                            IsVisible="{Binding ShowPathsSection}"
                             Command="{Binding TogglePathAnimationCommand}"
                             Content="{Binding IsPathAnimating, Converter={x:Static converters:BoolToTextConverter.Instance}, ConverterParameter='■|▶'}"
                             ToolTip.Tip="Animate the path overlay outward from the start room. Loops while running."/>
