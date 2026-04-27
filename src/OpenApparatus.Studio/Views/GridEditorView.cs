@@ -366,7 +366,7 @@ public class GridEditorView : Control
         // of the sub-grid lines.
         if (vm.IsObjectsMode && vm.GridSubdivision > 1)
         {
-            var subStroke = new Pen(new SolidColorBrush(Color.FromArgb(95, 110, 110, 130)), 0.35);
+            var subStroke = new Pen(new SolidColorBrush(Color.FromArgb(190, 70, 70, 90)), 0.8);
             int n = vm.GridSubdivision;
             double subPx = tileSize / n;
             for (int x = 0; x < vm.GridWidth; x++)
