@@ -572,8 +572,13 @@ public partial class MainWindowViewModel : ViewModelBase
 
     Avalonia.Threading.DispatcherTimer? _pathTimer;
     System.DateTime _pathTimerLastTick;
-    /// <summary>Total seconds for one full sweep through every BFS edge.</summary>
-    const double PathAnimationDuration = 4.0;
+    /// <summary>Seconds for one full BFS sweep at 1× speed. Combined with
+    /// <see cref="PathAnimationSpeed"/> for the effective duration.</summary>
+    const double PathAnimationBaseDuration = 6.0;
+    /// <summary>Animation speed multiplier (0.25× — slow, 4× — fast).
+    /// 1× takes <see cref="PathAnimationBaseDuration"/> seconds for a
+    /// full cycle.</summary>
+    [ObservableProperty] double _pathAnimationSpeed = 1.0;
 
     [RelayCommand]
     void TogglePathAnimation()
@@ -610,7 +615,8 @@ public partial class MainWindowViewModel : ViewModelBase
         var now = System.DateTime.UtcNow;
         var dt = (now - _pathTimerLastTick).TotalSeconds;
         _pathTimerLastTick = now;
-        var p = PathAnimationProgress + dt / PathAnimationDuration;
+        double duration = PathAnimationBaseDuration / System.Math.Max(0.05, PathAnimationSpeed);
+        var p = PathAnimationProgress + dt / duration;
         if (p >= 1.0) p -= 1.0; // loop
         PathAnimationProgress = p;
         EditVersion++;

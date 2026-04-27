@@ -417,14 +417,15 @@
             <Setter Property="FontSize" Value="11"/>
         </Style>
         <!-- Square media-control button — used for the path animation
-             play / stop. Rounded-square shape signals "media control" and
-             distinguishes it from the round colour swatch. -->
+             play / stop. Bumped to 26 px for a comfortable hit target;
+             rounded-square shape signals "media control" and is visually
+             distinct from the round colour swatch beside it. -->
         <Style Selector="Button.play">
             <Setter Property="Padding" Value="0"/>
             <Setter Property="MinWidth" Value="0"/>
             <Setter Property="MinHeight" Value="0"/>
-            <Setter Property="Width" Value="22"/>
-            <Setter Property="Height" Value="22"/>
+            <Setter Property="Width" Value="26"/>
+            <Setter Property="Height" Value="26"/>
             <Setter Property="CornerRadius" Value="{StaticResource CornerSm}"/>
             <Setter Property="Background" Value="{StaticResource SurfaceRaisedBrush}"/>
             <Setter Property="BorderBrush" Value="{StaticResource BorderHairlineBrush}"/>
@@ -432,11 +433,18 @@
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
-            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontSize" Value="13"/>
             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
         </Style>
         <Style Selector="Button.play:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{StaticResource SurfacePrimaryBrush}"/>
+        </Style>
+        <!-- Active state: filled brand-blue while the animation is
+             running, so the play/stop button reads as "live". -->
+        <Style Selector="Button.play.playing">
+            <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource AccentHoverBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextOnDarkBrush}"/>
         </Style>
         <!-- Top-bar icon button (undo/redo/overflow). Glyph-only, square,
              tight padding so they read as a tool palette rather than form
@@ -684,21 +692,46 @@
                                   IsVisible="{Binding ShowPathsSection}"
                                   IsChecked="{Binding ShowPaths}"
                                   ToolTip.Tip="Polyline through every traversable wall (open / doorway)."/>
-                    <!-- Round colour swatch — matches its semantic ("colour") -->
-                    <Button Classes="icon" Margin="2 0 0 0"
-                            IsVisible="{Binding ShowPathsSection}"
-                            BorderBrush="{StaticResource BorderHairlineBrush}" BorderThickness="1"
-                            Background="{Binding PathColor, Converter={x:Static converters:Vector3ToBrushConverter.Instance}}"
-                            Click="OnPickPathColor"
-                            ToolTip.Tip="Path overlay colour"/>
-                    <!-- Square media-control button — matches the "play / stop"
-                         metaphor and is visually distinct from the round
-                         swatch beside it. -->
-                    <Button Classes="play" Margin="4 0 0 0"
+                    <!-- Round colour swatch with a tiny "•" affordance dot
+                         layered on top so the control reads as clickable
+                         (otherwise it looks like a non-interactive bead). -->
+                    <Grid Margin="2 0 0 0"
+                          IsVisible="{Binding ShowPathsSection}"
+                          VerticalAlignment="Center">
+                        <Button Classes="icon"
+                                BorderBrush="{StaticResource BorderHairlineBrush}" BorderThickness="1"
+                                Background="{Binding PathColor, Converter={x:Static converters:Vector3ToBrushConverter.Instance}}"
+                                Click="OnPickPathColor"
+                                ToolTip.Tip="Path overlay colour"/>
+                        <TextBlock Text="…" FontSize="11" FontWeight="Bold"
+                                   HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                   Margin="0 0 3 0"
+                                   Foreground="{StaticResource TextOnDarkBrush}"
+                                   IsHitTestVisible="False"/>
+                    </Grid>
+                    <!-- Square media-control button. Filled brand-blue while
+                         the animation is running so the button reads as
+                         "live" (matches DAW play-state conventions). -->
+                    <Button Classes="play"
+                            Classes.playing="{Binding IsPathAnimating}"
+                            Margin="4 0 0 0"
                             IsVisible="{Binding ShowPathsSection}"
                             Command="{Binding TogglePathAnimationCommand}"
                             Content="{Binding IsPathAnimating, Converter={x:Static converters:BoolToTextConverter.Instance}, ConverterParameter='■|▶'}"
-                            ToolTip.Tip="Animate the path overlay outward from the start room. Loops while running."/>
+                            ToolTip.Tip="Animate the path overlay. Loops while running."/>
+                    <!-- Speed slider, only while the animation is running.
+                         0.25× = slow study; 4× = quick reveal. -->
+                    <StackPanel Orientation="Horizontal" Spacing="0" VerticalAlignment="Center"
+                                IsVisible="{Binding IsPathAnimating}"
+                                Margin="6 0 0 0">
+                        <TextBlock Classes="sliderLabel" Text="Speed"/>
+                        <Slider Width="64" Minimum="0.25" Maximum="4"
+                                Value="{Binding PathAnimationSpeed, Mode=TwoWay}"
+                                VerticalAlignment="Center"
+                                ToolTip.Tip="Animation speed (0.25× — 4×)."/>
+                        <TextBlock Classes="sliderValue"
+                                   Text="{Binding PathAnimationSpeed, StringFormat={}{0:0.0}×}"/>
+                    </StackPanel>
 
                 </StackPanel>
         </Border>
