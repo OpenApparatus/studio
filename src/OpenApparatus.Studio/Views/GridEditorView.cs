@@ -144,13 +144,21 @@ public class GridEditorView : Control
 
         // 2. Tile click — if the tile belongs to a room, select that room and
         // open the appearance panel; otherwise begin a drag-select for room
-        // creation.
+        // creation. Clicking outside the currently-selected room clears the
+        // room selection so the highlight doesn't linger across unrelated
+        // clicks.
         if (TryHitTest(pos, vm, out int x, out int z))
         {
             // A click on the grid means we've left the wall context — clear any
             // wall selection so the door-anchor markers disappear.
             vm.SelectedAdjacency = null;
 
+            int hitRoomId = vm.RoomGrid[x, z];
+            if (hitRoomId < 0 && vm.SelectedRoomId >= 0)
+            {
+                // Clicking empty space drops the active room selection.
+                vm.SelectedRoomId = -1;
+            }
             if (vm.TrySelectRoomAtTile(x, z))
             {
                 e.Handled = true;
@@ -161,6 +169,12 @@ public class GridEditorView : Control
             _dragMode = wasSelected ? DragMode.Deselect : DragMode.Select;
             ApplyDrag(vm, x, z);
             e.Handled = true;
+        }
+        else if (vm.SelectedRoomId >= 0)
+        {
+            // Pointer landed off-grid (e.g. into the empty padding around
+            // the editor) — also drop the room selection.
+            vm.SelectedRoomId = -1;
         }
     }
 
