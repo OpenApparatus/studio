@@ -165,6 +165,16 @@
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="Margin" Value="8 0 5 0"/>
         </Style>
+        <!-- Right-aligned numeric readout next to a slider. Tabular digits +
+             fixed width so the slider doesn't reflow as the value scrubs. -->
+        <Style Selector="TextBlock.sliderValue">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="4 0 0 0"/>
+            <Setter Property="MinWidth" Value="28"/>
+            <Setter Property="TextAlignment" Value="Right"/>
+        </Style>
         <!-- Vertical hairline divider between toolbar sections. -->
         <Style Selector="Border.vsep">
             <Setter Property="Width" Value="1"/>
@@ -461,17 +471,27 @@
                     <ToggleButton Classes="pill" Content="Labels"
                                   IsChecked="{Binding ShowRoomLabels}"
                                   ToolTip.Tip="Room id + name at room centre."/>
-                    <TextBlock Classes="sliderLabel" Text="Opacity"/>
-                    <Slider Width="76" Minimum="0" Maximum="1"
-                            Value="{Binding WallBorderOpacity, Mode=TwoWay}"
-                            IsEnabled="{Binding ShowWallBorders}"
-                            VerticalAlignment="Center"
-                            ToolTip.Tip="Wall border opacity."/>
-                    <TextBlock Classes="sliderLabel" Text="Saturation"/>
-                    <Slider Width="76" Minimum="0" Maximum="1"
-                            Value="{Binding TileSaturation, Mode=TwoWay}"
-                            VerticalAlignment="Center"
-                            ToolTip.Tip="Tile colour saturation."/>
+                    <!-- Opacity slider only meaningful when Borders is on; the
+                         whole label/slider/readout group hides when off. -->
+                    <StackPanel Orientation="Horizontal" Spacing="0" VerticalAlignment="Center"
+                                IsVisible="{Binding ShowWallBorders}">
+                        <TextBlock Classes="sliderLabel" Text="Opacity"/>
+                        <Slider Width="76" Minimum="0" Maximum="1"
+                                Value="{Binding WallBorderOpacity, Mode=TwoWay}"
+                                VerticalAlignment="Center"
+                                ToolTip.Tip="Wall border opacity."/>
+                        <TextBlock Classes="sliderValue"
+                                   Text="{Binding WallBorderOpacity, StringFormat={}{0:0.00}}"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="0" VerticalAlignment="Center">
+                        <TextBlock Classes="sliderLabel" Text="Saturation"/>
+                        <Slider Width="76" Minimum="0" Maximum="1"
+                                Value="{Binding TileSaturation, Mode=TwoWay}"
+                                VerticalAlignment="Center"
+                                ToolTip.Tip="Tile colour saturation."/>
+                        <TextBlock Classes="sliderValue"
+                                   Text="{Binding TileSaturation, StringFormat={}{0:0.00}}"/>
+                    </StackPanel>
 
                     <Border Classes="vsep"/>
 
@@ -698,7 +718,14 @@
                     </Border>
                     <Border Grid.Column="1" Background="{StaticResource SurfaceSecondaryBrush}" BorderBrush="{StaticResource BorderHairlineBrush}" BorderThickness="1 0 0 0" Padding="6 10" Width="48">
                         <DockPanel>
-                            <TextBlock DockPanel.Dock="Top" Text="Zoom" HorizontalAlignment="Center" Foreground="#444" FontSize="11"/>
+                            <TextBlock DockPanel.Dock="Top" Text="Zoom" HorizontalAlignment="Center"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontSize="{StaticResource FontCaption}"/>
+                            <TextBlock DockPanel.Dock="Top" HorizontalAlignment="Center"
+                                       Foreground="{StaticResource TextMutedBrush}"
+                                       FontSize="{StaticResource FontCaption}"
+                                       Margin="0 0 0 4"
+                                       Text="{Binding ZoomFactor, StringFormat={}{0:0.0}×}"/>
                             <Button DockPanel.Dock="Bottom" Content="Reset" FontSize="10" Padding="4 2"
                                     HorizontalAlignment="Stretch"
                                     Command="{Binding ResetViewCommand}"
