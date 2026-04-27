@@ -247,6 +247,13 @@ public partial class MainWindow : Window
         if (picked.HasValue) vm.DefaultCeilingColor = picked.Value;
     }
 
+    async void OnPickDefaultWall(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        var vm = Vm; if (vm is null) return;
+        var picked = await PickColor("Default wall color", vm.DefaultWallColor);
+        if (picked.HasValue) vm.DefaultWallColor = picked.Value;
+    }
+
     async void OnPickPathColor(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         var vm = Vm; if (vm is null) return;

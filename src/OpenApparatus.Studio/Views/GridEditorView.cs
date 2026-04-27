@@ -21,6 +21,9 @@ namespace OpenApparatus.Studio.Views;
 /// </summary>
 public class GridEditorView : Control
 {
+    /// <summary>Tile coords (or -1) of the room currently under the
+    /// cursor in top-down mode. Drives the hover-outline overlay.</summary>
+    int _hoveredRoomId = -1;
     public static readonly StyledProperty<int> EditVersionProperty =
         AvaloniaProperty.Register<GridEditorView, int>(nameof(EditVersion));
 
@@ -233,8 +236,12 @@ public class GridEditorView : Control
             var seg = adj.SharedSegment;
             if (adj.Passage is OpenApparatus.Topology.Passage.Doorway dw)
             {
+                // Windows are not traversable — skip them. A doorway with
+                // only window openings adds no path edges; only door
+                // openings (IsWindow == false) are traversable.
                 foreach (var op in dw.Openings)
                 {
+                    if (op.IsWindow) continue;
                     var door = seg.Start + seg.Direction * (op.OffsetAlongEdge + op.Width * 0.5f);
                     list.Add(new PathEdge(adj.RoomA.Id, aWorld, door, adj.RoomB!.Id, bWorld));
                 }
@@ -519,8 +526,9 @@ public class GridEditorView : Control
         if (vm is null) return;
         var pos = e.GetPosition(this);
 
-        // Cursor world-position readout (top-down only — 3D coords would
-        // need ray-cast against the floor plane, future work).
+        // Cursor world-position readout + hovered-room tracking. The
+        // hover state drives a subtle outline overlay so users get
+        // visual confirmation that rooms are interactive surfaces.
         if (!vm.IsIsoView)
         {
             var (originLayout, tileLayout) = ComputeLayout(vm);
@@ -528,6 +536,20 @@ public class GridEditorView : Control
             {
                 var w = ScreenToWorld(pos, originLayout, tileLayout, vm);
                 vm.SetCursorWorldPos(w.X, w.Y);
+                int newHover = -1;
+                if (TryHitTest(pos, vm, out int hx, out int hz))
+                {
+                    int id = vm.RoomGrid[hx, hz];
+                    if (id >= 0) newHover = id;
+                }
+                if (newHover != _hoveredRoomId)
+                {
+                    _hoveredRoomId = newHover;
+                    Cursor = newHover >= 0
+                        ? new Cursor(StandardCursorType.Hand)
+                        : Cursor.Default;
+                    InvalidateVisual();
+                }
             }
         }
 
@@ -1086,6 +1108,12 @@ public class GridEditorView : Control
         var originScreen = new Point(origin.X, origin.Y + vm.GridLength * tileSize);
         DrawOriginMarker(ctx, originScreen, typeface);
 
+        // Hover + selected room outlines. Drawn after walls so the
+        // outline sits on top of every interior tile of the room. Hover
+        // is muted brand-blue; selected is full brand-blue.
+        if (!vm.IsIsoView)
+            DrawRoomAffordances(ctx, vm, origin, tileSize, _hoveredRoomId);
+
         // Layout-measurement labels (room dimensions / floor area / opening
         // sizes / wall lengths) on top of everything else.
         DrawLayoutMeasurements(ctx, vm, origin, tileSize, typeface);
@@ -1101,6 +1129,67 @@ public class GridEditorView : Control
     /// Wording differs slightly per mode.</summary>
     public static void DrawEmptyStatePublic(DrawingContext ctx, Size size, Typeface typeface, bool isObjectsMode)
         => DrawEmptyState(ctx, size, typeface, isObjectsMode);
+    /// <summary>Outlines hovered + selected rooms with brand-blue strokes
+    /// so the user gets feedback that rooms are interactive surfaces.
+    /// Walks each tile of the room and strokes the outer perimeter
+    /// (only edges that don't share a neighbour belonging to the same
+    /// room) — gives the room a clean silhouette outline.</summary>
+    static void DrawRoomAffordances(
+        DrawingContext ctx, MainWindowViewModel vm,
+        Point origin, double tileSize, int hoveredRoomId)
+    {
+        // Hovered room — softer fill tint + 1.5-px outline.
+        if (hoveredRoomId >= 0 && hoveredRoomId != vm.SelectedRoomId)
+        {
+            DrawRoomOutline(ctx, vm, origin, tileSize, hoveredRoomId,
+                fill: new SolidColorBrush(Color.FromArgb(30, 31, 111, 235)),
+                stroke: new Pen(new SolidColorBrush(Color.FromArgb(160, 31, 111, 235)), 1.5));
+        }
+        // Selected room — full brand-blue 2.5-px outline + slight tint.
+        if (vm.SelectedRoomId >= 0)
+        {
+            DrawRoomOutline(ctx, vm, origin, tileSize, vm.SelectedRoomId,
+                fill: new SolidColorBrush(Color.FromArgb(45, 31, 111, 235)),
+                stroke: new Pen(new SolidColorBrush(Color.FromRgb(31, 111, 235)), 2.5));
+        }
+    }
+
+    static void DrawRoomOutline(
+        DrawingContext ctx, MainWindowViewModel vm,
+        Point origin, double tileSize, int roomId,
+        IBrush fill, Pen stroke)
+    {
+        // Tint pass — fill every tile of the room with the soft accent.
+        for (int x = 0; x < vm.GridWidth; x++)
+            for (int z = 0; z < vm.GridLength; z++)
+                if (vm.RoomGrid[x, z] == roomId)
+                    ctx.FillRectangle(fill, TileRect(origin, tileSize, x, z, vm.GridLength));
+
+        // Outline pass — stroke each tile edge that's on the room's
+        // exterior (neighbour out-of-grid or a different room).
+        for (int x = 0; x < vm.GridWidth; x++)
+            for (int z = 0; z < vm.GridLength; z++)
+            {
+                if (vm.RoomGrid[x, z] != roomId) continue;
+                var rect = TileRect(origin, tileSize, x, z, vm.GridLength);
+                bool ExteriorAt(int nx, int nz)
+                    => nx < 0 || nx >= vm.GridWidth || nz < 0 || nz >= vm.GridLength
+                    || vm.RoomGrid[nx, nz] != roomId;
+                // Top
+                if (ExteriorAt(x, z + 1))
+                    ctx.DrawLine(stroke, new Point(rect.X, rect.Y), new Point(rect.X + rect.Width, rect.Y));
+                // Bottom
+                if (ExteriorAt(x, z - 1))
+                    ctx.DrawLine(stroke, new Point(rect.X, rect.Y + rect.Height), new Point(rect.X + rect.Width, rect.Y + rect.Height));
+                // Left
+                if (ExteriorAt(x - 1, z))
+                    ctx.DrawLine(stroke, new Point(rect.X, rect.Y), new Point(rect.X, rect.Y + rect.Height));
+                // Right
+                if (ExteriorAt(x + 1, z))
+                    ctx.DrawLine(stroke, new Point(rect.X + rect.Width, rect.Y), new Point(rect.X + rect.Width, rect.Y + rect.Height));
+            }
+    }
+
     /// <summary>Renders a small "+ 0,0" mark at the world origin so users
     /// can see where (0, 0) lives on the canvas. Useful when aligning the
     /// design with externally-authored content that expects a specific

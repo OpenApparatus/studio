@@ -211,6 +211,11 @@ public partial class MainWindowViewModel : ViewModelBase
     /// they had at creation (or after manual override).</summary>
     [ObservableProperty] System.Numerics.Vector3 _defaultFloorColor   = new(0.92f, 0.92f, 0.93f);
     [ObservableProperty] System.Numerics.Vector3 _defaultCeilingColor = new(0.92f, 0.92f, 0.90f);
+    /// <summary>Default colour applied to newly-created rooms' walls.
+    /// Stored as the per-room single-wall colour so the visual matches
+    /// what RoomEditorPanel's Wall colour row shows. The value can
+    /// still be overridden per-wall later.</summary>
+    [ObservableProperty] System.Numerics.Vector3 _defaultWallColor    = new(0.84f, 0.85f, 0.87f);
 
     /// <summary>The user-facing edit mode. Layout mode is for authoring the
     /// floor plan (rooms, walls, doors, windows). Object mode is for placing
@@ -1920,6 +1925,41 @@ public partial class MainWindowViewModel : ViewModelBase
         EditVersion++;
     }
 
+    /// <summary>Removes the currently-selected room. Tiles revert to
+    /// empty; objects in the room move to "outside". Pushes undo +
+    /// surfaces an undo toast so the user can roll back without
+    /// hunting for Ctrl+Z.</summary>
+    [RelayCommand]
+    void DeleteRoom()
+    {
+        if (SelectedRoomId < 0) return;
+        int rid = SelectedRoomId;
+        PushUndo();
+        for (int x = 0; x < GridWidth; x++)
+            for (int z = 0; z < GridLength; z++)
+                if (RoomGrid[x, z] == rid) RoomGrid[x, z] = -1;
+        _roomFloorColors.Remove(rid);
+        _roomCeilingColors.Remove(rid);
+        _roomSingleWallColors.Remove(rid);
+        _roomNames.Remove(rid);
+        _multiColorRoomIds.Remove(rid);
+        // Strip per-wall colour overrides that referenced this room.
+        var staleKeys = new List<(int, int, int)>();
+        foreach (var kv in _wallColors)
+            if (kv.Key.RoomId == rid) staleKeys.Add(kv.Key);
+        foreach (var k in staleKeys) _wallColors.Remove(k);
+        // Reassign objects whose owning room was this one.
+        foreach (var o in _objects)
+            if (o.OwningRoomId == rid) o.OwningRoomId = -1;
+        SelectedRoomId = -1;
+        Rebuild();
+        EditVersion++;
+        OpenApparatus.Studio.Services.Toasts.Default.Show(
+            $"Deleted room {rid}.",
+            OpenApparatus.Studio.Services.ToastSeverity.Warning,
+            undo: () => UndoCommand.Execute(null));
+    }
+
     [RelayCommand]
     void CreateRoomFromSelection()
     {
@@ -1956,6 +1996,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _roomSingleWallColors[id] = RoomColorRgb(id);
         _roomFloorColors[id]      = DefaultFloorColor;
         _roomCeilingColors[id]    = DefaultCeilingColor;
+        _roomSingleWallColors[id] = DefaultWallColor;
 
         SelectedTiles.Clear();
         RefreshSelectionState();

@@ -620,6 +620,10 @@
                 <MenuItem Header="Clear _selection"
                           InputGesture="Escape"
                           Command="{Binding ClearSelectionCommand}"/>
+                <MenuItem Header="_Delete room"
+                          Command="{Binding DeleteRoomCommand}"
+                          IsEnabled="{Binding HasSelectedRoom, FallbackValue=False}"/>
+                <Separator/>
                 <MenuItem Header="_Reset scene…"
                           Command="{Binding ResetAllCommand}"/>
             </MenuItem>
@@ -713,15 +717,9 @@
                             IsVisible="{Binding IsLayoutMode}"
                             Padding="10 5"
                             ToolTip.Tip="Generate a random room layout"/>
-                    <Button Classes="toolIcon" ToolTip.Tip="More actions"
-                            AutomationProperties.Name="More actions">
-                        <views:Icon Symbol="More"/>
-                        <Button.Flyout>
-                            <MenuFlyout>
-                                <MenuItem Header="Reset all" Command="{Binding ResetAllCommand}"/>
-                            </MenuFlyout>
-                        </Button.Flyout>
-                    </Button>
+                    <!-- The single-item ⋯ overflow used to live here.
+                         Reset All is in the Edit menu instead, so the
+                         ghost-affordance dot is gone. -->
                     <Border Classes="vsep" Margin="6 4"/>
                     <!-- Single Export entry-point; the flyout offers the two
                          formats so the bar isn't dominated by export buttons. -->
@@ -1010,10 +1008,15 @@
                                            Foreground="{DynamicResource TextMutedBrush}"
                                            FontSize="11"
                                            Text="{Binding SelectedTilesCount, StringFormat='{}{0} tile(s) selected'}"/>
+                                <!-- Disabled when nothing is selected — the
+                                     control reads as actionable only when
+                                     it actually does something. -->
                                 <Button Classes="action"
-                                        Command="{Binding ClearSelectionCommand}">
+                                        IsEnabled="{Binding HasSelectedTiles}"
+                                        Command="{Binding ClearSelectionCommand}"
+                                        ToolTip.Tip="Drop the highlighted tiles without creating a room.">
                                     <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
-                                        <TextBlock Text="Clear Selection"/>
+                                        <TextBlock Text="Clear tile selection"/>
                                         <Border BorderBrush="{DynamicResource BorderHairlineBrush}" BorderThickness="1" CornerRadius="3" Padding="4 1">
                                             <TextBlock Text="Esc" FontSize="10"/>
                                         </Border>
@@ -1024,7 +1027,7 @@
 
                         <TextBlock Classes="label" Text="Defaults for new rooms"/>
                         <Border Classes="section">
-                            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" RowSpacing="8" ColumnSpacing="10">
+                            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="8" ColumnSpacing="10">
                                 <!-- Each default is now a row: caption +
                                      visible colour swatch button. Clicking
                                      the swatch opens the picker. The current
@@ -1048,6 +1051,15 @@
                                         CornerRadius="4"
                                         Background="{Binding DefaultCeilingColor, Converter={x:Static converters:Vector3ToBrushConverter.Instance}}"
                                         ToolTip.Tip="Click to change. Used when a new room is created."/>
+                                <TextBlock Grid.Row="2" Grid.Column="0" Classes="propLabel" Text="Walls"/>
+                                <Button Grid.Row="2" Grid.Column="1"
+                                        Click="OnPickDefaultWall"
+                                        Padding="0" MinHeight="0" Height="24"
+                                        HorizontalAlignment="Stretch"
+                                        BorderBrush="{DynamicResource BorderHairlineBrush}" BorderThickness="1"
+                                        CornerRadius="4"
+                                        Background="{Binding DefaultWallColor, Converter={x:Static converters:Vector3ToBrushConverter.Instance}}"
+                                        ToolTip.Tip="Click to change. Applied to every wall of new rooms."/>
                             </Grid>
                         </Border>
 
