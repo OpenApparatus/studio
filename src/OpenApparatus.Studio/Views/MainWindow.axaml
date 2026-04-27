@@ -10,7 +10,7 @@
         x:Class="OpenApparatus.Studio.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Width="1200" Height="780"
-        Title="OpenApparatus Studio">
+        Title="{Binding WindowTitle, FallbackValue='OpenApparatus Studio'}">
 
     <Window.KeyBindings>
         <KeyBinding Gesture="F1" Command="{Binding ToggleShortcutOverlayCommand}"/>
@@ -609,6 +609,12 @@
                 <MenuItem Header="_Keyboard shortcuts"
                           InputGesture="F1"
                           Command="{Binding ToggleShortcutOverlayCommand}"/>
+                <MenuItem Header="_Command palette"
+                          InputGesture="Ctrl+K"
+                          Command="{Binding OpenCommandPaletteCommand}"/>
+                <Separator/>
+                <MenuItem Header="_About OpenApparatus Studio…"
+                          Click="OnShowAbout"/>
             </MenuItem>
         </Menu>
 
@@ -696,9 +702,15 @@
             </Grid>
         </Border>
 
-        <!-- Modern single-row settings strip. Sections separated by hairline
-             dividers; each section labelled with a tiny uppercase caption. -->
+        <!-- Modern single-row settings strip. Sections separated by
+             hairline dividers; each section labelled with a tiny
+             uppercase caption. Wrapped in a horizontal ScrollViewer so
+             on narrow windows the strip can scroll instead of clipping
+             or wrapping. -->
         <Border DockPanel.Dock="Top" Background="{StaticResource SurfacePrimaryBrush}" BorderBrush="{StaticResource BorderHairlineBrush}" BorderThickness="0 0 0 1" Padding="14 8">
+            <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                          VerticalScrollBarVisibility="Disabled"
+                          PointerWheelChanged="OnToolbarWheel">
                 <StackPanel Orientation="Horizontal" Spacing="0" VerticalAlignment="Center">
 
                     <!-- ── VIEW (camera) — always visible ── -->
@@ -861,6 +873,7 @@
                     </StackPanel>
 
                 </StackPanel>
+            </ScrollViewer>
         </Border>
 
         <!-- Multi-cell status bar — three columns:
@@ -878,7 +891,10 @@
                            FontFamily="Consolas, 'Courier New', monospace"
                            VerticalAlignment="Center"
                            HorizontalAlignment="Left"/>
-                <!-- Live message with the brand-blue indicator dot. -->
+                <!-- Live message + contextual hint. The brand-blue dot
+                     only lights when there's an active StatusMessage; the
+                     hint takes over when the message is empty (auto-cleared
+                     after 6 s) so the centre never just sits blank. -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal"
                             Spacing="8"
                             VerticalAlignment="Center"
@@ -886,9 +902,15 @@
                     <Ellipse Width="6" Height="6" VerticalAlignment="Center"
                              Fill="{StaticResource AccentBrush}"
                              IsVisible="{Binding HasStatusMessage}"/>
-                    <TextBlock Text="{Binding StatusMessage}"
+                    <TextBlock IsVisible="{Binding HasStatusMessage}"
+                               Text="{Binding StatusMessage}"
                                Foreground="#E5E7EC"
                                FontSize="{StaticResource FontBody}"
+                               VerticalAlignment="Center"/>
+                    <TextBlock IsVisible="{Binding !HasStatusMessage}"
+                               Text="{Binding ContextualHint}"
+                               Foreground="#A8AEBB"
+                               FontSize="{StaticResource FontCaption}"
                                VerticalAlignment="Center"/>
                 </StackPanel>
                 <!-- Scene summary. -->

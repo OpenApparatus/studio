@@ -144,6 +144,27 @@ public partial class MainWindow : Window
 
     void OnExitClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => Close();
 
+    async void OnShowAbout(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        var dlg = new AboutDialog();
+        await dlg.ShowDialog(this);
+    }
+
+    /// <summary>Translate vertical mouse-wheel motion into horizontal
+    /// scrolling on the toolbar — most users don't think to hold Shift
+    /// to scroll horizontally and would otherwise see no response when
+    /// the strip overflows on a narrow window.</summary>
+    void OnToolbarWheel(object? sender, Avalonia.Input.PointerWheelEventArgs e)
+    {
+        if (sender is ScrollViewer sv && e.Delta.Y != 0)
+        {
+            sv.Offset = new Avalonia.Vector(
+                System.Math.Max(0, sv.Offset.X - e.Delta.Y * 60),
+                sv.Offset.Y);
+            e.Handled = true;
+        }
+    }
+
     void OnOpenRecent(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         if (sender is MenuItem mi && mi.Tag is string path && Vm is { } vm)

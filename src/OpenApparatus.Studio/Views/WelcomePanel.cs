@@ -73,13 +73,35 @@ public sealed class WelcomePanel : ContentControl
             hero.Children.Add(rect);
         }
 
+        // Time-of-day greeting (a small touch but signals "the app
+        // pays attention to context"). UTC hour is fine — we're going
+        // for warmth, not strict locale hour boundaries.
+        int hour = DateTime.Now.Hour;
+        string greet = hour switch
+        {
+            < 5  => "Working late",
+            < 12 => "Good morning",
+            < 17 => "Good afternoon",
+            < 22 => "Good evening",
+            _    => "Working late",
+        };
+        var greeting = new TextBlock
+        {
+            Text = greet,
+            FontSize = 11,
+            FontWeight = FontWeight.SemiBold,
+            Foreground = new SolidColorBrush(Color.FromRgb(0x1F, 0x6F, 0xEB)),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(0, 18, 0, 2),
+        };
+
         var title = new TextBlock
         {
             Text = "OpenApparatus Studio",
             FontSize = 22, FontWeight = FontWeight.SemiBold,
             Foreground = new SolidColorBrush(Color.FromRgb(0x23, 0x26, 0x2E)),
             HorizontalAlignment = HorizontalAlignment.Center,
-            Margin = new Thickness(0, 18, 0, 4),
+            Margin = new Thickness(0, 0, 0, 4),
         };
         var subtitle = new TextBlock
         {
@@ -184,6 +206,7 @@ public sealed class WelcomePanel : ContentControl
                 Children =
                 {
                     new ContentControl { Content = hero, HorizontalAlignment = HorizontalAlignment.Center },
+                    greeting,
                     title,
                     subtitle,
                     actionRow,

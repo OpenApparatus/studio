@@ -1,0 +1,64 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="using:OpenApparatus.Studio.Views"
+        x:Class="OpenApparatus.Studio.Views.AboutDialog"
+        x:DataType="views:AboutDialog"
+        Title="About OpenApparatus Studio"
+        Width="460" Height="320"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        SystemDecorations="BorderOnly"
+        Background="{StaticResource SurfacePrimaryBrush}">
+    <Grid Margin="32 28">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Hero — three concentric rounded squares (matches welcome). -->
+        <Canvas Grid.Row="0" Width="64" Height="64" HorizontalAlignment="Left" Margin="0 0 0 18">
+            <Rectangle Width="60" Height="60" Stroke="#8C1F6FEB"
+                       StrokeThickness="1.6" RadiusX="6" RadiusY="6"
+                       Fill="#141F6FEB"
+                       Canvas.Left="2" Canvas.Top="2"/>
+            <Rectangle Width="40" Height="40" Stroke="#A81F6FEB"
+                       StrokeThickness="1.6" RadiusX="5" RadiusY="5"
+                       Canvas.Left="12" Canvas.Top="12"/>
+            <Rectangle Width="20" Height="20" Stroke="#C81F6FEB"
+                       StrokeThickness="1.6" RadiusX="4" RadiusY="4"
+                       Canvas.Left="22" Canvas.Top="22"/>
+        </Canvas>
+
+        <TextBlock Grid.Row="1" Text="OpenApparatus Studio"
+                   FontSize="20" FontWeight="SemiBold"
+                   Foreground="{StaticResource TextPrimaryBrush}"/>
+        <TextBlock Grid.Row="2"
+                   Text="Multi-room navigation environment editor"
+                   FontSize="12"
+                   Foreground="{StaticResource TextSecondaryBrush}"
+                   Margin="0 4 0 16"/>
+
+        <StackPanel Grid.Row="3" Spacing="6">
+            <TextBlock Text="{Binding Version, FallbackValue='Version 0.x'}"
+                       FontFamily="Consolas, 'Courier New', monospace"
+                       FontSize="11"
+                       Foreground="{StaticResource TextMutedBrush}"/>
+            <TextBlock Text="© Silico Labs"
+                       FontSize="11"
+                       Foreground="{StaticResource TextMutedBrush}"/>
+            <TextBlock Text="Built with Avalonia · SharpGLTF · Lucide icons"
+                       FontSize="11"
+                       Foreground="{StaticResource TextMutedBrush}"/>
+        </StackPanel>
+
+        <Button Grid.Row="4" Content="Close" Classes="primary"
+                Padding="22 6"
+                HorizontalAlignment="Right"
+                IsDefault="True"
+                Click="OnClose"/>
+    </Grid>
+</Window>

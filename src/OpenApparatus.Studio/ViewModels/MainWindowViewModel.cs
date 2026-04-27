@@ -1239,6 +1239,29 @@ public partial class MainWindowViewModel : ViewModelBase
     /// (controls the status bar's brand-blue indicator dot).</summary>
     public bool HasStatusMessage => !string.IsNullOrWhiteSpace(StatusMessage);
 
+    /// <summary>Contextual hint shown in the centre of the status bar when
+    /// no live message is active. Surfaces the next-best thing the user
+    /// can do based on current selection / mode. Replaces what would
+    /// otherwise be empty whitespace with quietly useful guidance.</summary>
+    public string ContextualHint
+    {
+        get
+        {
+            if (HasNoRooms) return "Drag tiles to mark a footprint, then press R to create a room.";
+            if (IsObjectsMode)
+            {
+                if (SelectedObjectIndex >= 0) return "Edit on the right · Delete to remove · Ctrl+Z to undo.";
+                if (SelectedSubCell is not null) return "Press 1–9 to place an object in this sub-cell.";
+                return "Click an object to edit it, or click a sub-cell to place one.";
+            }
+            // Layout mode
+            if (SelectedAdjacency is not null) return "D = door · W = window · O = open · C = closed.";
+            if (HasSelectedTiles) return "Press R to create a room from the selection.";
+            if (SelectedRoomId >= 0) return "Edit colours on the right · click a wall to add a door / window.";
+            return "Click + drag tiles to start a new room, or click an existing one to edit.";
+        }
+    }
+
     Avalonia.Threading.DispatcherTimer? _statusClearTimer;
     partial void OnStatusMessageChanged(string value)
     {
@@ -1293,12 +1316,26 @@ public partial class MainWindowViewModel : ViewModelBase
         // First load arrives with HasUnsavedChanges still false from the
         // RestoreFromProjectFile reset; subsequent edits flip it on.
         HasUnsavedChanges = true;
+        OnPropertyChanged(nameof(ContextualHint));
     }
 
     /// <summary>Project title displayed in the top action bar. Defaults
     /// to "Untitled scene"; persistence + filename binding is a future
     /// follow-up.</summary>
     [ObservableProperty] string _projectTitle = "Untitled scene";
+
+    /// <summary>Composed title for the OS window: "Project — App"
+    /// with a leading "● " marker when there are unsaved changes
+    /// (Notion / VS Code convention). Bound to Window.Title.</summary>
+    public string WindowTitle =>
+        (HasUnsavedChanges ? "● " : "")
+        + (string.IsNullOrWhiteSpace(ProjectTitle) ? "Untitled" : ProjectTitle)
+        + " — OpenApparatus Studio";
+
+    partial void OnProjectTitleChanged(string value)
+        => OnPropertyChanged(nameof(WindowTitle));
+    partial void OnHasUnsavedChangesChanged(bool value)
+        => OnPropertyChanged(nameof(WindowTitle));
 
     /// <summary>Last cursor world position (XZ, in metres). NaN when the
     /// cursor isn't over the editor canvas. Surfaced in the status bar.</summary>
