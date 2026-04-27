@@ -797,14 +797,31 @@
 
                         <TextBlock Classes="label" Text="Defaults for new rooms"/>
                         <Border Classes="section">
-                            <StackPanel Spacing="6">
-                                <Button Content="Default floor color…" Classes="action"
+                            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" RowSpacing="8" ColumnSpacing="10">
+                                <!-- Each default is now a row: caption +
+                                     visible colour swatch button. Clicking
+                                     the swatch opens the picker. The current
+                                     colour is on display so users don't have
+                                     to open the picker just to remember it. -->
+                                <TextBlock Grid.Row="0" Grid.Column="0" Classes="propLabel" Text="Floor"/>
+                                <Button Grid.Row="0" Grid.Column="1"
                                         Click="OnPickDefaultFloor"
-                                        ToolTip.Tip="Used as the floor color when a new room is created."/>
-                                <Button Content="Default ceiling color…" Classes="action"
+                                        Padding="0" MinHeight="0" Height="24"
+                                        HorizontalAlignment="Stretch"
+                                        BorderBrush="{StaticResource BorderHairlineBrush}" BorderThickness="1"
+                                        CornerRadius="4"
+                                        Background="{Binding DefaultFloorColor, Converter={x:Static converters:Vector3ToBrushConverter.Instance}}"
+                                        ToolTip.Tip="Click to change. Used when a new room is created."/>
+                                <TextBlock Grid.Row="1" Grid.Column="0" Classes="propLabel" Text="Ceiling"/>
+                                <Button Grid.Row="1" Grid.Column="1"
                                         Click="OnPickDefaultCeiling"
-                                        ToolTip.Tip="Used as the ceiling color when a new room is created."/>
-                            </StackPanel>
+                                        Padding="0" MinHeight="0" Height="24"
+                                        HorizontalAlignment="Stretch"
+                                        BorderBrush="{StaticResource BorderHairlineBrush}" BorderThickness="1"
+                                        CornerRadius="4"
+                                        Background="{Binding DefaultCeilingColor, Converter={x:Static converters:Vector3ToBrushConverter.Instance}}"
+                                        ToolTip.Tip="Click to change. Used when a new room is created."/>
+                            </Grid>
                         </Border>
 
                         <!-- Document settings — set-once-and-forget dimensions
