@@ -79,17 +79,18 @@
             <Setter Property="Padding" Value="8 6"/>
         </Style>
         <!-- Floating segmented mode toggle (Layout / Object) anchored at the
-             top of the editor. Two RadioButtons sit flush against each other
-             so they read as one connected control with a single seam in the
-             middle. The unchecked half is light and raised; the checked half
-             is dark with an inset shadow at the top, giving a "pressed in"
-             feel. -->
+             top of the editor. The two RadioButtons sit inside a rounded
+             white "rail" container so the contrast jump goes rail → editor
+             (not button → editor). The active half is filled brand blue
+             with an inset top shadow ("pressed in" feel); the inactive
+             half is transparent against the rail, with secondary-text
+             colour. Same pattern as iOS / SwiftUI segmented controls. -->
         <Style Selector="RadioButton.modePill">
-            <Setter Property="Background" Value="#ffffff"/>
-            <Setter Property="Foreground" Value="#3a4150"/>
-            <Setter Property="BorderBrush" Value="#a8aebb"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="22 7"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="22 6"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="MinHeight" Value="0"/>
@@ -112,32 +113,26 @@
                 </ControlTemplate>
             </Setter>
         </Style>
-        <!-- Left segment: rounded left, square right. -->
+        <!-- Half-pill corners; nested inside the rail (rail CR=18, padding
+             3 → inner CR=14 fits flush). -->
         <Style Selector="RadioButton.modePillLeft">
-            <Setter Property="CornerRadius" Value="16 0 0 16"/>
+            <Setter Property="CornerRadius" Value="14 4 4 14"/>
         </Style>
-        <!-- Right segment: square left, rounded right. Negative left margin
-             pulls it onto the left segment so they share a single 1-px seam
-             instead of doubling up. -->
         <Style Selector="RadioButton.modePillRight">
-            <Setter Property="CornerRadius" Value="0 16 16 0"/>
-            <Setter Property="Margin" Value="-1 0 0 0"/>
+            <Setter Property="CornerRadius" Value="4 14 14 4"/>
         </Style>
         <Style Selector="RadioButton.modePill:pointerover /template/ Border#PART_Border">
-            <Setter Property="Background" Value="#eef0f6"/>
+            <Setter Property="Background" Value="#eef2f7"/>
         </Style>
-        <!-- Pressed-in checked state: dark fill + inset shadow at the top
-             edge so the button looks recessed into the editor surface. -->
         <Style Selector="RadioButton.modePill:checked /template/ Border#PART_Border">
-            <Setter Property="Background" Value="#2a3242"/>
-            <Setter Property="BorderBrush" Value="#171c26"/>
-            <Setter Property="BoxShadow" Value="inset 0 2 4 0 #66000000"/>
+            <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="BoxShadow" Value="inset 0 2 3 0 #33000000"/>
         </Style>
         <Style Selector="RadioButton.modePill:checked /template/ ContentPresenter">
-            <Setter Property="Foreground" Value="#ffffff"/>
+            <Setter Property="Foreground" Value="{StaticResource TextOnDarkBrush}"/>
         </Style>
         <Style Selector="RadioButton.modePill:checked:pointerover /template/ Border#PART_Border">
-            <Setter Property="Background" Value="#323b4d"/>
+            <Setter Property="Background" Value="{StaticResource AccentHoverBrush}"/>
         </Style>
         <Style Selector="RadioButton.tab">
             <Setter Property="Background" Value="Transparent"/>
@@ -694,15 +689,21 @@
                         <Grid>
                             <views:GridEditorView EditVersion="{Binding EditVersion}" Margin="8"/>
                             <!-- Floating Layout / Object segmented control,
-                                 anchored top-centre over the editor. The
-                                 outer Border carries a soft drop shadow so
-                                 the control reads as elevated above the
-                                 dark editor surface. -->
+                                 anchored top-centre over the editor. White
+                                 rail with rounded ends; inactive half blends
+                                 with the rail, active half is brand-blue with
+                                 an inset top shadow. Soft drop shadow on the
+                                 rail lifts the whole control off the dark
+                                 editor surface. -->
                             <Border HorizontalAlignment="Center"
                                     VerticalAlignment="Top"
                                     Margin="0 14 0 0"
-                                    CornerRadius="16"
-                                    BoxShadow="0 4 14 0 #55000000">
+                                    Padding="3"
+                                    CornerRadius="18"
+                                    Background="{StaticResource SurfaceRaisedBrush}"
+                                    BorderBrush="{StaticResource BorderHairlineBrush}"
+                                    BorderThickness="1"
+                                    BoxShadow="{StaticResource Elevation2}">
                                 <StackPanel Orientation="Horizontal">
                                     <RadioButton GroupName="EditMode"
                                                  Content="Layout"
