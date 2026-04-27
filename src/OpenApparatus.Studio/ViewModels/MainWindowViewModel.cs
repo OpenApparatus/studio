@@ -1085,6 +1085,11 @@ public partial class MainWindowViewModel : ViewModelBase
 
     /// <summary>Bumped after every grid mutation so views can re-render.</summary>
     [ObservableProperty] int _editVersion;
+    /// <summary>External-facing way to bump EditVersion (the field-backed
+    /// property setter is private to the source-generated partial). Used
+    /// by the editor view to request a redraw after adjusting iso camera
+    /// state.</summary>
+    public void RaiseEditVersion() => EditVersion++;
 
     // ---- Undo / redo state. Snapshots are deep copies of authored state; we
     // push one before every user-initiated mutation. Selection / view state is
