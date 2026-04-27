@@ -201,6 +201,51 @@
         <Style Selector="ToggleButton.pill:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{StaticResource AccentHoverBrush}"/>
         </Style>
+        <!-- Mutual-exclusion pill — same look as ToggleButton.pill but for
+             RadioButton, so a group of pills bound to one enum (e.g.
+             Floor/Ceiling) reads as a connected segmented selector. -->
+        <Style Selector="RadioButton.pill">
+            <Setter Property="Padding" Value="9 3"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="MinWidth" Value="0"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Background" Value="#ffffff"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="#c8ccd6"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Margin" Value="0 0 4 0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <ControlTemplate TargetType="RadioButton">
+                    <Border Name="PART_Border"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{TemplateBinding CornerRadius}"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter
+                            Content="{TemplateBinding Content}"
+                            Foreground="{TemplateBinding Foreground}"
+                            HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="RadioButton.pill:pointerover /template/ Border#PART_Border">
+            <Setter Property="Background" Value="#eef2f7"/>
+        </Style>
+        <Style Selector="RadioButton.pill:checked /template/ Border#PART_Border">
+            <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource AccentHoverBrush}"/>
+        </Style>
+        <Style Selector="RadioButton.pill:checked /template/ ContentPresenter">
+            <Setter Property="Foreground" Value="{StaticResource TextOnDarkBrush}"/>
+        </Style>
+        <Style Selector="RadioButton.pill:checked:pointerover /template/ Border#PART_Border">
+            <Setter Property="Background" Value="{StaticResource AccentHoverBrush}"/>
+        </Style>
 
         <!-- Slim modern slider — full ControlTemplate replacement so we don't
              have to fight the Fluent default's chunky red thumb. Both
@@ -353,6 +398,22 @@
 
                     <!-- VIEW -->
                     <TextBlock Classes="sectionLabel" Text="VIEW"/>
+                    <!-- Floor / Ceiling surface toggle (Layout mode only). It's
+                         a viewport setting, so it lives in the top strip — not
+                         the global authoring panel where it used to sit. -->
+                    <RadioButton GroupName="ViewSurface"
+                                 Classes="pill"
+                                 Content="Floor"
+                                 IsVisible="{Binding IsLayoutMode}"
+                                 IsChecked="{Binding ViewMode, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=Floor}"
+                                 ToolTip.Tip="Show the floor surface tile colours."/>
+                    <RadioButton GroupName="ViewSurface"
+                                 Classes="pill"
+                                 Content="Ceiling"
+                                 Margin="0 0 6 0"
+                                 IsVisible="{Binding IsLayoutMode}"
+                                 IsChecked="{Binding ViewMode, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=Ceiling}"
+                                 ToolTip.Tip="Show the ceiling surface tile colours."/>
                     <ToggleButton Classes="pill" Content="Borders"
                                   IsChecked="{Binding ShowWallBorders}"
                                   ToolTip.Tip="14-px coloured ribbons inside each wall."/>
@@ -440,36 +501,6 @@
                             </StackPanel>
                         </Border>
 
-                        <TextBlock Classes="label" Text="Tile colour view"/>
-                        <Border Classes="section">
-                            <StackPanel Orientation="Horizontal" Spacing="0">
-                                <RadioButton GroupName="ViewSurfaceLayout"
-                                             Content="Floor"
-                                             IsChecked="{Binding ViewMode, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=Floor}"
-                                             Classes="tab" Padding="14 4"/>
-                                <RadioButton GroupName="ViewSurfaceLayout"
-                                             Content="Ceiling"
-                                             IsChecked="{Binding ViewMode, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=Ceiling}"
-                                             Classes="tab" Padding="14 4"/>
-                            </StackPanel>
-                        </Border>
-
-                        <TextBlock Classes="label" Text="Grid"/>
-                        <Border Classes="section">
-                            <Grid ColumnDefinitions="Auto,*"
-                                  RowDefinitions="Auto,Auto,Auto" RowSpacing="6" ColumnSpacing="10">
-                                <TextBlock Grid.Row="0" Grid.Column="0" Classes="propLabel" Text="Width (tiles)"/>
-                                <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="compact"
-                                               Value="{Binding GridWidth}" Minimum="1" Maximum="64" FormatString="0"/>
-                                <TextBlock Grid.Row="1" Grid.Column="0" Classes="propLabel" Text="Length (tiles)"/>
-                                <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="compact"
-                                               Value="{Binding GridLength}" Minimum="1" Maximum="64" FormatString="0"/>
-                                <TextBlock Grid.Row="2" Grid.Column="0" Classes="propLabel" Text="Tile size (m)"/>
-                                <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="compact"
-                                               Value="{Binding TileSize}" Minimum="0.5" Maximum="10" Increment="0.5" FormatString="0.0"/>
-                            </Grid>
-                        </Border>
-
                         <TextBlock Classes="label" Text="Defaults for new rooms"/>
                         <Border Classes="section">
                             <StackPanel Spacing="6">
@@ -482,47 +513,70 @@
                             </StackPanel>
                         </Border>
 
-                        <TextBlock Classes="label" Text="Walls"/>
-                        <Border Classes="section">
-                            <Grid ColumnDefinitions="Auto,*"
-                                  RowDefinitions="Auto,Auto" RowSpacing="6" ColumnSpacing="10">
-                                <TextBlock Grid.Row="0" Grid.Column="0" Classes="propLabel" Text="Thickness (m)"/>
-                                <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="compact"
-                                               Value="{Binding WallThickness}" Minimum="0.05" Maximum="2.0" Increment="0.05" FormatString="0.00"/>
-                                <TextBlock Grid.Row="1" Grid.Column="0" Classes="propLabel" Text="Height (m)"/>
-                                <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="compact"
-                                               Value="{Binding WallHeight}" Minimum="0.5" Maximum="6.0" Increment="0.5" FormatString="0.0"/>
-                            </Grid>
-                        </Border>
+                        <!-- Document settings — set-once-and-forget dimensions
+                             grouped under a single collapsed Expander so the
+                             panel surfaces frequent actions instead of these. -->
+                        <Expander Header="Document settings" Margin="0 12 0 4">
+                            <StackPanel Spacing="0">
+                                <TextBlock Classes="label" Text="Grid"/>
+                                <Border Classes="sectionFlat">
+                                    <Grid ColumnDefinitions="Auto,*"
+                                          RowDefinitions="Auto,Auto,Auto" RowSpacing="6" ColumnSpacing="10">
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Classes="propLabel" Text="Width (tiles)"/>
+                                        <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="compact"
+                                                       Value="{Binding GridWidth}" Minimum="1" Maximum="64" FormatString="0"/>
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Classes="propLabel" Text="Length (tiles)"/>
+                                        <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="compact"
+                                                       Value="{Binding GridLength}" Minimum="1" Maximum="64" FormatString="0"/>
+                                        <TextBlock Grid.Row="2" Grid.Column="0" Classes="propLabel" Text="Tile size (m)"/>
+                                        <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="compact"
+                                                       Value="{Binding TileSize}" Minimum="0.5" Maximum="10" Increment="0.5" FormatString="0.0"/>
+                                    </Grid>
+                                </Border>
 
-                        <TextBlock Classes="label" Text="Doorways"/>
-                        <Border Classes="section">
-                            <Grid ColumnDefinitions="Auto,*"
-                                  RowDefinitions="Auto,Auto" RowSpacing="6" ColumnSpacing="10">
-                                <TextBlock Grid.Row="0" Grid.Column="0" Classes="propLabel" Text="Width (m)"/>
-                                <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="compact"
-                                               Value="{Binding DoorWidth}" Minimum="0.5" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
-                                <TextBlock Grid.Row="1" Grid.Column="0" Classes="propLabel" Text="Height (m)"/>
-                                <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="compact"
-                                               Value="{Binding DoorHeight}" Minimum="1.5" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
-                            </Grid>
-                        </Border>
+                                <TextBlock Classes="label" Text="Walls"/>
+                                <Border Classes="sectionFlat">
+                                    <Grid ColumnDefinitions="Auto,*"
+                                          RowDefinitions="Auto,Auto" RowSpacing="6" ColumnSpacing="10">
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Classes="propLabel" Text="Thickness (m)"/>
+                                        <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="compact"
+                                                       Value="{Binding WallThickness}" Minimum="0.05" Maximum="2.0" Increment="0.05" FormatString="0.00"/>
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Classes="propLabel" Text="Height (m)"/>
+                                        <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="compact"
+                                                       Value="{Binding WallHeight}" Minimum="0.5" Maximum="6.0" Increment="0.5" FormatString="0.0"/>
+                                    </Grid>
+                                </Border>
 
-                        <TextBlock Classes="label" Text="Windows"/>
-                        <Border Classes="section">
-                            <Grid ColumnDefinitions="Auto,*"
-                                  RowDefinitions="Auto,Auto,Auto" RowSpacing="6" ColumnSpacing="10">
-                                <TextBlock Grid.Row="0" Grid.Column="0" Classes="propLabel" Text="Width (m)"/>
-                                <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="compact"
-                                               Value="{Binding WindowWidth}" Minimum="0.3" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
-                                <TextBlock Grid.Row="1" Grid.Column="0" Classes="propLabel" Text="Head height (m)"/>
-                                <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="compact"
-                                               Value="{Binding WindowHeight}" Minimum="1.0" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
-                                <TextBlock Grid.Row="2" Grid.Column="0" Classes="propLabel" Text="Sill height (m)"/>
-                                <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="compact"
-                                               Value="{Binding WindowSillHeight}" Minimum="0.1" Maximum="2.5" Increment="0.1" FormatString="0.0"/>
-                            </Grid>
-                        </Border>
+                                <TextBlock Classes="label" Text="Doorways"/>
+                                <Border Classes="sectionFlat">
+                                    <Grid ColumnDefinitions="Auto,*"
+                                          RowDefinitions="Auto,Auto" RowSpacing="6" ColumnSpacing="10">
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Classes="propLabel" Text="Width (m)"/>
+                                        <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="compact"
+                                                       Value="{Binding DoorWidth}" Minimum="0.5" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Classes="propLabel" Text="Height (m)"/>
+                                        <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="compact"
+                                                       Value="{Binding DoorHeight}" Minimum="1.5" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
+                                    </Grid>
+                                </Border>
+
+                                <TextBlock Classes="label" Text="Windows"/>
+                                <Border Classes="sectionFlat">
+                                    <Grid ColumnDefinitions="Auto,*"
+                                          RowDefinitions="Auto,Auto,Auto" RowSpacing="6" ColumnSpacing="10">
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Classes="propLabel" Text="Width (m)"/>
+                                        <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="compact"
+                                                       Value="{Binding WindowWidth}" Minimum="0.3" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Classes="propLabel" Text="Head height (m)"/>
+                                        <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="compact"
+                                                       Value="{Binding WindowHeight}" Minimum="1.0" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
+                                        <TextBlock Grid.Row="2" Grid.Column="0" Classes="propLabel" Text="Sill height (m)"/>
+                                        <NumericUpDown Grid.Row="2" Grid.Column="1" Classes="compact"
+                                                       Value="{Binding WindowSillHeight}" Minimum="0.1" Maximum="2.5" Increment="0.1" FormatString="0.0"/>
+                                    </Grid>
+                                </Border>
+                            </StackPanel>
+                        </Expander>
 
                         <TextBlock Classes="label" Text="How to use"/>
                         <Border Classes="sectionFlat">
