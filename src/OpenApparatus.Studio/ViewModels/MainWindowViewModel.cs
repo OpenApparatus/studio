@@ -233,6 +233,7 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsObjectsMode));
         OnPropertyChanged(nameof(IsLayoutMode));
         OnPropertyChanged(nameof(ShowFloorCeilingTabs));
+        OnPropertyChanged(nameof(SceneSummary));
     }
 
     public bool IsObjectsMode => EditMode == EditModeKind.Object;
@@ -284,6 +285,7 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(ShowLayoutMeasurements));
         OnPropertyChanged(nameof(ShowObjectMeasurements));
         OnPropertyChanged(nameof(ShowPathsSection));
+        OnPropertyChanged(nameof(SceneSummary));
         EditVersion++;
     }
 
@@ -1118,8 +1120,53 @@ public partial class MainWindowViewModel : ViewModelBase
     /// once the user has built their first room.</summary>
     public bool HasNoRooms => CurrentEnvironment is null || CurrentEnvironment.Rooms.Count == 0;
     partial void OnCurrentEnvironmentChanged(MultiRoomEnvironment? value)
-        => OnPropertyChanged(nameof(HasNoRooms));
+    {
+        OnPropertyChanged(nameof(HasNoRooms));
+        OnPropertyChanged(nameof(SceneSummary));
+    }
     [ObservableProperty] string _statusMessage = "Click and drag to select tiles, then click 'Create Room'.";
+
+    /// <summary>True when there's a non-empty status message to surface
+    /// (controls the status bar's brand-blue indicator dot).</summary>
+    public bool HasStatusMessage => !string.IsNullOrWhiteSpace(StatusMessage);
+
+    Avalonia.Threading.DispatcherTimer? _statusClearTimer;
+    partial void OnStatusMessageChanged(string value)
+    {
+        OnPropertyChanged(nameof(HasStatusMessage));
+        // Auto-clear after a few seconds so transient confirmations
+        // ("Created room #N", "Snapped 3 objects") don't sit forever.
+        _statusClearTimer?.Stop();
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            _statusClearTimer ??= new Avalonia.Threading.DispatcherTimer
+            {
+                Interval = System.TimeSpan.FromSeconds(6),
+            };
+            _statusClearTimer.Tick -= OnStatusClearTick;
+            _statusClearTimer.Tick += OnStatusClearTick;
+            _statusClearTimer.Start();
+        }
+    }
+    void OnStatusClearTick(object? sender, System.EventArgs e)
+    {
+        _statusClearTimer?.Stop();
+        StatusMessage = string.Empty;
+    }
+
+    /// <summary>Right-edge summary for the status bar — quick read of
+    /// scene size + active mode without diving into menus.</summary>
+    public string SceneSummary
+    {
+        get
+        {
+            int rooms = CurrentEnvironment?.Rooms.Count ?? 0;
+            int objs = Objects.Count;
+            string mode = IsLayoutMode ? "Layout" : "Object";
+            string view = IsTopDownView ? "Top" : "3D";
+            return $"{rooms} room{(rooms == 1 ? "" : "s")}  ·  {objs} object{(objs == 1 ? "" : "s")}  ·  {mode} / {view}";
+        }
+    }
 
     /// <summary>Bumped after every grid mutation so views can re-render.</summary>
     [ObservableProperty] int _editVersion;

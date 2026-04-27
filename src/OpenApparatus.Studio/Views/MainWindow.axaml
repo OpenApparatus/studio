@@ -743,19 +743,42 @@
                 </StackPanel>
         </Border>
 
-        <!-- Status bar — sits below the editor surface. Lighter than the
-             editor canvas so the chrome doesn't out-weigh the content,
-             with a small accent dot before the message to make it feel
-             like a live status indicator rather than a passive footer. -->
+        <!-- Multi-cell status bar — three columns:
+              left   cursor world position (top-down only)
+              centre live status message + accent dot
+              right  scene summary (room / object / mode counts) -->
         <Border DockPanel.Dock="Bottom" Background="{StaticResource StatusBgBrush}" Padding="14 6">
-            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                <Ellipse Width="6" Height="6" VerticalAlignment="Center"
-                         Fill="{StaticResource AccentBrush}"/>
-                <TextBlock Text="{Binding StatusMessage}"
-                           Foreground="#E5E7EC"
-                           FontSize="{StaticResource FontBody}"
-                           VerticalAlignment="Center"/>
-            </StackPanel>
+            <Grid ColumnDefinitions="*,2*,*" VerticalAlignment="Center">
+                <!-- Cursor position. Hidden when cursor isn't over the
+                     canvas or in 3D mode (where 2D coords don't apply). -->
+                <TextBlock Grid.Column="0"
+                           Text="{Binding CursorWorldDisplay}"
+                           Foreground="#A8AEBB"
+                           FontSize="{StaticResource FontCaption}"
+                           FontFamily="Consolas, 'Courier New', monospace"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Left"/>
+                <!-- Live message with the brand-blue indicator dot. -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal"
+                            Spacing="8"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Center">
+                    <Ellipse Width="6" Height="6" VerticalAlignment="Center"
+                             Fill="{StaticResource AccentBrush}"
+                             IsVisible="{Binding HasStatusMessage}"/>
+                    <TextBlock Text="{Binding StatusMessage}"
+                               Foreground="#E5E7EC"
+                               FontSize="{StaticResource FontBody}"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+                <!-- Scene summary. -->
+                <TextBlock Grid.Column="2"
+                           Text="{Binding SceneSummary}"
+                           Foreground="#A8AEBB"
+                           FontSize="{StaticResource FontCaption}"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Right"/>
+            </Grid>
         </Border>
 
         <Grid ColumnDefinitions="280,*,260">
