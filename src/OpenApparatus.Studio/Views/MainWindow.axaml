@@ -213,6 +213,16 @@
                                          Classes="tab" Padding="14 4"/>
                         </StackPanel>
                         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+                            <CheckBox Content="Show measurements"
+                                      IsChecked="{Binding ShowMeasurements}"
+                                      VerticalAlignment="Center"
+                                      ToolTip.Tip="Draw door→object distance + angle and inter-object distance lines."/>
+                            <CheckBox Content="Selected room only"
+                                      IsChecked="{Binding MeasurementsSelectedRoomOnly}"
+                                      VerticalAlignment="Center"
+                                      IsEnabled="{Binding ShowMeasurements}"
+                                      ToolTip.Tip="When on (and a room is selected), only that room's measurements are drawn. When off, every room's measurements show."/>
+                            <Separator Width="6"/>
                             <CheckBox Content="Show path(s)"
                                       IsChecked="{Binding ShowPaths}"
                                       VerticalAlignment="Center"

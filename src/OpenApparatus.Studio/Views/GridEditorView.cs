@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
@@ -785,6 +786,214 @@ public class GridEditorView : Control
         // Objects mode. In Floor / Ceiling mode they still render, dimmed,
         // so the user always sees what's been placed.
         DrawObjects(ctx, vm, origin, tileSize);
+
+        // Measurement overlay — door→object lines with distance + angle, plus
+        // inter-object distance lines. Drawn last so labels stay legible.
+        DrawMeasurements(ctx, vm, origin, tileSize);
+    }
+
+    /// <summary>
+    /// Draws the door-to-object and object-to-object measurement overlay for
+    /// the rooms currently in scope. Honors both ShowMeasurements (master
+    /// toggle) and MeasurementsSelectedRoomOnly (filter).
+    /// </summary>
+    static void DrawMeasurements(DrawingContext ctx, MainWindowViewModel vm, Point origin, double tileSize)
+    {
+        if (!vm.ShowMeasurements) return;
+        if (vm.CurrentEnvironment is not { } env) return;
+        if (vm.Objects.Count == 0) return;
+
+        // Which rooms get measurements?
+        var rooms = new List<OpenApparatus.Topology.Room>();
+        if (vm.MeasurementsSelectedRoomOnly && vm.SelectedRoomId >= 0)
+        {
+            foreach (var r in env.Rooms)
+                if (r.Id == vm.SelectedRoomId) { rooms.Add(r); break; }
+        }
+        else
+        {
+            foreach (var r in env.Rooms) rooms.Add(r);
+        }
+        if (rooms.Count == 0) return;
+
+        Point ToScreen(System.Numerics.Vector2 worldXz)
+        {
+            double xTile = worldXz.X / vm.TileSize;
+            double zTile = worldXz.Y / vm.TileSize;
+            return new Point(
+                origin.X + xTile * tileSize,
+                origin.Y + (vm.GridLength - zTile) * tileSize);
+        }
+
+        var typeface = new Typeface("Inter");
+        var labelBrush = new SolidColorBrush(Color.FromRgb(45, 45, 60));
+        var labelBg = new SolidColorBrush(Color.FromArgb(220, 250, 250, 252));
+        var labelBorder = new Pen(new SolidColorBrush(Color.FromRgb(180, 180, 200)), 0.6);
+        var doorObjPen = new Pen(new SolidColorBrush(Color.FromArgb(210, 130, 80, 200)), 1.5)
+        {
+            DashStyle = new DashStyle(new[] { 4.0, 3.0 }, 0),
+        };
+        var objObjPen = new Pen(new SolidColorBrush(Color.FromArgb(180, 90, 130, 180)), 1.2)
+        {
+            DashStyle = new DashStyle(new[] { 2.5, 2.5 }, 0),
+        };
+        var arcPen = new Pen(new SolidColorBrush(Color.FromArgb(220, 130, 80, 200)), 1.3);
+
+        foreach (var room in rooms)
+        {
+            // Doors of this room (door openings only — windows skipped).
+            // Each door yields an entry-point world position and the inward
+            // normal pointing into THIS room (flipped for RoomB).
+            var doors = new List<(System.Numerics.Vector2 Pos, System.Numerics.Vector2 Normal)>();
+            foreach (var adj in env.Adjacencies)
+            {
+                if (adj.RoomA != room && adj.RoomB != room) continue;
+                if (adj.Passage is not OpenApparatus.Topology.Passage.Doorway dw) continue;
+                bool isRoomA = adj.RoomA == room;
+                var seg = adj.SharedSegment;
+                var inward = isRoomA ? seg.Normal : -seg.Normal;
+                foreach (var op in dw.Openings)
+                {
+                    if (op.IsWindow) continue;
+                    var p = seg.Start + seg.Direction * (op.OffsetAlongEdge + op.Width * 0.5f);
+                    doors.Add((p, inward));
+                }
+            }
+
+            // Objects belonging to this room.
+            var objs = new List<OpenApparatus.Studio.ViewModels.RoomObject>();
+            foreach (var o in vm.Objects)
+                if (o.OwningRoomId == room.Id) objs.Add(o);
+
+            // Door → object: line + midpoint distance label + angle arc + angle
+            // label at the door.
+            foreach (var (doorPos, inward) in doors)
+            {
+                var doorScr = ToScreen(doorPos);
+                foreach (var obj in objs)
+                {
+                    var objPos = new System.Numerics.Vector2(obj.Position.X, obj.Position.Z);
+                    var objScr = ToScreen(objPos);
+                    var v = objPos - doorPos;
+                    double dist = v.Length();
+
+                    ctx.DrawLine(doorObjPen, doorScr, objScr);
+
+                    // Angle: 0° = along the door's inward normal. Positive =
+                    // the user's left (CCW when looking down +Y in world; on
+                    // screen Y is flipped so we negate the cross-product
+                    // component to keep "left" consistent with the world).
+                    double forward = v.X * inward.X + v.Y * inward.Y;
+                    double perp = v.X * inward.Y - v.Y * inward.X; // cross-z
+                    double angleRad = System.Math.Atan2(perp, forward);
+                    double angleDeg = angleRad * 180.0 / System.Math.PI;
+
+                    DrawAngleArc(ctx, arcPen, doorScr, inward, angleRad, vm.TileSize, tileSize);
+                    DrawLabel(ctx, typeface, labelBrush, labelBg, labelBorder,
+                        $"{dist:0.00} m",
+                        new Point((doorScr.X + objScr.X) * 0.5, (doorScr.Y + objScr.Y) * 0.5));
+                    DrawLabel(ctx, typeface, labelBrush, labelBg, labelBorder,
+                        $"{angleDeg:0}°",
+                        AngleLabelAnchor(doorScr, inward, angleRad, vm.TileSize, tileSize));
+                }
+            }
+
+            // Object ↔ object: just a line + distance label.
+            for (int i = 0; i < objs.Count; i++)
+                for (int j = i + 1; j < objs.Count; j++)
+                {
+                    var a = objs[i]; var b = objs[j];
+                    var ap = new System.Numerics.Vector2(a.Position.X, a.Position.Z);
+                    var bp = new System.Numerics.Vector2(b.Position.X, b.Position.Z);
+                    var aScr = ToScreen(ap);
+                    var bScr = ToScreen(bp);
+                    double dist = (bp - ap).Length();
+                    ctx.DrawLine(objObjPen, aScr, bScr);
+                    DrawLabel(ctx, typeface, labelBrush, labelBg, labelBorder,
+                        $"{dist:0.00} m",
+                        new Point((aScr.X + bScr.X) * 0.5, (aScr.Y + bScr.Y) * 0.5));
+                }
+        }
+    }
+
+    /// <summary>Quarter-radius arc at the door from 0° (along the inward
+    /// normal) sweeping to <paramref name="angleRad"/>. Sampled as line
+    /// segments — simpler than getting StreamGeometry sweep direction right
+    /// for arbitrary normals.</summary>
+    static void DrawAngleArc(
+        DrawingContext ctx, Pen pen, Point doorScr,
+        System.Numerics.Vector2 inwardWorld, double angleRad,
+        float tileSizeMetres, double tilePxSize)
+    {
+        // Radius: ~0.5 m in world space, but capped so we don't blow past the
+        // line's reach when the object is very close to the door.
+        double radiusPx = System.Math.Min(28.0, System.Math.Max(10.0, tilePxSize * 0.18));
+        // Convert inward normal to a unit screen-space vector. World +Z maps
+        // to screen -Y, so the y component flips sign.
+        double scale = tilePxSize / tileSizeMetres;
+        var inwardScr = new Point(inwardWorld.X * scale, -inwardWorld.Y * scale);
+        double len = System.Math.Sqrt(inwardScr.X * inwardScr.X + inwardScr.Y * inwardScr.Y);
+        if (len < 1e-3) return;
+        var inwardU = new Point(inwardScr.X / len, inwardScr.Y / len);
+        // Screen-space "left" perpendicular: rotate inward 90° CCW in screen
+        // coords. The world cross-z used to compute the angle defines positive
+        // = world-left, which on screen (Y-flipped) is also a 90° rotation
+        // but in the opposite sense. Adjust so positive angles arc toward the
+        // same side the cross-product chose.
+        var perpU = new Point(inwardU.Y, -inwardU.X);
+
+        const int Steps = 18;
+        var prev = new Point(doorScr.X + inwardU.X * radiusPx, doorScr.Y + inwardU.Y * radiusPx);
+        for (int i = 1; i <= Steps; i++)
+        {
+            double t = i / (double)Steps;
+            double a = angleRad * t;
+            double cs = System.Math.Cos(a);
+            double sn = System.Math.Sin(a);
+            var pt = new Point(
+                doorScr.X + (inwardU.X * cs + perpU.X * sn) * radiusPx,
+                doorScr.Y + (inwardU.Y * cs + perpU.Y * sn) * radiusPx);
+            ctx.DrawLine(pen, prev, pt);
+            prev = pt;
+        }
+    }
+
+    /// <summary>Position for the angle label — placed just past the arc's
+    /// midpoint along the bisector, so it never sits on top of the door.</summary>
+    static Point AngleLabelAnchor(
+        Point doorScr,
+        System.Numerics.Vector2 inwardWorld, double angleRad,
+        float tileSizeMetres, double tilePxSize)
+    {
+        double scale = tilePxSize / tileSizeMetres;
+        var inwardScr = new Point(inwardWorld.X * scale, -inwardWorld.Y * scale);
+        double len = System.Math.Sqrt(inwardScr.X * inwardScr.X + inwardScr.Y * inwardScr.Y);
+        if (len < 1e-3) return doorScr;
+        var inwardU = new Point(inwardScr.X / len, inwardScr.Y / len);
+        var perpU = new Point(inwardU.Y, -inwardU.X);
+        double midA = angleRad * 0.5;
+        double r = System.Math.Min(40.0, System.Math.Max(18.0, tilePxSize * 0.26));
+        return new Point(
+            doorScr.X + (inwardU.X * System.Math.Cos(midA) + perpU.X * System.Math.Sin(midA)) * r,
+            doorScr.Y + (inwardU.Y * System.Math.Cos(midA) + perpU.Y * System.Math.Sin(midA)) * r);
+    }
+
+    /// <summary>Draws a small text label with a rounded translucent
+    /// background centred at <paramref name="centre"/>.</summary>
+    static void DrawLabel(
+        DrawingContext ctx, Typeface typeface, IBrush textBrush, IBrush bg, Pen border,
+        string text, Point centre)
+    {
+        var fmt = new FormattedText(text, System.Globalization.CultureInfo.InvariantCulture,
+            FlowDirection.LeftToRight, typeface, 11, textBrush);
+        const double padX = 4.0, padY = 1.5;
+        var rect = new Rect(
+            centre.X - fmt.Width * 0.5 - padX,
+            centre.Y - fmt.Height * 0.5 - padY,
+            fmt.Width + padX * 2,
+            fmt.Height + padY * 2);
+        ctx.DrawRectangle(bg, border, rect, 3, 3);
+        ctx.DrawText(fmt, new Point(rect.X + padX, rect.Y + padY));
     }
 
     static void DrawObjects(DrawingContext ctx, MainWindowViewModel vm, Point origin, double tileSize)

@@ -465,6 +465,17 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] System.Numerics.Vector3 _pathColor = new(0.125f, 0.66f, 0.376f);
     partial void OnPathColorChanged(System.Numerics.Vector3 value) => EditVersion++;
 
+    /// <summary>Master toggle for the measurement overlay (door→object lines
+    /// with angle, plus inter-object distance lines). On by default.</summary>
+    [ObservableProperty] bool _showMeasurements = true;
+    partial void OnShowMeasurementsChanged(bool value) => EditVersion++;
+
+    /// <summary>When true and a room is selected, only that room's
+    /// measurements are drawn. When false, every room's measurements show.
+    /// On by default. Has no effect when <see cref="ShowMeasurements"/> is off.</summary>
+    [ObservableProperty] bool _measurementsSelectedRoomOnly = true;
+    partial void OnMeasurementsSelectedRoomOnlyChanged(bool value) => EditVersion++;
+
     /// <summary>Editor-only opacity multiplier for the interior wall borders.
     /// 1.0 = fully opaque (default), 0 = invisible. Does NOT alter the colours
     /// used by the glTF export — purely a viewport aid for spotting doors and
