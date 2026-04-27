@@ -815,6 +815,96 @@ public class GridEditorView : Control
         // Measurement overlay — door→object lines with distance + angle, plus
         // inter-object distance lines. Drawn last so labels stay legible.
         DrawMeasurements(ctx, vm, origin, tileSize);
+
+        // Layout-measurement labels (room dimensions / floor area / opening
+        // sizes / wall lengths) on top of everything else.
+        DrawLayoutMeasurements(ctx, vm, origin, tileSize, typeface);
+    }
+
+    static void DrawLayoutMeasurements(
+        DrawingContext ctx, MainWindowViewModel vm,
+        Point origin, double tileSize, Typeface typeface)
+    {
+        if (!vm.ShowRoomDimensions
+            && !vm.ShowFloorAreaLabels
+            && !vm.ShowOpeningSizeLabels
+            && !vm.ShowWallLengthLabels) return;
+        if (vm.CurrentEnvironment is not { } env) return;
+
+        Point ToScreen(System.Numerics.Vector2 worldXz)
+        {
+            double xTile = worldXz.X / vm.TileSize;
+            double zTile = worldXz.Y / vm.TileSize;
+            return new Point(
+                origin.X + xTile * tileSize,
+                origin.Y + (vm.GridLength - zTile) * tileSize);
+        }
+
+        var labelBrush = new SolidColorBrush(Color.FromRgb(45, 45, 60));
+        var labelBg = new SolidColorBrush(Color.FromArgb(220, 250, 250, 252));
+        var labelBorder = new Pen(new SolidColorBrush(Color.FromRgb(180, 180, 200)), 0.6);
+
+        // Per-room: dimensions and / or floor area at the room's centre.
+        if (vm.ShowRoomDimensions || vm.ShowFloorAreaLabels)
+        {
+            foreach (var room in env.Rooms)
+            {
+                if (room.Shape is not OpenApparatus.Topology.RectangleShape rect) continue;
+                var b = room.GetWorldBounds();
+                var centre = new System.Numerics.Vector2(
+                    (b.Min.X + b.Max.X) * 0.5f,
+                    (b.Min.Y + b.Max.Y) * 0.5f);
+                var p = ToScreen(centre);
+                double y = p.Y + 28; // below the room id label so they don't collide
+                if (vm.ShowRoomDimensions)
+                {
+                    DrawLabel(ctx, typeface, labelBrush, labelBg, labelBorder,
+                        $"{rect.Width:0.00} × {rect.Depth:0.00} m",
+                        new Point(p.X, y));
+                    y += 18;
+                }
+                if (vm.ShowFloorAreaLabels)
+                {
+                    DrawLabel(ctx, typeface, labelBrush, labelBg, labelBorder,
+                        $"{rect.Width * rect.Depth:0.00} m²",
+                        new Point(p.X, y));
+                }
+            }
+        }
+
+        // Per-wall length labels at each segment's midpoint, slightly offset
+        // outward (or just at midpoint — outward needs a side choice; centre
+        // works fine and reads against the wall outline).
+        if (vm.ShowWallLengthLabels)
+        {
+            foreach (var adj in env.Adjacencies)
+            {
+                var seg = adj.SharedSegment;
+                var mid = seg.Midpoint;
+                var p = ToScreen(mid);
+                DrawLabel(ctx, typeface, labelBrush, labelBg, labelBorder,
+                    $"{seg.Length:0.00} m", p);
+            }
+        }
+
+        // Per-opening size labels at each opening's centre point.
+        if (vm.ShowOpeningSizeLabels)
+        {
+            foreach (var adj in env.Adjacencies)
+            {
+                if (adj.Passage is not OpenApparatus.Topology.Passage.Doorway dw) continue;
+                var seg = adj.SharedSegment;
+                foreach (var op in dw.Openings)
+                {
+                    var c = seg.Start + seg.Direction * (op.OffsetAlongEdge + op.Width * 0.5f);
+                    var p = ToScreen(c);
+                    string text = op.IsWindow
+                        ? $"{op.Width:0.00}×{(op.Height - op.SillHeight):0.00} m"
+                        : $"{op.Width:0.00}×{op.Height:0.00} m";
+                    DrawLabel(ctx, typeface, labelBrush, labelBg, labelBorder, text, p);
+                }
+            }
+        }
     }
 
     /// <summary>
