@@ -334,7 +334,7 @@ public class GridEditorView : Control
 
         var emptyFill = new SolidColorBrush(Color.FromRgb(248, 248, 250));
         var selectedFill = new SolidColorBrush(Color.FromRgb(255, 220, 130));
-        var gridStroke = new Pen(new SolidColorBrush(Color.FromRgb(200, 200, 205)), 1.0);
+        var gridStroke = new Pen(new SolidColorBrush(Color.FromRgb(190, 190, 198)), 1.5);
 
         // Tiles. Floor view uses each room's floor color, Ceiling view uses its
         // ceiling color. Either falls back to the auto-generated room hue if no
@@ -366,7 +366,7 @@ public class GridEditorView : Control
         // of the sub-grid lines.
         if (vm.IsObjectsMode && vm.GridSubdivision > 1)
         {
-            var subStroke = new Pen(new SolidColorBrush(Color.FromArgb(120, 110, 110, 130)), 0.6);
+            var subStroke = new Pen(new SolidColorBrush(Color.FromArgb(95, 110, 110, 130)), 0.35);
             int n = vm.GridSubdivision;
             double subPx = tileSize / n;
             for (int x = 0; x < vm.GridWidth; x++)
