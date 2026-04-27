@@ -1118,15 +1118,31 @@ public class GridEditorView : Control
 
     static void DrawEmptyState(DrawingContext ctx, Size size, Typeface typeface, bool isObjectsMode)
     {
-        var titleBrush = new SolidColorBrush(Color.FromArgb(160, 35, 38, 46));
-        var bodyBrush  = new SolidColorBrush(Color.FromArgb(140, 90, 98, 112));
+        var titleBrush = new SolidColorBrush(Color.FromArgb(180, 35, 38, 46));
+        var bodyBrush  = new SolidColorBrush(Color.FromArgb(160, 90, 98, 112));
+
+        // Stylised "empty floor plan" hero — three concentric squares
+        // matching the welcome panel's hero. Centre x is shared with
+        // the title text so the composition reads as one stack.
+        double cx = size.Width * 0.5;
+        double topY = size.Height * 0.5 - 110;
+        var heroPen = new Pen(new SolidColorBrush(Color.FromArgb(120, 31, 111, 235)), 1.6);
+        for (int i = 0; i < 3; i++)
+        {
+            double s = 80 - i * 20;
+            ctx.DrawRectangle(
+                i == 0 ? new SolidColorBrush(Color.FromArgb(20, 31, 111, 235)) : null,
+                heroPen,
+                new Rect(cx - s * 0.5, topY - s * 0.5, s, s),
+                6, 6);
+        }
 
         string title = isObjectsMode
-            ? "No rooms to populate yet"
-            : "Start by drawing a room";
+            ? "Add some rooms first"
+            : "Sketch your first room";
         string body = isObjectsMode
-            ? "Switch to Layout, drag empty tiles to select, then press R to create a room."
-            : "Click and drag empty tiles to select. Press R to make a room from the selection.";
+            ? "Switch to Layout, drag a few tiles to select them, then press R."
+            : "Click and drag empty tiles to mark a footprint, then press R to make it a room.";
 
         var titleFmt = new FormattedText(title,
             System.Globalization.CultureInfo.InvariantCulture,
@@ -1138,7 +1154,6 @@ public class GridEditorView : Control
             FlowDirection.LeftToRight, typeface, 12.5, bodyBrush)
         { MaxTextWidth = System.Math.Min(size.Width - 80, 420) };
 
-        double cx = size.Width * 0.5;
         double cy = size.Height * 0.5;
         double totalH = titleFmt.Height + 6 + bodyFmt.Height;
         double y = cy - totalH * 0.5;

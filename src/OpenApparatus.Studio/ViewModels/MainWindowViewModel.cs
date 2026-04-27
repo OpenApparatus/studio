@@ -1233,7 +1233,7 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(SceneSummary));
         OnPropertyChanged(nameof(ShowWelcomePanel));
     }
-    [ObservableProperty] string _statusMessage = "Click and drag to select tiles, then click 'Create Room'.";
+    [ObservableProperty] string _statusMessage = "Drag tiles to mark a footprint, then press R to create a room.";
 
     /// <summary>True when there's a non-empty status message to surface
     /// (controls the status bar's brand-blue indicator dot).</summary>
