@@ -1125,54 +1125,75 @@
                 </Grid>
                 <Border Height="1" Background="{StaticResource BorderHairlineBrush}"/>
 
-                <!-- Shortcut grid: <kbd> | description, two columns wide. -->
-                <Grid ColumnDefinitions="Auto,*" RowSpacing="8" ColumnSpacing="14">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
+                <!-- Shortcuts grouped by category. Each group has a tiny
+                     uppercase header followed by a kbd | description grid. -->
+                <StackPanel Spacing="14">
+                    <!-- Editing -->
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="sectionLabel" Text="EDITING"/>
+                        <Grid ColumnDefinitions="Auto,*" RowSpacing="6" ColumnSpacing="14">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Border Grid.Row="0" Grid.Column="0" Classes="kbd"><TextBlock Text="R"/></Border>
+                            <TextBlock Grid.Row="0" Grid.Column="1" Classes="kbdDesc" Text="Create room from selected tiles"/>
+                            <Border Grid.Row="1" Grid.Column="0" Classes="kbd"><TextBlock Text="D / W / O / C"/></Border>
+                            <TextBlock Grid.Row="1" Grid.Column="1" Classes="kbdDesc" Text="On a selected wall: door / window / open / closed"/>
+                            <Border Grid.Row="2" Grid.Column="0" Classes="kbd"><TextBlock Text="1 – 9"/></Border>
+                            <TextBlock Grid.Row="2" Grid.Column="1" Classes="kbdDesc" Text="Place an object of that type (Object mode)"/>
+                            <Border Grid.Row="3" Grid.Column="0" Classes="kbd"><TextBlock Text="Delete / Backspace"/></Border>
+                            <TextBlock Grid.Row="3" Grid.Column="1" Classes="kbdDesc" Text="Delete the selected opening or object"/>
+                            <Border Grid.Row="4" Grid.Column="0" Classes="kbd"><TextBlock Text="Esc"/></Border>
+                            <TextBlock Grid.Row="4" Grid.Column="1" Classes="kbdDesc" Text="Clear selection / dismiss this overlay"/>
+                        </Grid>
+                    </StackPanel>
 
-                    <Border Grid.Row="0" Grid.Column="0" Classes="kbd"><TextBlock Text="R"/></Border>
-                    <TextBlock Grid.Row="0" Grid.Column="1" Text="Create room from selected tiles"
-                               Classes="kbdDesc"/>
+                    <!-- History -->
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="sectionLabel" Text="HISTORY"/>
+                        <Grid ColumnDefinitions="Auto,*" RowSpacing="6" ColumnSpacing="14">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Border Grid.Row="0" Grid.Column="0" Classes="kbd"><TextBlock Text="Ctrl + Z"/></Border>
+                            <TextBlock Grid.Row="0" Grid.Column="1" Classes="kbdDesc" Text="Undo"/>
+                            <Border Grid.Row="1" Grid.Column="0" Classes="kbd"><TextBlock Text="Ctrl + Y / Ctrl + Shift + Z"/></Border>
+                            <TextBlock Grid.Row="1" Grid.Column="1" Classes="kbdDesc" Text="Redo"/>
+                        </Grid>
+                    </StackPanel>
 
-                    <Border Grid.Row="1" Grid.Column="0" Classes="kbd"><TextBlock Text="Esc"/></Border>
-                    <TextBlock Grid.Row="1" Grid.Column="1" Text="Clear selection / dismiss overlay"
-                               Classes="kbdDesc"/>
+                    <!-- View / Navigation -->
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="sectionLabel" Text="VIEW"/>
+                        <Grid ColumnDefinitions="Auto,*" RowSpacing="6" ColumnSpacing="14">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Border Grid.Row="0" Grid.Column="0" Classes="kbd"><TextBlock Text="Mouse wheel"/></Border>
+                            <TextBlock Grid.Row="0" Grid.Column="1" Classes="kbdDesc" Text="Zoom (top-down) / dolly (3D)"/>
+                            <Border Grid.Row="1" Grid.Column="0" Classes="kbd"><TextBlock Text="Right / middle drag"/></Border>
+                            <TextBlock Grid.Row="1" Grid.Column="1" Classes="kbdDesc" Text="Pan the canvas / 3D camera pivot"/>
+                            <Border Grid.Row="2" Grid.Column="0" Classes="kbd"><TextBlock Text="Left drag (3D)"/></Border>
+                            <TextBlock Grid.Row="2" Grid.Column="1" Classes="kbdDesc" Text="Orbit the 3D camera"/>
+                        </Grid>
+                    </StackPanel>
 
-                    <Border Grid.Row="2" Grid.Column="0" Classes="kbd"><TextBlock Text="D / W / O / C"/></Border>
-                    <TextBlock Grid.Row="2" Grid.Column="1" Text="On a selected wall: door / window / open / closed"
-                               Classes="kbdDesc"/>
-
-                    <Border Grid.Row="3" Grid.Column="0" Classes="kbd"><TextBlock Text="1 – 9"/></Border>
-                    <TextBlock Grid.Row="3" Grid.Column="1" Text="Place an object of that type (Object mode)"
-                               Classes="kbdDesc"/>
-
-                    <Border Grid.Row="4" Grid.Column="0" Classes="kbd"><TextBlock Text="Delete / Backspace"/></Border>
-                    <TextBlock Grid.Row="4" Grid.Column="1" Text="Delete the selected opening or object"
-                               Classes="kbdDesc"/>
-
-                    <Border Grid.Row="5" Grid.Column="0" Classes="kbd"><TextBlock Text="Ctrl + Z"/></Border>
-                    <TextBlock Grid.Row="5" Grid.Column="1" Text="Undo" Classes="kbdDesc"/>
-
-                    <Border Grid.Row="6" Grid.Column="0" Classes="kbd"><TextBlock Text="Ctrl + Y / Ctrl + Shift + Z"/></Border>
-                    <TextBlock Grid.Row="6" Grid.Column="1" Text="Redo" Classes="kbdDesc"/>
-
-                    <Border Grid.Row="7" Grid.Column="0" Classes="kbd"><TextBlock Text="Mouse wheel"/></Border>
-                    <TextBlock Grid.Row="7" Grid.Column="1" Text="Zoom in / out (Ctrl = pan; drag empty space to pan)"
-                               Classes="kbdDesc"/>
-
-                    <Border Grid.Row="8" Grid.Column="0" Classes="kbd"><TextBlock Text="F1"/></Border>
-                    <TextBlock Grid.Row="8" Grid.Column="1" Text="Toggle this help overlay"
-                               Classes="kbdDesc"/>
-                </Grid>
+                    <!-- Help -->
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="sectionLabel" Text="HELP"/>
+                        <Grid ColumnDefinitions="Auto,*" RowSpacing="6" ColumnSpacing="14">
+                            <Border Grid.Column="0" Classes="kbd"><TextBlock Text="F1"/></Border>
+                            <TextBlock Grid.Column="1" Classes="kbdDesc" Text="Toggle this help overlay"/>
+                        </Grid>
+                    </StackPanel>
+                </StackPanel>
 
                 <TextBlock Text="Tip: drag a property label horizontally to scrub its value (Shift = fine, Ctrl = coarse)."
                            Foreground="{StaticResource TextMutedBrush}"

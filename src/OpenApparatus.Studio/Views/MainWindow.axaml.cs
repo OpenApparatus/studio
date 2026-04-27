@@ -22,6 +22,16 @@ public partial class MainWindow : Window
         var vm = Vm;
         if (vm is null) return;
 
+        // Esc dismisses the shortcut overlay before any other Esc handler
+        // (Clear Selection in the editor) gets a chance — but only when
+        // the overlay is open. Otherwise Esc passes through normally.
+        if (vm.IsShortcutOverlayVisible && e.Key == Key.Escape)
+        {
+            vm.DismissShortcutOverlayCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+
         // Undo / Redo are global — they fire even when a TextBox has focus so
         // the user can roll back unexpected typing. Other shortcuts still
         // defer to the focused field.
