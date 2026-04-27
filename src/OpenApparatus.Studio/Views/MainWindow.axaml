@@ -549,6 +549,16 @@
                           InputGesture="Ctrl+O"
                           Command="{Binding OpenProjectCommand}"
                           CommandParameter="{Binding $parent[Window]}"/>
+                <MenuItem Header="Open _Recent"
+                          ItemsSource="{Binding RecentFiles}">
+                    <MenuItem.DataTemplates>
+                        <DataTemplate DataType="vm:RecentFileEntry">
+                            <MenuItem Header="{Binding Name}"
+                                      Click="OnOpenRecent"
+                                      Tag="{Binding FullPath}"/>
+                        </DataTemplate>
+                    </MenuItem.DataTemplates>
+                </MenuItem>
                 <Separator/>
                 <MenuItem Header="_Save"
                           InputGesture="Ctrl+S"

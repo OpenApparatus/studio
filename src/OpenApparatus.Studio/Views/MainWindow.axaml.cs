@@ -144,6 +144,12 @@ public partial class MainWindow : Window
 
     void OnExitClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => Close();
 
+    void OnOpenRecent(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (sender is MenuItem mi && mi.Tag is string path && Vm is { } vm)
+            vm.OpenProjectFromPath(path);
+    }
+
     async void OnPickDefaultFloor(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         var vm = Vm; if (vm is null) return;
