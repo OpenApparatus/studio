@@ -594,7 +594,7 @@
                           IsEnabled="{Binding CanRedo}"/>
                 <Separator/>
                 <MenuItem Header="Clear _selection"
-                          InputGesture="Esc"
+                          InputGesture="Escape"
                           Command="{Binding ClearSelectionCommand}"/>
                 <MenuItem Header="_Reset scene…"
                           Command="{Binding ResetAllCommand}"/>
