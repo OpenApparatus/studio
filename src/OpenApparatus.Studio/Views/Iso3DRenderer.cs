@@ -39,9 +39,18 @@ internal static class Iso3DRenderer
 
     public static void Render(DrawingContext ctx, MainWindowViewModel vm, Size size)
     {
-        // Background. Slightly cooler than the top-down's grey so the 3D
-        // view reads as a different mode without being jarring.
-        ctx.FillRectangle(new SolidColorBrush(Color.FromRgb(228, 230, 236)), new Rect(size));
+        // Background — a soft top-to-bottom gradient ("sky" up top,
+        // "ground" along the bottom). Cheap visual depth without a real
+        // skybox. Reads as "outdoors looking at the building" instead
+        // of a flat schematic surface.
+        var sky = new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0.5, 0, RelativeUnit.Relative),
+            EndPoint   = new RelativePoint(0.5, 1, RelativeUnit.Relative),
+        };
+        sky.GradientStops.Add(new GradientStop(Color.FromRgb(0xE2, 0xE6, 0xEE), 0));
+        sky.GradientStops.Add(new GradientStop(Color.FromRgb(0xCB, 0xD1, 0xDD), 1));
+        ctx.FillRectangle(sky, new Rect(size));
 
         if (vm.CurrentEnvironment is not { } env) return;
 
@@ -68,6 +77,11 @@ internal static class Iso3DRenderer
 
         // ── Light ─────────────────────────────────────────────────
         Vector3 lightDir = Vector3.Normalize(new Vector3(0.45f, -0.95f, 0.30f));
+
+        // Ground shadow — soft dark ellipse on the floor plane, sized to
+        // the building's footprint. Cheap weight cue; sells the
+        // "building sits on the ground" feel.
+        DrawGroundShadow(ctx, vm, vp, size);
 
         // ── Mesh collection ──────────────────────────────────────
         // Use the same mesh builders the glTF exporter does, so the 3D
@@ -120,8 +134,75 @@ internal static class Iso3DRenderer
         // ── Room labels (drawn last so they sit on top of geometry). ──
         DrawRoomLabels(ctx, vm, env, vp, size, camPos);
 
+        // ── 1-metre scale gizmo, bottom-right. ────────────────────
+        DrawScaleBar(ctx, vm, vp, size);
+
         // ── Persistent mode hint. ─────────────────────────────────
         DrawHint(ctx, size, "3D preview — drag to orbit, right-drag to pan, wheel to zoom");
+    }
+
+    /// <summary>Soft elliptical drop-shadow around the building footprint
+    /// projected onto the floor (y=0). Exists purely to anchor the model
+    /// visually — the model otherwise floats in the gradient sky.</summary>
+    static void DrawGroundShadow(DrawingContext ctx, MainWindowViewModel vm, Matrix4x4 vp, Size size)
+    {
+        // Project the four floor corners + a centre to find the shadow's
+        // bounding ellipse on screen.
+        float w = vm.GridWidth * vm.TileSize;
+        float l = vm.GridLength * vm.TileSize;
+        var pts = new[]
+        {
+            Project(new Vector3(0, 0, 0), vp, size),
+            Project(new Vector3(w, 0, 0), vp, size),
+            Project(new Vector3(w, 0, l), vp, size),
+            Project(new Vector3(0, 0, l), vp, size),
+        };
+        if (System.Array.Exists(pts, p => !p.HasValue)) return;
+        double minX = pts[0]!.Value.X, maxX = minX, minY = pts[0]!.Value.Y, maxY = minY;
+        for (int i = 1; i < pts.Length; i++)
+        {
+            var p = pts[i]!.Value;
+            if (p.X < minX) minX = p.X; else if (p.X > maxX) maxX = p.X;
+            if (p.Y < minY) minY = p.Y; else if (p.Y > maxY) maxY = p.Y;
+        }
+        double cx = (minX + maxX) * 0.5;
+        double cy = (minY + maxY) * 0.5;
+        double rx = (maxX - minX) * 0.55;
+        double ry = (maxY - minY) * 0.35;
+        // Faded radial-ish shadow drawn as 3 stacked translucent ellipses.
+        for (int s = 0; s < 3; s++)
+        {
+            byte alpha = (byte)(36 - s * 10);
+            ctx.DrawEllipse(
+                new SolidColorBrush(Color.FromArgb(alpha, 0, 0, 0)),
+                null,
+                new Point(cx, cy),
+                rx + s * 12, ry + s * 6);
+        }
+    }
+
+    /// <summary>1-metre scale bar bottom-right. Projects a 1-m segment
+    /// along the world X axis at the camera pivot's height onto screen
+    /// and draws the resulting span as a labelled rule.</summary>
+    static void DrawScaleBar(DrawingContext ctx, MainWindowViewModel vm, Matrix4x4 vp, Size size)
+    {
+        var p0 = Project(new Vector3(vm.IsoPivotX, 0, vm.IsoPivotZ), vp, size);
+        var p1 = Project(new Vector3(vm.IsoPivotX + 1f, 0, vm.IsoPivotZ), vp, size);
+        if (!p0.HasValue || !p1.HasValue) return;
+        double meterPx = System.Math.Abs(p1.Value.X - p0.Value.X);
+        if (meterPx < 4) return;
+        double barLeft  = size.Width - meterPx - 18;
+        double barRight = size.Width - 18;
+        double barY     = size.Height - 22;
+        var pen = new Pen(new SolidColorBrush(Color.FromArgb(220, 35, 38, 46)), 1.4);
+        ctx.DrawLine(pen, new Point(barLeft, barY), new Point(barRight, barY));
+        ctx.DrawLine(pen, new Point(barLeft,  barY - 4), new Point(barLeft,  barY + 4));
+        ctx.DrawLine(pen, new Point(barRight, barY - 4), new Point(barRight, barY + 4));
+        var fmt = new FormattedText("1 m",
+            System.Globalization.CultureInfo.InvariantCulture,
+            FlowDirection.LeftToRight, new Typeface("Inter"), 10.5,
+            new SolidColorBrush(Color.FromArgb(220, 35, 38, 46)));
+        ctx.DrawText(fmt, new Point((barLeft + barRight) * 0.5 - fmt.Width * 0.5, barY + 4));
     }
 
     // ── Camera helpers ────────────────────────────────────────────
