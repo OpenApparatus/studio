@@ -58,13 +58,31 @@
             <Setter Property="FontSize" Value="{StaticResource FontBody}"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
-        <!-- Compact NumericUpDown — half the default height so property
-             grids read as a property sheet, not a form. -->
+        <!-- Compact NumericUpDown — strip the chunky spinner buttons (the
+             drag-to-scrub label handles incrementing now) and tighten the
+             text input so property grids read as a property sheet, not a
+             form full of fat spin boxes. -->
         <Style Selector="NumericUpDown.compact">
+            <Setter Property="ShowButtonSpinner" Value="False"/>
+            <Setter Property="HorizontalContentAlignment" Value="Right"/>
+            <Setter Property="FontSize" Value="{StaticResource FontBody}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="MinHeight" Value="0"/>
+        </Style>
+        <Style Selector="NumericUpDown.compact /template/ TextBox#PART_TextBox">
             <Setter Property="MinHeight" Value="0"/>
             <Setter Property="Height" Value="28"/>
-            <Setter Property="Padding" Value="6 0"/>
+            <Setter Property="Padding" Value="8 4"/>
             <Setter Property="FontSize" Value="{StaticResource FontBody}"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="HorizontalContentAlignment" Value="Right"/>
+            <Setter Property="CornerRadius" Value="{StaticResource CornerSm}"/>
+            <Setter Property="Background" Value="{StaticResource SurfacePrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderHairlineBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <Style Selector="NumericUpDown.compact:focus-within /template/ TextBox#PART_TextBox">
+            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
         </Style>
         <Style Selector="Button.primary">
             <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
