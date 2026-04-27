@@ -760,10 +760,38 @@
                         <TextBlock Classes="label" Text="Actions"/>
                         <Border Classes="section">
                             <StackPanel Spacing="6">
-                                <Button Content="Create Room from Selection (R)" Classes="primary"
-                                        Command="{Binding CreateRoomFromSelectionCommand}"/>
-                                <Button Content="Clear Selection (Esc)" Classes="action"
-                                        Command="{Binding ClearSelectionCommand}"/>
+                                <!-- Create Room: disabled when no tiles are
+                                     selected (the command short-circuits but
+                                     the disabled state communicates "you need
+                                     a selection" without requiring a click). -->
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <Button Grid.Column="0" Classes="primary"
+                                            Command="{Binding CreateRoomFromSelectionCommand}"
+                                            IsEnabled="{Binding HasSelectedTiles}">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <TextBlock Text="Create Room"/>
+                                            <Border Background="#33FFFFFF" CornerRadius="3" Padding="4 1">
+                                                <TextBlock Text="R" FontSize="10"/>
+                                            </Border>
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+                                <!-- Selection-count helper visible only when
+                                     there's a selection. Tells the user how
+                                     big the resulting room will be. -->
+                                <TextBlock IsVisible="{Binding HasSelectedTiles}"
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           FontSize="11"
+                                           Text="{Binding SelectedTilesCount, StringFormat='{}{0} tile(s) selected'}"/>
+                                <Button Classes="action"
+                                        Command="{Binding ClearSelectionCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                                        <TextBlock Text="Clear Selection"/>
+                                        <Border BorderBrush="{StaticResource BorderHairlineBrush}" BorderThickness="1" CornerRadius="3" Padding="4 1">
+                                            <TextBlock Text="Esc" FontSize="10"/>
+                                        </Border>
+                                    </StackPanel>
+                                </Button>
                             </StackPanel>
                         </Border>
 

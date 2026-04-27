@@ -228,6 +228,7 @@ public partial class MainWindowViewModel : ViewModelBase
         SelectedSubCell = null;
         SelectedObjectIndex = -1;
         SelectedTiles.Clear();
+        RefreshSelectionState();
         EditVersion++;
         OnPropertyChanged(nameof(IsObjectsMode));
         OnPropertyChanged(nameof(IsLayoutMode));
@@ -1208,6 +1209,7 @@ public partial class MainWindowViewModel : ViewModelBase
         SelectedOpeningIndex = -1;
         SelectedRoomId = -1;
         SelectedTiles.Clear();
+        RefreshSelectionState();
         SelectedSubCell = null;
         SelectedObjectIndex = -1;
 
@@ -1295,7 +1297,24 @@ public partial class MainWindowViewModel : ViewModelBase
             for (int z = 0; z < GridLength; z++)
                 RoomGrid[x, z] = -1;
         SelectedTiles.Clear();
+        RefreshSelectionState();
         _nextRoomId = 0;
+    }
+
+    /// <summary>True when any empty tiles are currently selected. Drives
+    /// the enabled state of "Create Room from Selection" so it grays
+    /// out when nothing is selected.</summary>
+    public bool HasSelectedTiles => SelectedTiles.Count > 0;
+    /// <summary>Selection size — surfaced for the Actions card so the
+    /// user can see how many tiles will turn into a room.</summary>
+    public int SelectedTilesCount => SelectedTiles.Count;
+
+    /// <summary>Re-broadcasts HasSelectedTiles / SelectedTilesCount.
+    /// Call after any direct mutation of SelectedTiles.</summary>
+    public void RefreshSelectionState()
+    {
+        OnPropertyChanged(nameof(HasSelectedTiles));
+        OnPropertyChanged(nameof(SelectedTilesCount));
     }
 
     /// <summary>Mutates the selection set; called by the editor view on user input.</summary>
@@ -1307,6 +1326,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         if (selected) SelectedTiles.Add((x, z));
         else SelectedTiles.Remove((x, z));
+        RefreshSelectionState();
         EditVersion++;
     }
 
@@ -1348,6 +1368,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _roomCeilingColors[id]    = DefaultCeilingColor;
 
         SelectedTiles.Clear();
+        RefreshSelectionState();
         SelectedRoomId = id; // auto-select the new room so its editor panel appears
         EditVersion++;
         Rebuild();
@@ -1559,6 +1580,7 @@ public partial class MainWindowViewModel : ViewModelBase
     void ClearSelection()
     {
         SelectedTiles.Clear();
+        RefreshSelectionState();
         SelectedAdjacency = null;
         EditVersion++;
         StatusMessage = "Selection cleared.";
