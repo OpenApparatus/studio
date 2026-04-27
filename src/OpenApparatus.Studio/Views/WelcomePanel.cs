@@ -196,6 +196,7 @@ public sealed class WelcomePanel : ContentControl
                         HorizontalAlignment = HorizontalAlignment.Center,
                         Margin = new Thickness(0, 16, 0, 0),
                     },
+                    BuildSkipLink(),
                 },
             },
         };
@@ -261,6 +262,25 @@ public sealed class WelcomePanel : ContentControl
         });
         btn.Content = sp;
         btn.Click += (_, _) => onClick();
+        return btn;
+    }
+
+    /// <summary>"Skip" link rendered as a borderless centred button so the
+    /// user can dismiss the welcome screen without picking an action.</summary>
+    Control BuildSkipLink()
+    {
+        var btn = new Button
+        {
+            Content = "Skip — open the empty editor",
+            Background = Brushes.Transparent,
+            BorderBrush = Brushes.Transparent,
+            Foreground = new SolidColorBrush(Color.FromRgb(0x1F, 0x6F, 0xEB)),
+            FontSize = 11,
+            Padding = new Thickness(4, 2),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(0, 6, 0, 0),
+        };
+        btn.Click += (_, _) => _vm?.DismissWelcomeCommand.Execute(null);
         return btn;
     }
 

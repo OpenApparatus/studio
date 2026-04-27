@@ -638,12 +638,14 @@
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
                     <Button Classes="toolIcon"
                             Command="{Binding UndoCommand}" IsEnabled="{Binding CanUndo}"
-                            ToolTip.Tip="Undo (Ctrl+Z)">
+                            ToolTip.Tip="Undo (Ctrl+Z)"
+                            AutomationProperties.Name="Undo">
                         <views:Icon Symbol="Undo"/>
                     </Button>
                     <Button Classes="toolIcon"
                             Command="{Binding RedoCommand}" IsEnabled="{Binding CanRedo}"
-                            ToolTip.Tip="Redo (Ctrl+Y / Ctrl+Shift+Z)">
+                            ToolTip.Tip="Redo (Ctrl+Y / Ctrl+Shift+Z)"
+                            AutomationProperties.Name="Redo">
                         <views:Icon Symbol="Redo"/>
                     </Button>
                     <Border Classes="vsep" Margin="6 4"/>
