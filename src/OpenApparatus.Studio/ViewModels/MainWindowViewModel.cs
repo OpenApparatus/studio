@@ -253,9 +253,8 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] ViewSurface _viewMode = ViewSurface.Floor;
 
     /// <summary>Camera projection used by the editor. TopDown is the
-    /// authoritative editing view; Iso is an axonometric preview only —
-    /// editing is disabled while in Iso so users switch back to top-down
-    /// to make changes.</summary>
+    /// authoritative editing view; Iso is a real 3D viewer with orbit /
+    /// pan / zoom — read-only so users switch back to TopDown to edit.</summary>
     public enum CameraKind { TopDown, Iso }
     [ObservableProperty] CameraKind _cameraView = CameraKind.TopDown;
     public bool IsTopDownView => CameraView == CameraKind.TopDown;
@@ -264,6 +263,36 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(IsTopDownView));
         OnPropertyChanged(nameof(IsIsoView));
+        EditVersion++;
+    }
+
+    // ── 3D camera state (active when CameraView == Iso) ──
+    // Spherical orbit around an XZ-plane pivot. Yaw rotates around the
+    // world Y axis, pitch tilts the camera toward / away from straight
+    // down, distance is the camera's distance from the pivot.
+
+    /// <summary>Orbit yaw in radians (rotation about world Y).</summary>
+    [ObservableProperty] float _isoYaw = (float)(System.Math.PI * 0.25);
+    /// <summary>Orbit pitch in radians, measured up from the XZ plane.
+    /// Clamped on input to (0, π/2) so we never flip past straight-down.</summary>
+    [ObservableProperty] float _isoPitch = (float)(System.Math.PI * 0.30);
+    /// <summary>Distance from camera to pivot, in world metres.</summary>
+    [ObservableProperty] float _isoDistance = 28f;
+    /// <summary>Pivot world X (the point the camera looks at).</summary>
+    [ObservableProperty] float _isoPivotX;
+    /// <summary>Pivot world Z.</summary>
+    [ObservableProperty] float _isoPivotZ;
+    /// <summary>Whether the iso camera has been initialised yet — flag is
+    /// flipped once on first render so the pivot lands at the grid centre
+    /// and the distance auto-fits the room layout.</summary>
+    public bool IsoCameraInitialised { get; set; }
+
+    [RelayCommand]
+    void ResetIsoCamera()
+    {
+        IsoYaw = (float)(System.Math.PI * 0.25);
+        IsoPitch = (float)(System.Math.PI * 0.30);
+        IsoCameraInitialised = false;  // forces re-fit on next render
         EditVersion++;
     }
 
