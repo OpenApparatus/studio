@@ -26,30 +26,41 @@ namespace OpenApparatus.Studio.Views;
 internal static class Iso3DRenderer
 {
     /// <summary>One triangle in world space + the shading inputs we'll
-    /// need at draw time.</summary>
+    /// need at draw time. The Layer field is a tiebreaker for the
+    /// painter's depth sort: lower layers always draw first regardless
+    /// of average depth. Without it, a large floor triangle whose
+    /// average camera-Z lands behind a smaller wall in front of it
+    /// would still draw on top — a classic average-depth artifact.</summary>
     readonly struct Tri
     {
         public readonly Vector3 V0, V1, V2;
         public readonly Vector3 Normal;     // world-space face normal
         public readonly Vector3 Color;      // 0..1 RGB
         public readonly bool DoubleSided;   // true for walls (visible from both rooms)
-        public Tri(Vector3 v0, Vector3 v1, Vector3 v2, Vector3 normal, Vector3 color, bool doubleSided = false)
-        { V0 = v0; V1 = v1; V2 = v2; Normal = normal; Color = color; DoubleSided = doubleSided; }
+        public readonly int Layer;          // 0 = floor, 1 = wall, 2 = object (drawn last)
+        public Tri(Vector3 v0, Vector3 v1, Vector3 v2, Vector3 normal, Vector3 color, bool doubleSided = false, int layer = 1)
+        { V0 = v0; V1 = v1; V2 = v2; Normal = normal; Color = color; DoubleSided = doubleSided; Layer = layer; }
     }
+
+    const int LayerFloor  = 0;
+    const int LayerWall   = 1;
+    const int LayerObject = 2;
 
     public static void Render(DrawingContext ctx, MainWindowViewModel vm, Size size)
     {
-        // Background — a soft top-to-bottom gradient ("sky" up top,
-        // "ground" along the bottom). Cheap visual depth without a real
-        // skybox. Reads as "outdoors looking at the building" instead
-        // of a flat schematic surface.
+        // Background — soft horizon gradient. The earlier near-grey on
+        // grey was effectively invisible against the building. Now uses
+        // a clear sky-blue at the top transitioning to a warmer light
+        // ground tone at the bottom so the user sees an actual sky and
+        // ground separation behind the model.
         var sky = new LinearGradientBrush
         {
             StartPoint = new RelativePoint(0.5, 0, RelativeUnit.Relative),
             EndPoint   = new RelativePoint(0.5, 1, RelativeUnit.Relative),
         };
-        sky.GradientStops.Add(new GradientStop(Color.FromRgb(0xE2, 0xE6, 0xEE), 0));
-        sky.GradientStops.Add(new GradientStop(Color.FromRgb(0xCB, 0xD1, 0xDD), 1));
+        sky.GradientStops.Add(new GradientStop(Color.FromRgb(0xBF, 0xD7, 0xEE), 0));     // sky blue
+        sky.GradientStops.Add(new GradientStop(Color.FromRgb(0xDF, 0xE6, 0xEE), 0.55));  // horizon
+        sky.GradientStops.Add(new GradientStop(Color.FromRgb(0xC7, 0xC2, 0xB6), 1));     // warm ground
         ctx.FillRectangle(sky, new Rect(size));
 
         if (vm.CurrentEnvironment is not { } env) return;
@@ -94,8 +105,8 @@ internal static class Iso3DRenderer
         // ── Project + cull + shade ─────────────────────────────
         // For each triangle: discard if any vertex is behind the camera,
         // discard if backfacing (single-sided only), record screen verts
-        // + average camera-space depth + lit colour.
-        var drawList = new List<(Point[] Pts, float Depth, Color Col)>(tris.Count);
+        // + average camera-space depth + layer index + lit colour.
+        var drawList = new List<(Point[] Pts, float Depth, int Layer, Color Col)>(tris.Count);
         foreach (var t in tris)
         {
             var center = (t.V0 + t.V1 + t.V2) / 3f;
@@ -122,11 +133,18 @@ internal static class Iso3DRenderer
             float intensity = 0.45f + 0.55f * lambert;
 
             var col = ToColor(t.Color * intensity);
-            drawList.Add((new[] { p0.Value, p1.Value, p2.Value }, depth, col));
+            drawList.Add((new[] { p0.Value, p1.Value, p2.Value }, depth, t.Layer, col));
         }
 
-        // Painter's: most-negative depth = farthest from camera, drawn first.
-        drawList.Sort((a, b) => a.Depth.CompareTo(b.Depth));
+        // Painter's, with layer as the primary key: floor → walls → objects,
+        // and within each layer most-negative depth (farthest) drawn first.
+        // The layer dimension fixes the classic large-floor-tri-over-small-
+        // wall-tri artifact average depth alone can't avoid.
+        drawList.Sort((a, b) =>
+        {
+            int byLayer = a.Layer.CompareTo(b.Layer);
+            return byLayer != 0 ? byLayer : a.Depth.CompareTo(b.Depth);
+        });
 
         foreach (var item in drawList)
             DrawTri(ctx, item.Pts, item.Col);
@@ -141,43 +159,55 @@ internal static class Iso3DRenderer
         DrawHint(ctx, size, "3D preview — drag to orbit, right-drag to pan, wheel to zoom");
     }
 
-    /// <summary>Soft elliptical drop-shadow around the building footprint
-    /// projected onto the floor (y=0). Exists purely to anchor the model
-    /// visually — the model otherwise floats in the gradient sky.</summary>
+    /// <summary>Soft drop-shadow projected onto the floor plane. The
+    /// shadow is the actual projected footprint of the building, slightly
+    /// inflated outward in world space — so when the camera orbits, the
+    /// shadow rotates with the building (a screen-space ellipse like the
+    /// previous version stayed axis-aligned to screen X/Y, which broke
+    /// at every camera angle).
+    ///
+    /// Drawn as 3 stacked filled polygons with shrinking inflation +
+    /// shrinking alpha, simulating a soft falloff cheaply.</summary>
     static void DrawGroundShadow(DrawingContext ctx, MainWindowViewModel vm, Matrix4x4 vp, Size size)
     {
-        // Project the four floor corners + a centre to find the shadow's
-        // bounding ellipse on screen.
-        float w = vm.GridWidth * vm.TileSize;
+        float w = vm.GridWidth  * vm.TileSize;
         float l = vm.GridLength * vm.TileSize;
-        var pts = new[]
+        // Centre of the footprint in world space — used as the inflation
+        // pivot. Each shadow layer pushes corners away from this centre.
+        Vector3 centre = new(w * 0.5f, 0f, l * 0.5f);
+        Vector3[] corners =
         {
-            Project(new Vector3(0, 0, 0), vp, size),
-            Project(new Vector3(w, 0, 0), vp, size),
-            Project(new Vector3(w, 0, l), vp, size),
-            Project(new Vector3(0, 0, l), vp, size),
+            new(0, 0, 0), new(w, 0, 0), new(w, 0, l), new(0, 0, l),
         };
-        if (System.Array.Exists(pts, p => !p.HasValue)) return;
-        double minX = pts[0]!.Value.X, maxX = minX, minY = pts[0]!.Value.Y, maxY = minY;
-        for (int i = 1; i < pts.Length; i++)
-        {
-            var p = pts[i]!.Value;
-            if (p.X < minX) minX = p.X; else if (p.X > maxX) maxX = p.X;
-            if (p.Y < minY) minY = p.Y; else if (p.Y > maxY) maxY = p.Y;
-        }
-        double cx = (minX + maxX) * 0.5;
-        double cy = (minY + maxY) * 0.5;
-        double rx = (maxX - minX) * 0.55;
-        double ry = (maxY - minY) * 0.35;
-        // Faded radial-ish shadow drawn as 3 stacked translucent ellipses.
+        // Three stacked layers, fading outward.
+        var insets = new[] { 0.6f, 0.3f, 0.0f };  // metres of outward inflation
+        var alphas = new byte[] { 56, 38, 22 };
         for (int s = 0; s < 3; s++)
         {
-            byte alpha = (byte)(36 - s * 10);
-            ctx.DrawEllipse(
-                new SolidColorBrush(Color.FromArgb(alpha, 0, 0, 0)),
-                null,
-                new Point(cx, cy),
-                rx + s * 12, ry + s * 6);
+            var inflate = insets[s];
+            var poly = new Point[4];
+            bool ok = true;
+            for (int i = 0; i < 4; i++)
+            {
+                Vector3 dir = corners[i] - centre;
+                Vector3 worldP = corners[i] + Vector3.Normalize(dir) * inflate;
+                worldP.Y = 0f;
+                var p = Project(worldP, vp, size);
+                if (!p.HasValue) { ok = false; break; }
+                poly[i] = p.Value;
+            }
+            if (!ok) continue;
+
+            var geom = new StreamGeometry();
+            using (var gctx = geom.Open())
+            {
+                gctx.BeginFigure(poly[0], true);
+                for (int i = 1; i < 4; i++) gctx.LineTo(poly[i]);
+                gctx.EndFigure(true);
+            }
+            ctx.DrawGeometry(
+                new SolidColorBrush(Color.FromArgb(alphas[s], 0, 0, 0)),
+                null, geom);
         }
     }
 
@@ -275,7 +305,7 @@ internal static class Iso3DRenderer
             // Interior carries floor + ceiling submeshes; walls submesh is
             // empty there. Emit floor only — skip ceiling so we can see in.
             var interior = interiorBuilder.Build(room, vm.WallThickness, vm.WallHeight);
-            EmitSubmesh(tris, interior, SubmeshIndex.Floor, floorCol, doubleSided: false);
+            EmitSubmesh(tris, interior, SubmeshIndex.Floor, floorCol, doubleSided: false, layer: LayerFloor);
 
             // Each adjacency: emit its real wall geometry once, owned by
             // the lower-id room (matches GltfExporter ownership rules so
@@ -304,7 +334,7 @@ internal static class Iso3DRenderer
                 // The wall's own floor frame (around the doorway) belongs
                 // to the lower-id owner's floor mesh in the exporter; emit
                 // it here too so doorway thresholds aren't holes.
-                EmitSubmesh(tris, wallMeshes[adj], SubmeshIndex.Floor, floorCol, doubleSided: false);
+                EmitSubmesh(tris, wallMeshes[adj], SubmeshIndex.Floor, floorCol, doubleSided: false, layer: LayerFloor);
             }
         }
     }
@@ -341,7 +371,7 @@ internal static class Iso3DRenderer
             Vector3 col = side >  0.5f ? colA
                         : side < -0.5f ? colB
                         : colMix;
-            tris.Add(new Tri(v[ia], v[ib], v[ic], normal, col, doubleSided: false));
+            tris.Add(new Tri(v[ia], v[ib], v[ic], normal, col, doubleSided: false, layer: LayerWall));
         }
     }
 
@@ -349,7 +379,7 @@ internal static class Iso3DRenderer
     /// buffer. Vertex normals from the source mesh are averaged per
     /// triangle so the rasterizer can do a single shading lookup per
     /// face (Lambert), rather than per-vertex Phong.</summary>
-    static void EmitSubmesh(List<Tri> tris, MeshData mesh, int submeshIndex, Vector3 color, bool doubleSided)
+    static void EmitSubmesh(List<Tri> tris, MeshData mesh, int submeshIndex, Vector3 color, bool doubleSided, int layer = LayerWall)
     {
         if (submeshIndex < 0 || submeshIndex >= mesh.SubmeshCount) return;
         var idx = mesh.SubmeshIndices[submeshIndex];
@@ -370,7 +400,7 @@ internal static class Iso3DRenderer
                 if (nLen < 1e-4f) continue;
             }
             normal /= nLen;
-            tris.Add(new Tri(v[ia], v[ib], v[ic], normal, color, doubleSided));
+            tris.Add(new Tri(v[ia], v[ib], v[ic], normal, color, doubleSided, layer));
         }
     }
 
@@ -433,8 +463,8 @@ internal static class Iso3DRenderer
 
     static void AddQuad(List<Tri> tris, Vector3 a, Vector3 b, Vector3 c, Vector3 d, Vector3 n, Vector3 col)
     {
-        tris.Add(new Tri(a, b, c, n, col));
-        tris.Add(new Tri(a, c, d, n, col));
+        tris.Add(new Tri(a, b, c, n, col, layer: LayerObject));
+        tris.Add(new Tri(a, c, d, n, col, layer: LayerObject));
     }
 
     static void AddSphere(List<Tri> tris, Vector3 center, float r, Vector3 col, int lon, int lat)
@@ -453,8 +483,8 @@ internal static class Iso3DRenderer
                 Vector3 p11 = SpherePt(center, r, phi1, th1);
                 Vector3 n0 = Vector3.Normalize(((p00 + p01 + p10) / 3f) - center);
                 Vector3 n1 = Vector3.Normalize(((p01 + p10 + p11) / 3f) - center);
-                tris.Add(new Tri(p00, p01, p11, n0, col));
-                tris.Add(new Tri(p00, p11, p10, n1, col));
+                tris.Add(new Tri(p00, p01, p11, n0, col, layer: LayerObject));
+                tris.Add(new Tri(p00, p11, p10, n1, col, layer: LayerObject));
             }
         }
     }
@@ -475,11 +505,11 @@ internal static class Iso3DRenderer
             Vector3 b0 = bot + new Vector3(r * MathF.Cos(a0), 0, r * MathF.Sin(a0));
             Vector3 b1 = bot + new Vector3(r * MathF.Cos(a1), 0, r * MathF.Sin(a1));
             Vector3 nSide = Vector3.Normalize(new Vector3(MathF.Cos((a0 + a1) * 0.5f), 0, MathF.Sin((a0 + a1) * 0.5f)));
-            tris.Add(new Tri(b0, b1, t1, nSide, col));
-            tris.Add(new Tri(b0, t1, t0, nSide, col));
+            tris.Add(new Tri(b0, b1, t1, nSide, col, layer: LayerObject));
+            tris.Add(new Tri(b0, t1, t0, nSide, col, layer: LayerObject));
             // Caps.
-            tris.Add(new Tri(top, t0, t1, Vector3.UnitY, col));
-            tris.Add(new Tri(bot, b1, b0, -Vector3.UnitY, col));
+            tris.Add(new Tri(top, t0, t1, Vector3.UnitY, col, layer: LayerObject));
+            tris.Add(new Tri(bot, b1, b0, -Vector3.UnitY, col, layer: LayerObject));
         }
     }
 
@@ -494,8 +524,8 @@ internal static class Iso3DRenderer
             Vector3 b0 = baseC + new Vector3(r * MathF.Cos(a0), 0, r * MathF.Sin(a0));
             Vector3 b1 = baseC + new Vector3(r * MathF.Cos(a1), 0, r * MathF.Sin(a1));
             Vector3 nSide = Vector3.Normalize(Vector3.Cross(b1 - b0, apex - b0));
-            tris.Add(new Tri(b0, b1, apex, nSide, col));
-            tris.Add(new Tri(baseC, b1, b0, -Vector3.UnitY, col));
+            tris.Add(new Tri(b0, b1, apex, nSide, col, layer: LayerObject));
+            tris.Add(new Tri(baseC, b1, b0, -Vector3.UnitY, col, layer: LayerObject));
         }
     }
 
@@ -515,8 +545,8 @@ internal static class Iso3DRenderer
             Vector3 b0 = bot + new Vector3(r * MathF.Cos(a0), 0, r * MathF.Sin(a0));
             Vector3 b1 = bot + new Vector3(r * MathF.Cos(a1), 0, r * MathF.Sin(a1));
             Vector3 nSide = Vector3.Normalize(new Vector3(MathF.Cos((a0 + a1) * 0.5f), 0, MathF.Sin((a0 + a1) * 0.5f)));
-            tris.Add(new Tri(b0, b1, t1, nSide, col));
-            tris.Add(new Tri(b0, t1, t0, nSide, col));
+            tris.Add(new Tri(b0, b1, t1, nSide, col, layer: LayerObject));
+            tris.Add(new Tri(b0, t1, t0, nSide, col, layer: LayerObject));
         }
         // Hemispheres
         AddHemisphere(tris, top, r, col, lon, lat / 2, +1);
@@ -540,13 +570,13 @@ internal static class Iso3DRenderer
                 Vector3 n = Vector3.Normalize(((p00 + p11) / 2f) - center);
                 if (sign > 0)
                 {
-                    tris.Add(new Tri(p00, p01, p11, n, col));
-                    tris.Add(new Tri(p00, p11, p10, n, col));
+                    tris.Add(new Tri(p00, p01, p11, n, col, layer: LayerObject));
+                    tris.Add(new Tri(p00, p11, p10, n, col, layer: LayerObject));
                 }
                 else
                 {
-                    tris.Add(new Tri(p00, p11, p01, n, col));
-                    tris.Add(new Tri(p00, p10, p11, n, col));
+                    tris.Add(new Tri(p00, p11, p01, n, col, layer: LayerObject));
+                    tris.Add(new Tri(p00, p10, p11, n, col, layer: LayerObject));
                 }
             }
         }
@@ -560,14 +590,14 @@ internal static class Iso3DRenderer
         Vector3 c = center + new Vector3( halfBase, -h * 0.5f,  halfBase);
         Vector3 d = center + new Vector3(-halfBase, -h * 0.5f,  halfBase);
         // Base
-        tris.Add(new Tri(a, c, b, -Vector3.UnitY, col));
-        tris.Add(new Tri(a, d, c, -Vector3.UnitY, col));
+        tris.Add(new Tri(a, c, b, -Vector3.UnitY, col, layer: LayerObject));
+        tris.Add(new Tri(a, d, c, -Vector3.UnitY, col, layer: LayerObject));
         // Sides
         Vector3 N(Vector3 p, Vector3 q) => Vector3.Normalize(Vector3.Cross(q - p, apex - p));
-        tris.Add(new Tri(a, b, apex, N(a, b), col));
-        tris.Add(new Tri(b, c, apex, N(b, c), col));
-        tris.Add(new Tri(c, d, apex, N(c, d), col));
-        tris.Add(new Tri(d, a, apex, N(d, a), col));
+        tris.Add(new Tri(a, b, apex, N(a, b), col, layer: LayerObject));
+        tris.Add(new Tri(b, c, apex, N(b, c), col, layer: LayerObject));
+        tris.Add(new Tri(c, d, apex, N(c, d), col, layer: LayerObject));
+        tris.Add(new Tri(d, a, apex, N(d, a), col, layer: LayerObject));
     }
 
     // ── Drawing helpers ────────────────────────────────────────────
