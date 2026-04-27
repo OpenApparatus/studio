@@ -1272,15 +1272,26 @@ public class GridEditorView : Control
         var labelBrush = new SolidColorBrush(Color.FromRgb(45, 45, 60));
         var labelBg = new SolidColorBrush(Color.FromArgb(220, 250, 250, 252));
         var labelBorder = new Pen(new SolidColorBrush(Color.FromRgb(180, 180, 200)), 0.6);
-        var doorObjPen = new Pen(new SolidColorBrush(Color.FromArgb(210, 130, 80, 200)), 1.5)
-        {
-            DashStyle = new DashStyle(new[] { 4.0, 3.0 }, 0),
-        };
-        var objObjPen = new Pen(new SolidColorBrush(Color.FromArgb(180, 90, 130, 180)), 1.2)
-        {
-            DashStyle = new DashStyle(new[] { 2.5, 2.5 }, 0),
-        };
-        var arcPen = new Pen(new SolidColorBrush(Color.FromArgb(220, 130, 80, 200)), 1.3);
+
+        // Three colour states per line / arc:
+        //   neutral   — no constraint of this kind is active, so we don't
+        //               know what valid means. Use the original purple/teal.
+        //   valid     — green; the constraint is active and this measurement
+        //               falls inside it.
+        //   invalid   — red and thicker, so violators stand out.
+        var dashLong = new DashStyle(new[] { 4.0, 3.0 }, 0);
+        var dashShort = new DashStyle(new[] { 2.5, 2.5 }, 0);
+        var doorObjNeutral = new Pen(new SolidColorBrush(Color.FromArgb(210, 130, 80, 200)), 1.5) { DashStyle = dashLong };
+        var doorObjValid   = new Pen(new SolidColorBrush(Color.FromArgb(220,  40, 160,  80)), 1.5) { DashStyle = dashLong };
+        var doorObjInvalid = new Pen(new SolidColorBrush(Color.FromArgb(230, 200,  40,  40)), 2.8) { DashStyle = dashLong };
+        var objObjNeutral  = new Pen(new SolidColorBrush(Color.FromArgb(180,  90, 130, 180)), 1.2) { DashStyle = dashShort };
+        var objObjValid    = new Pen(new SolidColorBrush(Color.FromArgb(220,  40, 160,  80)), 1.5) { DashStyle = dashShort };
+        var objObjInvalid  = new Pen(new SolidColorBrush(Color.FromArgb(230, 200,  40,  40)), 2.6) { DashStyle = dashShort };
+        var arcNeutral = new Pen(new SolidColorBrush(Color.FromArgb(220, 130,  80, 200)), 1.3);
+        var arcValid   = new Pen(new SolidColorBrush(Color.FromArgb(220,  40, 160,  80)), 1.5);
+        var arcInvalid = new Pen(new SolidColorBrush(Color.FromArgb(230, 200,  40,  40)), 2.4);
+
+        var c = vm.Constraints;
 
         foreach (var room in rooms)
         {
@@ -1339,7 +1350,9 @@ public class GridEditorView : Control
 
             // Door → object: per door, per object. Distance line + midpoint
             // label is the ShowDoorDistances layer; angle arc + |angle| label
-            // is the ShowDoorAngles layer. Each is rendered independently.
+            // is the ShowDoorAngles layer. Each is rendered independently
+            // and is colour-graded by whether it satisfies the relevant
+            // constraint (when that constraint is active).
             if (vm.ShowDoorDistances || vm.ShowDoorAngles)
             foreach (var (doorPos, inward) in doors)
             {
@@ -1351,29 +1364,76 @@ public class GridEditorView : Control
                     var v = objPos - doorPos;
                     double dist = v.Length();
 
+                    // Compute angle once — needed for either layer.
+                    double forward = v.X * inward.X + v.Y * inward.Y;
+                    double perp = v.X * inward.Y - v.Y * inward.X;
+                    double angleRad = System.Math.Atan2(perp, forward);
+                    double angleDeg = angleRad * 180.0 / System.Math.PI;
+                    double absAngle = System.Math.Abs(angleDeg);
+
                     if (vm.ShowDoorDistances)
                     {
-                        ctx.DrawLine(doorObjPen, doorScr, objScr);
-                        DrawLabel(ctx, typeface, labelBrush, labelBg, labelBorder,
-                            $"{dist:0.00} m",
-                            new Point((doorScr.X + objScr.X) * 0.5, (doorScr.Y + objScr.Y) * 0.5));
+                        var pen = doorObjNeutral;
+                        if (c.DoorToObjectEnabled && (c.DoorToObjectMin > 0 || c.DoorToObjectMax > 0))
+                        {
+                            bool ok = true;
+                            if (c.DoorToObjectMin > 0 && dist < c.DoorToObjectMin) ok = false;
+                            if (c.DoorToObjectMax > 0 && dist > c.DoorToObjectMax) ok = false;
+                            pen = ok ? doorObjValid : doorObjInvalid;
+                        }
+                        ctx.DrawLine(pen, doorScr, objScr);
                     }
 
                     if (vm.ShowDoorAngles)
                     {
-                        double forward = v.X * inward.X + v.Y * inward.Y;
-                        double perp = v.X * inward.Y - v.Y * inward.X;
-                        double angleRad = System.Math.Atan2(perp, forward);
-                        double angleDeg = angleRad * 180.0 / System.Math.PI;
-                        DrawAngleArc(ctx, arcPen, doorScr, inward, angleRad, vm.TileSize, tileSize);
-                        DrawLabel(ctx, typeface, labelBrush, labelBg, labelBorder,
-                            $"{System.Math.Abs(angleDeg):0}°",
-                            AngleLabelAnchor(doorScr, inward, angleRad, vm.TileSize, tileSize));
+                        var pen = arcNeutral;
+                        if (c.DoorAngleBandEnabled)
+                        {
+                            bool ok = absAngle >= c.DoorAngleMinDeg && absAngle <= c.DoorAngleMaxDeg;
+                            pen = ok ? arcValid : arcInvalid;
+                        }
+                        DrawAngleArc(ctx, pen, doorScr, inward, angleRad, vm.TileSize, tileSize);
+                    }
+
+                    // Stack the distance and angle labels along the door→object
+                    // line so multiple objects fanning off a single door don't
+                    // pile their labels on top of each other near the arc.
+                    if (vm.ShowDoorDistances || vm.ShowDoorAngles)
+                    {
+                        double mx = (doorScr.X + objScr.X) * 0.5;
+                        double my = (doorScr.Y + objScr.Y) * 0.5;
+                        double lx = objScr.X - doorScr.X;
+                        double ly = objScr.Y - doorScr.Y;
+                        double llen = System.Math.Sqrt(lx * lx + ly * ly);
+                        // Screen-space perpendicular unit, used as the "stack
+                        // axis" for the two labels. Falls back to vertical when
+                        // the segment is degenerate.
+                        double px = llen > 0.001 ? -ly / llen : 0.0;
+                        double py = llen > 0.001 ?  lx / llen : 1.0;
+                        const double off = 9.0;
+                        if (vm.ShowDoorDistances && vm.ShowDoorAngles)
+                        {
+                            DrawDistanceLabel(ctx, typeface, $"{dist:0.00} m",
+                                new Point(mx - px * off, my - py * off));
+                            DrawAngleLabel(ctx, typeface, $"{absAngle:0}°",
+                                new Point(mx + px * off, my + py * off));
+                        }
+                        else if (vm.ShowDoorDistances)
+                        {
+                            DrawDistanceLabel(ctx, typeface, $"{dist:0.00} m",
+                                new Point(mx, my));
+                        }
+                        else
+                        {
+                            DrawAngleLabel(ctx, typeface, $"{absAngle:0}°",
+                                new Point(mx, my));
+                        }
                     }
                 }
             }
 
-            // Object ↔ object distances.
+            // Object ↔ object distances. Also colour-graded by the active
+            // object-to-object min/max constraint.
             if (vm.ShowObjectDistances)
             for (int i = 0; i < objs.Count; i++)
                 for (int j = i + 1; j < objs.Count; j++)
@@ -1384,9 +1444,17 @@ public class GridEditorView : Control
                     var aScr = ToScreen(ap);
                     var bScr = ToScreen(bp);
                     double dist = (bp - ap).Length();
-                    ctx.DrawLine(objObjPen, aScr, bScr);
-                    DrawLabel(ctx, typeface, labelBrush, labelBg, labelBorder,
-                        $"{dist:0.00} m",
+
+                    var pen = objObjNeutral;
+                    if (c.ObjectToObjectEnabled && (c.ObjectToObjectMin > 0 || c.ObjectToObjectMax > 0))
+                    {
+                        bool ok = true;
+                        if (c.ObjectToObjectMin > 0 && dist < c.ObjectToObjectMin) ok = false;
+                        if (c.ObjectToObjectMax > 0 && dist > c.ObjectToObjectMax) ok = false;
+                        pen = ok ? objObjValid : objObjInvalid;
+                    }
+                    ctx.DrawLine(pen, aScr, bScr);
+                    DrawDistanceLabel(ctx, typeface, $"{dist:0.00} m",
                         new Point((aScr.X + bScr.X) * 0.5, (aScr.Y + bScr.Y) * 0.5));
                 }
         }
@@ -1434,26 +1502,6 @@ public class GridEditorView : Control
         }
     }
 
-    /// <summary>Position for the angle label — placed just past the arc's
-    /// midpoint along the bisector, so it never sits on top of the door.</summary>
-    static Point AngleLabelAnchor(
-        Point doorScr,
-        System.Numerics.Vector2 inwardWorld, double angleRad,
-        float tileSizeMetres, double tilePxSize)
-    {
-        double scale = tilePxSize / tileSizeMetres;
-        var inwardScr = new Point(inwardWorld.X * scale, -inwardWorld.Y * scale);
-        double len = System.Math.Sqrt(inwardScr.X * inwardScr.X + inwardScr.Y * inwardScr.Y);
-        if (len < 1e-3) return doorScr;
-        var inwardU = new Point(inwardScr.X / len, inwardScr.Y / len);
-        var perpU = new Point(inwardU.Y, -inwardU.X);
-        double midA = angleRad * 0.5;
-        double r = System.Math.Min(40.0, System.Math.Max(18.0, tilePxSize * 0.26));
-        return new Point(
-            doorScr.X + (inwardU.X * System.Math.Cos(midA) + perpU.X * System.Math.Sin(midA)) * r,
-            doorScr.Y + (inwardU.Y * System.Math.Cos(midA) + perpU.Y * System.Math.Sin(midA)) * r);
-    }
-
     /// <summary>Draws a small text label with a rounded translucent
     /// background centred at <paramref name="centre"/>.</summary>
     static void DrawLabel(
@@ -1469,6 +1517,51 @@ public class GridEditorView : Control
             fmt.Width + padX * 2,
             fmt.Height + padY * 2);
         ctx.DrawRectangle(bg, border, rect, 3, 3);
+        ctx.DrawText(fmt, new Point(rect.X + padX, rect.Y + padY));
+    }
+
+    /// <summary>Distance-style label: rectangular pill, blue-tinted background
+    /// and dark-blue text. Used for door→object and object↔object distances —
+    /// distinct from angle labels at a glance. Public so the legend bar can
+    /// render a matching example.</summary>
+    public static void DrawDistanceLabel(
+        DrawingContext ctx, Typeface typeface, string text, Point centre)
+    {
+        var textBrush = new SolidColorBrush(Color.FromRgb(20, 50, 105));
+        var bg = new SolidColorBrush(Color.FromArgb(235, 224, 236, 252));
+        var border = new Pen(new SolidColorBrush(Color.FromRgb(110, 150, 210)), 0.8);
+        var fmt = new FormattedText(text, System.Globalization.CultureInfo.InvariantCulture,
+            FlowDirection.LeftToRight, typeface, 11, textBrush);
+        const double padX = 5.0, padY = 1.5;
+        var rect = new Rect(
+            centre.X - fmt.Width * 0.5 - padX,
+            centre.Y - fmt.Height * 0.5 - padY,
+            fmt.Width + padX * 2,
+            fmt.Height + padY * 2);
+        ctx.DrawRectangle(bg, border, rect, 3, 3);
+        ctx.DrawText(fmt, new Point(rect.X + padX, rect.Y + padY));
+    }
+
+    /// <summary>Angle-style label: fully rounded pill, amber-tinted background
+    /// and dark-amber text. Used for door→object angles. The pill ends and
+    /// warm palette make it visually distinct from rectangular distance
+    /// labels even when both are stacked along the same line.</summary>
+    public static void DrawAngleLabel(
+        DrawingContext ctx, Typeface typeface, string text, Point centre)
+    {
+        var textBrush = new SolidColorBrush(Color.FromRgb(80, 40, 5));
+        var bg = new SolidColorBrush(Color.FromArgb(235, 255, 238, 210));
+        var border = new Pen(new SolidColorBrush(Color.FromRgb(200, 150, 75)), 0.8);
+        var fmt = new FormattedText(text, System.Globalization.CultureInfo.InvariantCulture,
+            FlowDirection.LeftToRight, typeface, 11, textBrush);
+        const double padX = 7.0, padY = 2.0;
+        var rect = new Rect(
+            centre.X - fmt.Width * 0.5 - padX,
+            centre.Y - fmt.Height * 0.5 - padY,
+            fmt.Width + padX * 2,
+            fmt.Height + padY * 2);
+        double r = rect.Height * 0.5; // fully-rounded ends
+        ctx.DrawRectangle(bg, border, rect, r, r);
         ctx.DrawText(fmt, new Point(rect.X + padX, rect.Y + padY));
     }
 
