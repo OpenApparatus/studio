@@ -2176,12 +2176,13 @@ public partial class MainWindowViewModel : ViewModelBase
         StatusMessage = "Selection cleared.";
     }
 
-    [RelayCommand]
-    void ResetAll()
+    /// <summary>Internal scene reset shared by ResetAll (user-initiated)
+    /// and NewProject (file menu / welcome). Returns to a blank canvas
+    /// without toasting — callers add their own user-facing feedback.</summary>
+    void ResetSceneState()
     {
         PushUndo();
         ResetGrid();
-        // Clear authored state too — Reset means a clean slate.
         _passageOverrides.Clear();
         _wallColors.Clear();
         _roomFloorColors.Clear();
@@ -2193,8 +2194,15 @@ public partial class MainWindowViewModel : ViewModelBase
         SelectedRoomId = -1;
         SelectedSubCell = null;
         SelectedObjectIndex = -1;
+        SelectedObjectIndices.Clear();
         Rebuild();
         EditVersion++;
+    }
+
+    [RelayCommand]
+    void ResetAll()
+    {
+        ResetSceneState();
         // Toast with Undo — the explicit Reset is destructive and should
         // be reversible at one click without diving into the menu.
         OpenApparatus.Studio.Services.Toasts.Default.Show(
@@ -2679,17 +2687,22 @@ public partial class MainWindowViewModel : ViewModelBase
             RecentFiles.Add(new RecentFileEntry(p));
     }
 
+    /// <summary>True once the user has explicitly dismissed the welcome
+    /// (clicked New scene, Open scene, Skip, or finished creating a
+    /// room). Resets to false on each fresh launch so the welcome
+    /// re-appears for the next session if the scene is empty.</summary>
+    bool _welcomeDismissed;
+
     /// <summary>Whether the welcome panel should be visible — true on
-    /// startup with no rooms and no current file path. Hidden as soon as
-    /// the user creates a room, opens a project, or starts a new one.</summary>
-    public bool ShowWelcomePanel => HasNoRooms && !HasProjectFilePath;
+    /// startup with no rooms / no current file, false once the user
+    /// has signalled they want to use the editor.</summary>
+    public bool ShowWelcomePanel
+        => !_welcomeDismissed && HasNoRooms && !HasProjectFilePath;
 
     [RelayCommand]
     void DismissWelcome()
     {
-        // Forces ShowWelcomePanel to false even if the user keeps the
-        // empty scene — they've signalled they want the editor instead.
-        ProjectFilePath = "";
+        _welcomeDismissed = true;
         OnPropertyChanged(nameof(ShowWelcomePanel));
     }
 
@@ -2714,15 +2727,22 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
-    /// <summary>New empty scene. Asks for confirm via toast if there are
-    /// unsaved edits.</summary>
+    /// <summary>New empty scene. Resets without the destructive
+    /// "Scene reset" toast (which would be confusing right after the
+    /// user hit "New scene") and dismisses the welcome panel so they
+    /// can start drawing immediately.</summary>
     [RelayCommand]
     void NewProject()
     {
-        ResetAllCommand.Execute(null);
+        ResetSceneState();
         ProjectFilePath = null;
         ProjectTitle = "Untitled scene";
         HasUnsavedChanges = false;
+        _welcomeDismissed = true;
+        OnPropertyChanged(nameof(ShowWelcomePanel));
+        OpenApparatus.Studio.Services.Toasts.Default.Show(
+            "New scene — drag tiles and press R to create your first room.",
+            OpenApparatus.Studio.Services.ToastSeverity.Info);
     }
 
     [RelayCommand]

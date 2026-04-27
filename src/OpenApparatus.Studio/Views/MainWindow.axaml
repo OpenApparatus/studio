@@ -77,58 +77,82 @@
             <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
             <Setter Property="TextDecorations" Value="Underline"/>
         </Style>
-        <!-- Compact NumericUpDown — keeps the spinner buttons but styled
-             slimmer + visually inset into the right side of the input,
-             with the inner TextBox styled via a descendant selector so
-             property grids read as a property sheet, not a form full of
-             fat spin boxes. -->
+        <!-- Compact NumericUpDown — full ControlTemplate replacement.
+             Avalonia's Fluent default ButtonSpinner is bulky and resists
+             clean override; we draw our own chrome here: a 28-px rounded
+             box with the inline TextBox on the left and a slim 16-px
+             chevron column on the right. The chevrons are RepeatButtons
+             named PART_IncreaseButton / PART_DecreaseButton so the
+             control's spinner logic still drives them. -->
         <Style Selector="NumericUpDown.compact">
             <Setter Property="MinHeight" Value="0"/>
-            <Setter Property="HorizontalContentAlignment" Value="Right"/>
-            <Setter Property="FontSize" Value="{StaticResource FontBody}"/>
-            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
-            <!-- Lets users type "3+2" / "(1.2+0.05)*2" etc. and get
-                 the result on Enter / blur. -->
-            <Setter Property="behaviors:NumericExpression.Enabled" Value="True"/>
-        </Style>
-        <Style Selector="NumericUpDown.compact TextBox">
-            <Setter Property="MinHeight" Value="0"/>
             <Setter Property="Height" Value="28"/>
-            <Setter Property="Padding" Value="8 4"/>
+            <Setter Property="HorizontalContentAlignment" Value="Right"/>
             <Setter Property="FontSize" Value="{StaticResource FontBody}"/>
             <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-            <Setter Property="HorizontalContentAlignment" Value="Right"/>
-            <Setter Property="CornerRadius" Value="{StaticResource CornerSm}"/>
-            <Setter Property="Background" Value="{DynamicResource SurfacePrimaryBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBrush}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource BorderHairlineBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{StaticResource CornerSm}"/>
+            <Setter Property="behaviors:NumericExpression.Enabled" Value="True"/>
+            <Setter Property="Template">
+                <ControlTemplate TargetType="NumericUpDown">
+                    <Border Name="PART_BorderElement"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{TemplateBinding CornerRadius}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBox Grid.Column="0" Name="PART_TextBox"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     Foreground="{TemplateBinding Foreground}"
+                                     FontSize="{TemplateBinding FontSize}"
+                                     Padding="8,4,4,4"
+                                     MinHeight="0"
+                                     VerticalContentAlignment="Center"
+                                     HorizontalContentAlignment="Right"
+                                     Text="{TemplateBinding Text, Mode=TwoWay}"
+                                     Watermark="{TemplateBinding Watermark}"/>
+                            <StackPanel Grid.Column="1" Orientation="Vertical"
+                                        Width="16" VerticalAlignment="Stretch"
+                                        IsVisible="{TemplateBinding ShowButtonSpinner}">
+                                <RepeatButton Name="PART_IncreaseButton"
+                                              Classes="numStep"
+                                              Content="▲"/>
+                                <RepeatButton Name="PART_DecreaseButton"
+                                              Classes="numStep"
+                                              Content="▼"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
         </Style>
-        <Style Selector="NumericUpDown.compact TextBox:pointerover">
+        <Style Selector="NumericUpDown.compact:pointerover /template/ Border#PART_BorderElement">
             <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}"/>
         </Style>
-        <Style Selector="NumericUpDown.compact TextBox:focus">
+        <Style Selector="NumericUpDown.compact:focus-within /template/ Border#PART_BorderElement">
             <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
         </Style>
-        <!-- Slim ButtonSpinner inside compact NumericUpDown. The buttons
-             are RepeatButtons inside the ButtonSpinner template, so we
-             reach them via `ButtonSpinner /template/ RepeatButton`.
-             Trim them to a slim transparent column with muted glyphs;
-             hover lights them with a subtle fill. -->
-        <Style Selector="NumericUpDown.compact ButtonSpinner /template/ RepeatButton">
+        <!-- Chevron-step buttons. Half-height each so the pair fits the
+             28-px host; transparent body + accent hover state. -->
+        <Style Selector="RepeatButton.numStep">
+            <Setter Property="Padding" Value="0"/>
             <Setter Property="MinWidth" Value="0"/>
             <Setter Property="MinHeight" Value="0"/>
-            <Setter Property="Width" Value="18"/>
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="FontSize" Value="9"/>
+            <Setter Property="Height" Value="13"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
             <Setter Property="CornerRadius" Value="0"/>
+            <Setter Property="FontSize" Value="7.5"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
         </Style>
-        <Style Selector="NumericUpDown.compact ButtonSpinner /template/ RepeatButton:pointerover">
-            <Setter Property="Background" Value="{DynamicResource SurfaceSecondaryBrush}"/>
+        <Style Selector="RepeatButton.numStep:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource SurfacePrimaryBrush}"/>
             <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
         </Style>
         <Style Selector="Button.primary">
@@ -1113,22 +1137,37 @@
                         </Expander>
 
                         <!-- First-run helper. Hides once the user creates
-                             their first room — the F1 overlay covers the
-                             same content for everyone past that point. -->
+                             their first room. Each tip uses the same
+                             kbd-chip + description vocabulary as the F1
+                             overlay so it reads as part of the same
+                             system, not a separate panel. -->
                         <TextBlock Classes="label" Text="Getting started"
                                    IsVisible="{Binding HasNoRooms}"/>
-                        <Border Classes="sectionFlat" IsVisible="{Binding HasNoRooms}">
-                            <StackPanel Spacing="6">
-                                <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="{StaticResource FontBody}"
-                                           Text="• Click + drag empty tiles to select. Press R to make a room."/>
-                                <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="{StaticResource FontBody}"
-                                           Text="• Click a wall to select. D = door · W = window · O = open · C = closed."/>
-                                <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="{StaticResource FontBody}"
-                                           Text="• Switch to Object mode to populate rooms with objects."/>
-                                <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextMutedBrush}" FontSize="{StaticResource FontCaption}"
-                                           Margin="0 4 0 0"
-                                           Text="Press F1 anytime for the full keyboard reference."/>
-                            </StackPanel>
+                        <Border Classes="section" IsVisible="{Binding HasNoRooms}">
+                            <Grid ColumnDefinitions="Auto,*" RowSpacing="10" ColumnSpacing="12">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Border Grid.Row="0" Grid.Column="0" Classes="kbd"><TextBlock Text="Drag"/></Border>
+                                <TextBlock Grid.Row="0" Grid.Column="1" Classes="kbdDesc"
+                                           Text="Click and drag empty tiles to mark a footprint."
+                                           TextWrapping="Wrap"/>
+                                <Border Grid.Row="1" Grid.Column="0" Classes="kbd"><TextBlock Text="R"/></Border>
+                                <TextBlock Grid.Row="1" Grid.Column="1" Classes="kbdDesc"
+                                           Text="Turn the selection into a room."
+                                           TextWrapping="Wrap"/>
+                                <Border Grid.Row="2" Grid.Column="0" Classes="kbd"><TextBlock Text="D · W · O · C"/></Border>
+                                <TextBlock Grid.Row="2" Grid.Column="1" Classes="kbdDesc"
+                                           Text="On a selected wall: door · window · open · closed."
+                                           TextWrapping="Wrap"/>
+                                <Border Grid.Row="3" Grid.Column="0" Classes="kbd"><TextBlock Text="F1"/></Border>
+                                <TextBlock Grid.Row="3" Grid.Column="1" Classes="kbdDesc"
+                                           Text="Open the full keyboard reference."
+                                           TextWrapping="Wrap"/>
+                            </Grid>
                         </Border>
                     </StackPanel>
 

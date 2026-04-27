@@ -79,11 +79,14 @@
         <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
         <Setter Property="FontSize" Value="12"/>
     </Style>
-    <Style Selector="Button:pointerover /template/ ContentPresenter">
+    <!-- Generic button hover. Skips Buttons that opt into a class-named
+         look (welcomeAction*, primary, action) so those keep their
+         class-specific hover instead of the muted default. -->
+    <Style Selector="Button:pointerover:not(.welcomeAction):not(.welcomeActionPrimary):not(.primary):not(.action):not(.toolIcon):not(.icon):not(.play) /template/ ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource SurfacePrimaryBrush}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}"/>
     </Style>
-    <Style Selector="Button:pressed /template/ ContentPresenter">
+    <Style Selector="Button:pressed:not(.welcomeAction):not(.welcomeActionPrimary):not(.primary):not(.action):not(.toolIcon):not(.icon):not(.play) /template/ ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource SurfaceSecondaryBrush}"/>
     </Style>
     <Style Selector="Button:disabled">
@@ -115,15 +118,33 @@
         <Setter Property="Background" Value="{DynamicResource SurfacePrimaryBrush}"/>
     </Style>
 
-    <!-- ── Expander -->
+    <!-- ── Expander — polished card-like header with hairline border,
+         clean chevron, and a subtle hover surface. -->
+    <Style Selector="Expander">
+        <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderHairlineBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="MinHeight" Value="0"/>
+    </Style>
     <Style Selector="Expander /template/ ToggleButton#ExpanderHeader">
-        <Setter Property="Padding" Value="0 6"/>
+        <Setter Property="Padding" Value="12 10"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderBrush" Value="Transparent"/>
-        <Setter Property="MinHeight" Value="32"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="MinHeight" Value="0"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
     </Style>
     <Style Selector="Expander /template/ ToggleButton#ExpanderHeader:pointerover">
-        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Background" Value="{DynamicResource SurfacePrimaryBrush}"/>
+    </Style>
+    <Style Selector="Expander /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Padding" Value="12"/>
+        <Setter Property="Margin" Value="0"/>
     </Style>
 
     <!-- ── ToolTip — inverted on light theme; uses StatusBg on dark -->

@@ -48,11 +48,14 @@ internal static class Iso3DRenderer
 
     /// <summary>Public entry point — renders the 3D scene to the
     /// supplied DrawingContext at the requested size. We render 2× the
-    /// requested size into a RenderTargetBitmap, then DrawImage that
-    /// bitmap back at 1× — this gives free supersampling AA for the
-    /// triangle edges (cheaper than analytic edge AA, and ~independent
-    /// of the geometry detail). Falls back to a direct render if
-    /// bitmap creation fails for any reason (memory pressure, etc).</summary>
+    /// requested size into a cached RenderTargetBitmap, then DrawImage
+    /// that bitmap back at 1× — free supersampling AA for the triangle
+    /// edges. The bitmap is cached and only re-allocated when the
+    /// requested size changes; per-frame allocation was killing
+    /// orbit-drag feel.</summary>
+    static Avalonia.Media.Imaging.RenderTargetBitmap? s_aaBitmap;
+    static PixelSize s_aaBitmapSize;
+
     public static void Render(DrawingContext ctx, MainWindowViewModel vm, Size size)
     {
         // Below ~64 px there's nothing to AA — render directly.
@@ -65,25 +68,33 @@ internal static class Iso3DRenderer
         var px = new PixelSize(
             (int)System.Math.Ceiling(size.Width  * scale),
             (int)System.Math.Ceiling(size.Height * scale));
-        Avalonia.Media.Imaging.RenderTargetBitmap? bmp = null;
         try
         {
-            bmp = new Avalonia.Media.Imaging.RenderTargetBitmap(px, new Avalonia.Vector(96 * scale, 96 * scale));
-            using (var inner = bmp.CreateDrawingContext())
+            // Reallocate only when the target dimensions change. Saves
+            // the per-frame allocation cost (millions of bytes / frame
+            // at typical viewport sizes) which was making orbit-drag
+            // feel laggy.
+            if (s_aaBitmap is null || s_aaBitmapSize != px)
             {
-                // Inner render uses logical (scale-independent) size
-                // coords because the bitmap's DPI carries the scaling.
+                s_aaBitmap?.Dispose();
+                s_aaBitmap = new Avalonia.Media.Imaging.RenderTargetBitmap(
+                    px, new Avalonia.Vector(96 * scale, 96 * scale));
+                s_aaBitmapSize = px;
+            }
+            using (var inner = s_aaBitmap.CreateDrawingContext())
+            {
+                // The bitmap's DPI carries the scale, so inner draws use
+                // the logical size and everything composites back at 1×.
                 RenderInner(inner, vm, size);
             }
-            ctx.DrawImage(bmp, new Rect(0, 0, size.Width, size.Height));
+            ctx.DrawImage(s_aaBitmap, new Rect(0, 0, size.Width, size.Height));
         }
         catch
         {
+            // Anything goes wrong → drop the cache and fall back.
+            s_aaBitmap?.Dispose();
+            s_aaBitmap = null;
             RenderInner(ctx, vm, size);
-        }
-        finally
-        {
-            bmp?.Dispose();
         }
     }
 

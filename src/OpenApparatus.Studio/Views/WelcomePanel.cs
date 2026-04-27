@@ -267,25 +267,35 @@ public sealed class WelcomePanel : ContentControl
 
     Control MakeAction(string title, string subtitle, string iconSymbol, Action onClick, bool primary = false)
     {
+        // Tag with a class so the .welcomeAction styles below scope
+        // hover overrides correctly without leaking to other Buttons.
         var btn = new Button
         {
+            Classes = { primary ? "welcomeActionPrimary" : "welcomeAction" },
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Center,
             Padding = new Thickness(14, 12),
             Margin = new Thickness(6, 0),
             CornerRadius = new Avalonia.CornerRadius(8),
             BorderThickness = new Thickness(1),
-            Background = primary
-                ? new SolidColorBrush(Color.FromRgb(0x1F, 0x6F, 0xEB))
-                : new SolidColorBrush(Color.FromRgb(0xFF, 0xFF, 0xFF)),
-            BorderBrush = primary
-                ? new SolidColorBrush(Color.FromRgb(0x1C, 0x5F, 0xC7))
-                : new SolidColorBrush(Color.FromRgb(0xE5, 0xE7, 0xEC)),
             // Primary action accepts Enter — same pattern as a default
             // dialog button. Combined with auto-focus on Build it means
             // the user can hit Enter immediately to start a new scene.
             IsDefault = primary,
         };
+        // Set the resting + pointer-over colours via direct style
+        // overrides so the global Button hover rule (which paints a
+        // light grey hover background) doesn't bleach white text on
+        // the blue primary action into invisibility.
+        Color baseFill   = primary ? Color.FromRgb(0x1F, 0x6F, 0xEB) : Color.FromRgb(0xFF, 0xFF, 0xFF);
+        Color hoverFill  = primary ? Color.FromRgb(0x1C, 0x5F, 0xC7) : Color.FromRgb(0xF2, 0xF4, 0xF8);
+        Color pressFill  = primary ? Color.FromRgb(0x18, 0x50, 0xB0) : Color.FromRgb(0xE6, 0xEA, 0xF2);
+        _ = pressFill; // reserved for future :pressed wiring
+        Color borderC    = primary ? Color.FromRgb(0x1C, 0x5F, 0xC7) : Color.FromRgb(0xE5, 0xE7, 0xEC);
+        btn.Background  = new SolidColorBrush(baseFill);
+        btn.BorderBrush = new SolidColorBrush(borderC);
+        btn.PointerEntered += (_, _) => btn.Background = new SolidColorBrush(hoverFill);
+        btn.PointerExited  += (_, _) => btn.Background = new SolidColorBrush(baseFill);
         Avalonia.Automation.AutomationProperties.SetName(btn, $"{title}: {subtitle}");
         if (primary) _primaryAction = btn;
         var sp = new StackPanel
