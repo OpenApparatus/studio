@@ -537,6 +537,15 @@ public class GridEditorView : Control
         var size = Bounds.Size;
         if (size.Width <= 0 || size.Height <= 0) return;
 
+        // 3D preview mode is rendered by a separate axonometric path so the
+        // top-down editor doesn't pollute its hot draw loop with an extra
+        // branch on every primitive.
+        if (vm.IsIsoView)
+        {
+            RenderIso(ctx, vm, size);
+            return;
+        }
+
         ctx.FillRectangle(new SolidColorBrush(Color.FromRgb(232, 232, 236)), new Rect(size));
 
         var (origin, tileSize) = ComputeLayout(vm);
@@ -1019,6 +1028,268 @@ public class GridEditorView : Control
         ctx.DrawText(titleFmt, new Point(cx - titleFmt.Width * 0.5, y));
         ctx.DrawText(bodyFmt, new Point(cx - bodyFmt.Width * 0.5,
                                         y + titleFmt.Height + 6));
+    }
+
+    /// <summary>Axonometric 3D preview. Floor tiles are filled rhombi in
+    /// each room's colour; walls are extruded parallelograms with a
+    /// shaded front face; objects are small spheres at their world
+    /// position. Read-only — interactions are still routed through the
+    /// top-down editor's coordinate system, so users switch back to Top
+    /// to edit. Painter's-order back-to-front so closer geometry occludes
+    /// farther geometry naturally.</summary>
+    static void RenderIso(DrawingContext ctx, MainWindowViewModel vm, Size size)
+    {
+        if (vm.CurrentEnvironment is not { } env) return;
+
+        ctx.FillRectangle(new SolidColorBrush(Color.FromRgb(232, 232, 236)), new Rect(size));
+
+        // No rooms → reuse the top-down empty-state prompt instead of
+        // rendering an empty iso scene.
+        if (env.Rooms.Count == 0)
+        {
+            DrawEmptyState(ctx, size, new Typeface("Inter"), vm.IsObjectsMode);
+            return;
+        }
+
+        double tileWorld = vm.TileSize;
+        double wallH     = vm.WallHeight;
+        double Wm        = vm.GridWidth * tileWorld;
+        double Lm        = vm.GridLength * tileWorld;
+
+        // Standard 30°-axonometric projection (cabinet-ish): x rotates
+        // right-down, z rotates left-down, y is straight up. Pure-numeric
+        // helper to avoid materialising an Avalonia Matrix for every point.
+        const double cos30 = 0.866025403;
+        const double sin30 = 0.5;
+        Point ProjRaw(double x, double y, double z) =>
+            new((x - z) * cos30, (x + z) * sin30 - y);
+
+        // Compute scene bounds in projection space so we can fit-to-view.
+        var corners = new[]
+        {
+            ProjRaw(0, 0, 0),    ProjRaw(Wm, 0, 0),
+            ProjRaw(Wm, 0, Lm),  ProjRaw(0, 0, Lm),
+            ProjRaw(0, wallH, 0), ProjRaw(Wm, wallH, 0),
+            ProjRaw(Wm, wallH, Lm), ProjRaw(0, wallH, Lm),
+        };
+        double minX = corners[0].X, maxX = minX;
+        double minY = corners[0].Y, maxY = minY;
+        for (int i = 1; i < corners.Length; i++)
+        {
+            if (corners[i].X < minX) minX = corners[i].X; else if (corners[i].X > maxX) maxX = corners[i].X;
+            if (corners[i].Y < minY) minY = corners[i].Y; else if (corners[i].Y > maxY) maxY = corners[i].Y;
+        }
+        double pad = 40;
+        double availW = System.Math.Max(1, size.Width  - 2 * pad);
+        double availH = System.Math.Max(1, size.Height - 2 * pad);
+        double scale = System.Math.Min(availW / (maxX - minX), availH / (maxY - minY));
+        scale *= vm.ZoomFactor; // honour the existing zoom slider
+        double cx = size.Width  * 0.5;
+        double cy = size.Height * 0.5;
+        double midX = (minX + maxX) * 0.5;
+        double midY = (minY + maxY) * 0.5;
+        Point P(double x, double y, double z)
+        {
+            var p = ProjRaw(x, y, z);
+            return new Point(cx + (p.X - midX) * scale, cy + (p.Y - midY) * scale);
+        }
+
+        // ── Floor tiles ──────────────────────────────────────────────
+        // Drawn first; any wall / object will sit on top. Tile borders are
+        // a hairline stroke so room boundaries read clearly even when two
+        // adjacent rooms have similar colours.
+        bool ceilingMode = vm.ViewMode == MainWindowViewModel.ViewSurface.Ceiling;
+        var perRoom = ceilingMode ? vm.RoomCeilingColors : vm.RoomFloorColors;
+        var tileEdge = new Pen(new SolidColorBrush(Color.FromArgb(60, 50, 50, 60)), 0.6);
+        for (int xi = 0; xi < vm.GridWidth; xi++)
+            for (int zi = 0; zi < vm.GridLength; zi++)
+            {
+                int id = vm.RoomGrid[xi, zi];
+                System.Numerics.Vector3 rgb;
+                if (id >= 0)
+                {
+                    rgb = perRoom.TryGetValue(id, out var c)
+                        ? c : MainWindowViewModel.RoomColorRgb(id);
+                    if (vm.TileSaturation < 0.999)
+                        rgb = DesaturateRgb(rgb, (float)vm.TileSaturation);
+                }
+                else rgb = new System.Numerics.Vector3(0.95f, 0.95f, 0.97f);
+                var fill = new SolidColorBrush(Color.FromRgb(
+                    (byte)(rgb.X * 255), (byte)(rgb.Y * 255), (byte)(rgb.Z * 255)));
+
+                double x0 = xi * tileWorld, x1 = x0 + tileWorld;
+                double z0 = zi * tileWorld, z1 = z0 + tileWorld;
+                var geom = new StreamGeometry();
+                using (var gctx = geom.Open())
+                {
+                    gctx.BeginFigure(P(x0, 0, z0), true);
+                    gctx.LineTo(P(x1, 0, z0));
+                    gctx.LineTo(P(x1, 0, z1));
+                    gctx.LineTo(P(x0, 0, z1));
+                    gctx.EndFigure(true);
+                }
+                ctx.DrawGeometry(fill, tileEdge, geom);
+            }
+
+        // ── Walls ────────────────────────────────────────────────────
+        // Drawn back-to-front so closer walls occlude farther ones. A
+        // wall's "depth" key is the projected Y of its centre — larger Y
+        // means closer to the camera in this projection.
+        var wallList = new System.Collections.Generic.List<(OpenApparatus.Topology.Adjacency adj, double depth)>(env.Adjacencies.Count);
+        foreach (var adj in env.Adjacencies)
+        {
+            // Open passages have no wall to render.
+            if (adj.Passage is OpenApparatus.Topology.Passage.Open) continue;
+            var s = adj.SharedSegment;
+            double mx = (s.Start.X + s.End.X) * 0.5;
+            double mz = (s.Start.Y + s.End.Y) * 0.5;
+            double depth = ProjRaw(mx, 0, mz).Y;
+            wallList.Add((adj, depth));
+        }
+        wallList.Sort((a, b) => a.depth.CompareTo(b.depth));
+
+        var wallFront = new SolidColorBrush(Color.FromRgb(214, 215, 222));
+        var wallTop   = new SolidColorBrush(Color.FromRgb(232, 233, 240));
+        var wallEdge  = new Pen(new SolidColorBrush(Color.FromRgb(60, 60, 75)), 1.0);
+        var openingFill = new SolidColorBrush(Color.FromRgb(245, 230, 180));
+        var openingEdge = new Pen(new SolidColorBrush(Color.FromRgb(140, 110, 30)), 0.8);
+
+        foreach (var (adj, _) in wallList)
+        {
+            var s = adj.SharedSegment;
+            double sx0 = s.Start.X, sz0 = s.Start.Y;
+            double sx1 = s.End.X,   sz1 = s.End.Y;
+
+            // Offset along-wall coords for opening positions.
+            double dx = sx1 - sx0, dz = sz1 - sz0;
+            double len = System.Math.Sqrt(dx * dx + dz * dz);
+
+            // Solid-wall sections: full slab from start to end, broken by
+            // any doorway openings.
+            var openings = new System.Collections.Generic.List<(double t0, double t1, OpenApparatus.Topology.Opening op)>();
+            if (adj.Passage is OpenApparatus.Topology.Passage.Doorway dw)
+            {
+                foreach (var op in dw.Openings)
+                {
+                    double tCenter = op.OffsetAlongEdge / len;
+                    double half = (op.Width * 0.5) / len;
+                    openings.Add((System.Math.Max(0, tCenter - half),
+                                  System.Math.Min(1, tCenter + half), op));
+                }
+                openings.Sort((a, b) => a.t0.CompareTo(b.t0));
+            }
+
+            // Solid segments between (and around) openings.
+            double cursor = 0;
+            void DrawSolidSegment(double t0, double t1)
+            {
+                if (t1 - t0 < 1e-4) return;
+                double ax = sx0 + dx * t0, az = sz0 + dz * t0;
+                double bx = sx0 + dx * t1, bz = sz0 + dz * t1;
+                // Front face (bottom-bot, bottom-top of wall).
+                var face = new StreamGeometry();
+                using (var gc = face.Open())
+                {
+                    gc.BeginFigure(P(ax, 0, az), true);
+                    gc.LineTo(P(bx, 0, bz));
+                    gc.LineTo(P(bx, wallH, bz));
+                    gc.LineTo(P(ax, wallH, az));
+                    gc.EndFigure(true);
+                }
+                ctx.DrawGeometry(wallFront, wallEdge, face);
+            }
+
+            foreach (var (t0, t1, op) in openings)
+            {
+                DrawSolidSegment(cursor, t0);
+                // Header (lintel) above an opening: solid from headHeight up.
+                double headFraction = op.Height / wallH;
+                if (headFraction < 0.999)
+                {
+                    double hH = op.Height;
+                    double ax = sx0 + dx * t0, az = sz0 + dz * t0;
+                    double bx = sx0 + dx * t1, bz = sz0 + dz * t1;
+                    var hdr = new StreamGeometry();
+                    using (var gc = hdr.Open())
+                    {
+                        gc.BeginFigure(P(ax, hH, az), true);
+                        gc.LineTo(P(bx, hH, bz));
+                        gc.LineTo(P(bx, wallH, bz));
+                        gc.LineTo(P(ax, wallH, az));
+                        gc.EndFigure(true);
+                    }
+                    ctx.DrawGeometry(wallFront, wallEdge, hdr);
+                }
+                // Sill (for windows): a solid section from 0 to sillHeight.
+                if (op.SillHeight > 0.001)
+                {
+                    double sH = op.SillHeight;
+                    double ax = sx0 + dx * t0, az = sz0 + dz * t0;
+                    double bx = sx0 + dx * t1, bz = sz0 + dz * t1;
+                    var sill = new StreamGeometry();
+                    using (var gc = sill.Open())
+                    {
+                        gc.BeginFigure(P(ax, 0, az), true);
+                        gc.LineTo(P(bx, 0, bz));
+                        gc.LineTo(P(bx, sH, bz));
+                        gc.LineTo(P(ax, sH, az));
+                        gc.EndFigure(true);
+                    }
+                    ctx.DrawGeometry(wallFront, wallEdge, sill);
+                }
+                // Opening pane outline (doorway / window aperture itself).
+                {
+                    double bot = op.SillHeight;
+                    double top = op.Height;
+                    double ax = sx0 + dx * t0, az = sz0 + dz * t0;
+                    double bx = sx0 + dx * t1, bz = sz0 + dz * t1;
+                    var pane = new StreamGeometry();
+                    using (var gc = pane.Open())
+                    {
+                        gc.BeginFigure(P(ax, bot, az), true);
+                        gc.LineTo(P(bx, bot, bz));
+                        gc.LineTo(P(bx, top, bz));
+                        gc.LineTo(P(ax, top, az));
+                        gc.EndFigure(true);
+                    }
+                    // Windows get a translucent yellow tint, doors are
+                    // outlined only.
+                    if (op.IsWindow)
+                        ctx.DrawGeometry(openingFill, openingEdge, pane);
+                    else
+                        ctx.DrawGeometry(null, openingEdge, pane);
+                }
+                cursor = t1;
+            }
+            DrawSolidSegment(cursor, 1);
+
+            // Wall top edge — drawn after all front faces so it reads as
+            // a continuous capstone even where openings interrupted the
+            // front face.
+            ctx.DrawLine(wallEdge, P(sx0, wallH, sz0), P(sx1, wallH, sz1));
+        }
+
+        // ── Objects ──────────────────────────────────────────────────
+        // Project each at its world position; small filled circle is
+        // enough for preview purposes.
+        foreach (var o in vm.Objects)
+        {
+            var t = vm.GetObjectType(o.Slot);
+            if (t is null) continue;
+            var p = P(o.Position.X, o.Position.Y, o.Position.Z);
+            var fill = new SolidColorBrush(Color.FromRgb(
+                (byte)(t.Color.X * 255), (byte)(t.Color.Y * 255), (byte)(t.Color.Z * 255)));
+            ctx.DrawEllipse(fill,
+                new Pen(new SolidColorBrush(Color.FromRgb(30, 30, 40)), 1.0),
+                p, 6, 6);
+        }
+
+        // ── "Read-only" hint ─────────────────────────────────────────
+        var hintBrush = new SolidColorBrush(Color.FromArgb(180, 90, 98, 112));
+        var hint = new FormattedText("3D preview — switch to Top to edit",
+            System.Globalization.CultureInfo.InvariantCulture,
+            FlowDirection.LeftToRight, new Typeface("Inter"), 11.5, hintBrush);
+        ctx.DrawText(hint, new Point(12, size.Height - hint.Height - 8));
     }
 
     static void DrawLayoutMeasurements(

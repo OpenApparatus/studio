@@ -88,21 +88,24 @@
         <Style Selector="NumericUpDown.compact TextBox:focus">
             <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
         </Style>
-        <!-- Slim ButtonSpinner inside compact NumericUpDown. The Fluent
-             default is fat and chunky; trim the buttons to ~14×12 each
-             so they sit cleanly inside the 28-px input. -->
-        <Style Selector="NumericUpDown.compact ButtonSpinner Button">
+        <!-- Slim ButtonSpinner inside compact NumericUpDown. The buttons
+             are RepeatButtons inside the ButtonSpinner template, so we
+             reach them via `ButtonSpinner /template/ RepeatButton`.
+             Trim them to a slim transparent column with muted glyphs;
+             hover lights them with a subtle fill. -->
+        <Style Selector="NumericUpDown.compact ButtonSpinner /template/ RepeatButton">
             <Setter Property="MinWidth" Value="0"/>
             <Setter Property="MinHeight" Value="0"/>
-            <Setter Property="Width" Value="16"/>
+            <Setter Property="Width" Value="18"/>
             <Setter Property="Padding" Value="0"/>
             <Setter Property="FontSize" Value="9"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
             <Setter Property="CornerRadius" Value="0"/>
         </Style>
-        <Style Selector="NumericUpDown.compact ButtonSpinner Button:pointerover /template/ ContentPresenter">
+        <Style Selector="NumericUpDown.compact ButtonSpinner /template/ RepeatButton:pointerover">
             <Setter Property="Background" Value="{StaticResource SurfaceSecondaryBrush}"/>
             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
         </Style>
@@ -535,6 +538,19 @@
 
                     <!-- VIEW -->
                     <TextBlock Classes="sectionLabel" Text="VIEW"/>
+                    <!-- Camera projection: top-down (the authoritative
+                         editing view) or 3D (axonometric preview). -->
+                    <RadioButton GroupName="CameraView"
+                                 Classes="pill"
+                                 Content="Top"
+                                 IsChecked="{Binding CameraView, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=TopDown}"
+                                 ToolTip.Tip="Top-down editing view."/>
+                    <RadioButton GroupName="CameraView"
+                                 Classes="pill"
+                                 Content="3D"
+                                 Margin="0 0 6 0"
+                                 IsChecked="{Binding CameraView, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=Iso}"
+                                 ToolTip.Tip="Axonometric 3D preview (read-only)."/>
                     <!-- Floor / Ceiling surface toggle (Layout mode only). It's
                          a viewport setting, so it lives in the top strip — not
                          the global authoring panel where it used to sit. -->

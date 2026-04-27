@@ -252,6 +252,21 @@ public partial class MainWindowViewModel : ViewModelBase
     public enum ViewSurface { Floor, Ceiling }
     [ObservableProperty] ViewSurface _viewMode = ViewSurface.Floor;
 
+    /// <summary>Camera projection used by the editor. TopDown is the
+    /// authoritative editing view; Iso is an axonometric preview only —
+    /// editing is disabled while in Iso so users switch back to top-down
+    /// to make changes.</summary>
+    public enum CameraKind { TopDown, Iso }
+    [ObservableProperty] CameraKind _cameraView = CameraKind.TopDown;
+    public bool IsTopDownView => CameraView == CameraKind.TopDown;
+    public bool IsIsoView      => CameraView == CameraKind.Iso;
+    partial void OnCameraViewChanged(CameraKind value)
+    {
+        OnPropertyChanged(nameof(IsTopDownView));
+        OnPropertyChanged(nameof(IsIsoView));
+        EditVersion++;
+    }
+
     /// <summary>Global subdivision: every tile is divided into N×N sub-cells
     /// when placing or snapping objects. 1 = no subdivision (objects sit at
     /// tile centres), 2 = 2×2 per tile, …, up to 8.</summary>
