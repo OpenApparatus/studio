@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Shapes;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
@@ -96,7 +97,7 @@ public partial class ConstraintsPanel : UserControl
         oo.Children.Add(BoolRow("Across connected rooms", c.ObjectToObjectAcrossConnectedRooms,
             v => { c.ObjectToObjectAcrossConnectedRooms = v; _vm.OnConstraintsChanged(); },
             "Apply to pairs in rooms connected by a door or open passage. Closed walls don't count."));
-        Body.Children.Add(oo);
+        Body.Children.Add((Control)oo.Tag!);
 
         // ─── Door → Object ───
         var dop = ConstraintGroup("Door → Object", c.DoorToObjectEnabled,
@@ -115,14 +116,14 @@ public partial class ConstraintsPanel : UserControl
             v => { c.DoorAngleMinDeg = (float)v; _vm.OnConstraintsChanged(); }));
         dop.Children.Add(NumericRow("Max |angle| (°)", c.DoorAngleMaxDeg, 0, 180, 1,
             v => { c.DoorAngleMaxDeg = (float)v; _vm.OnConstraintsChanged(); }));
-        Body.Children.Add(dop);
+        Body.Children.Add((Control)dop.Tag!);
 
         // ─── Object → Wall ───
         var ow = ConstraintGroup("Object → Wall", c.ObjectToWallEnabled,
             v => { c.ObjectToWallEnabled = v; _vm.OnConstraintsChanged(); });
         ow.Children.Add(MetreField("Min distance (m)", c.ObjectToWallMin,
             v => { c.ObjectToWallMin = (float)v; _vm.OnConstraintsChanged(); }));
-        Body.Children.Add(ow);
+        Body.Children.Add((Control)ow.Tag!);
 
         // ─── Per-room counts ───
         var pc = ConstraintGroup("Per-room counts", c.PerRoomCountsEnabled,
@@ -131,40 +132,71 @@ public partial class ConstraintsPanel : UserControl
             v => { c.PerRoomCountMin = (int)v; _vm.OnConstraintsChanged(); }));
         pc.Children.Add(NumericRow("Max per room", c.PerRoomCountMax, 0, 99, 1,
             v => { c.PerRoomCountMax = (int)v; _vm.OnConstraintsChanged(); }));
-        Body.Children.Add(pc);
+        Body.Children.Add((Control)pc.Tag!);
 
         // Highlight violations toggle.
         Body.Children.Add(BoolRow("Highlight violations", c.HighlightViolations,
             v => { c.HighlightViolations = v; _vm.OnConstraintsChanged(); },
             "Draw a red dashed ring around objects that fail any active constraint."));
 
-        // Live violation list.
+        // Live violation list — rendered as its own card with a red
+        // header so it clearly separates from the constraint config
+        // cards above it.
         var vList = _vm.ConstraintViolations;
         if (vList.Count > 0)
         {
-            Body.Children.Add(new TextBlock
+            var violInner = new StackPanel { Spacing = 4 };
+            violInner.Children.Add(new StackPanel
             {
-                Text = "Violations:",
-                FontWeight = FontWeight.SemiBold,
-                FontSize = 11,
-                Margin = new Thickness(0, 8, 0, 2),
+                Orientation = Orientation.Horizontal,
+                Spacing = 6,
+                Margin = new Thickness(0, 0, 0, 4),
+                Children =
+                {
+                    new Ellipse {
+                        Width = 8, Height = 8,
+                        Fill = new SolidColorBrush(Color.FromRgb(0xC8, 0x28, 0x28)),
+                        VerticalAlignment = VerticalAlignment.Center,
+                    },
+                    new TextBlock {
+                        Text = $"{vList.Count} violation{(vList.Count == 1 ? "" : "s")}",
+                        FontWeight = FontWeight.SemiBold,
+                        FontSize = 12,
+                        Foreground = new SolidColorBrush(Color.FromRgb(0xC8, 0x28, 0x28)),
+                        VerticalAlignment = VerticalAlignment.Center,
+                    },
+                },
             });
             foreach (var v in vList)
             {
-                Body.Children.Add(new TextBlock
+                violInner.Children.Add(new TextBlock
                 {
                     Text = "• " + v.Message,
                     TextWrapping = TextWrapping.Wrap,
                     FontSize = 11,
-                    Foreground = new SolidColorBrush(Color.FromRgb(180, 60, 60)),
+                    Foreground = new SolidColorBrush(Color.FromRgb(0x5A, 0x62, 0x70)),
                 });
             }
+            Body.Children.Add(new Border
+            {
+                Background = new SolidColorBrush(Color.FromRgb(0xFF, 0xF6, 0xF6)),
+                BorderBrush = new SolidColorBrush(Color.FromRgb(0xE7, 0xC0, 0xC0)),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new Avalonia.CornerRadius(8),
+                Padding = new Thickness(12),
+                Margin = new Thickness(0, 4, 0, 0),
+                Child = violInner,
+            });
         }
     }
 
     StackPanel ConstraintGroup(string title, bool enabled, Action<bool> onToggle)
     {
-        var outer = new StackPanel { Margin = new Thickness(0, 6, 0, 6) };
+        // Each constraint group is rendered as an elevated card matching
+        // Border.section in MainWindow.axaml. The header checkbox toggles
+        // the whole group; the body is dimmed (lower opacity) when off so
+        // disabled fields read as intentionally inactive.
+        var inner = new StackPanel { Spacing = 4 };
         var hdr = new CheckBox
         {
             Content = title,
@@ -177,8 +209,26 @@ public partial class ConstraintsPanel : UserControl
             onToggle(hdr.IsChecked == true);
             Rebuild();
         };
-        outer.Children.Add(hdr);
-        return outer;
+        inner.Children.Add(hdr);
+        // Wrap in a Border carrying section chrome — same Background/border/
+        // CornerRadius/BoxShadow as Border.section in MainWindow.axaml.
+        var card = new Border
+        {
+            Background = new SolidColorBrush(Colors.White),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(0xD3, 0xD7, 0xDF)),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new Avalonia.CornerRadius(8),
+            Padding = new Thickness(12),
+            Margin = new Thickness(0, 0, 0, 6),
+            BoxShadow = BoxShadows.Parse("0 1 2 0 #14000000"),
+            Opacity = enabled ? 1.0 : 0.65,
+            Child = inner,
+        };
+        // Returning the inner StackPanel so callers can keep adding rows
+        // to the body; the outer card is added to the panel via a one-off
+        // tag attribute.
+        inner.Tag = card;
+        return inner;
     }
 
     Control MetreField(string label, double value, Action<double> onChanged)
