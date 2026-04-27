@@ -30,5 +30,10 @@
 
     <Application.Styles>
         <FluentTheme />
+        <!-- Studio control theme — overrides Avalonia FluentTheme defaults
+             for ScrollBar / ComboBox / TextBox / Button / MenuFlyout /
+             ToolTip / Expander so the entire app matches the design
+             tokens instead of falling back to system-stock chrome. -->
+        <StyleInclude Source="avares://OpenApparatus.Studio/Themes/Controls.axaml"/>
     </Application.Styles>
 </Application>

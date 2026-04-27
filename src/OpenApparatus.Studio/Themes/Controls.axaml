@@ -1,0 +1,146 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!--
+        Application-wide control styling on top of FluentTheme.
+
+        FluentTheme leaves several controls at default Windows-stock
+        appearance — visible mostly as scroll bars on the side panels,
+        the system context-menu chrome, default Button hover, ComboBox
+        dropdown chrome, and text-input borders. This file overrides
+        those so the entire UI matches the design tokens.
+    -->
+
+    <!-- ── ScrollBar ───────────────────────────────────────────── -->
+    <!-- The Fluent default scrollbars are 14 px-wide grey rails with
+         visible up/down chevrons. We trim to a slim 8 px hover-only
+         track that doesn't draw attention away from content. -->
+    <Style Selector="ScrollBar:vertical">
+        <Setter Property="Width" Value="10"/>
+        <Setter Property="MinWidth" Value="10"/>
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="ScrollBar:horizontal">
+        <Setter Property="Height" Value="10"/>
+        <Setter Property="MinHeight" Value="10"/>
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="ScrollBar /template/ Thumb">
+        <Setter Property="Background" Value="#A8AEBB"/>
+        <Setter Property="MinWidth" Value="6"/>
+        <Setter Property="MinHeight" Value="6"/>
+    </Style>
+    <Style Selector="ScrollBar /template/ Thumb:pointerover">
+        <Setter Property="Background" Value="#7A808C"/>
+    </Style>
+    <Style Selector="ScrollBar /template/ RepeatButton">
+        <Setter Property="IsVisible" Value="False"/>
+    </Style>
+
+    <!-- ── ComboBox ────────────────────────────────────────────── -->
+    <Style Selector="ComboBox">
+        <Setter Property="MinHeight" Value="0"/>
+        <Setter Property="Padding" Value="10 4"/>
+        <Setter Property="Background" Value="#FFFFFF"/>
+        <Setter Property="BorderBrush" Value="#D3D7DF"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="Foreground" Value="#23262E"/>
+        <Setter Property="FontSize" Value="12"/>
+    </Style>
+    <Style Selector="ComboBox:pointerover">
+        <Setter Property="BorderBrush" Value="#A8AEBB"/>
+    </Style>
+    <Style Selector="ComboBox:focus-within, ComboBox:pressed">
+        <Setter Property="BorderBrush" Value="#1F6FEB"/>
+    </Style>
+
+    <!-- ── TextBox (used outside the compact NumericUpDown) ──── -->
+    <Style Selector="TextBox">
+        <Setter Property="MinHeight" Value="0"/>
+        <Setter Property="Padding" Value="8 4"/>
+        <Setter Property="Background" Value="#FFFFFF"/>
+        <Setter Property="BorderBrush" Value="#D3D7DF"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="Foreground" Value="#23262E"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="SelectionBrush" Value="#3B86F2"/>
+        <Setter Property="SelectionForegroundBrush" Value="#FFFFFF"/>
+    </Style>
+    <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
+        <Setter Property="BorderBrush" Value="#A8AEBB"/>
+    </Style>
+    <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+        <Setter Property="BorderBrush" Value="#1F6FEB"/>
+    </Style>
+
+    <!-- ── Button (default — non-classed) ──────────────────────── -->
+    <Style Selector="Button">
+        <Setter Property="Background" Value="#FFFFFF"/>
+        <Setter Property="BorderBrush" Value="#D3D7DF"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="Padding" Value="10 5"/>
+        <Setter Property="MinHeight" Value="28"/>
+        <Setter Property="Foreground" Value="#23262E"/>
+        <Setter Property="FontSize" Value="12"/>
+    </Style>
+    <Style Selector="Button:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#F2F4F8"/>
+        <Setter Property="BorderBrush" Value="#A8AEBB"/>
+    </Style>
+    <Style Selector="Button:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="#E6EAF2"/>
+    </Style>
+    <Style Selector="Button:disabled">
+        <Setter Property="Opacity" Value="0.5"/>
+    </Style>
+
+    <!-- ── CheckBox ────────────────────────────────────────────── -->
+    <Style Selector="CheckBox">
+        <Setter Property="Foreground" Value="#23262E"/>
+        <Setter Property="FontSize" Value="12"/>
+    </Style>
+
+    <!-- ── ContextMenu / MenuFlyout ────────────────────────────── -->
+    <Style Selector="MenuFlyoutPresenter">
+        <Setter Property="Background" Value="#FFFFFF"/>
+        <Setter Property="BorderBrush" Value="#D3D7DF"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="Padding" Value="4"/>
+    </Style>
+    <Style Selector="MenuItem">
+        <Setter Property="MinHeight" Value="28"/>
+        <Setter Property="Padding" Value="10 4"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="#23262E"/>
+        <Setter Property="CornerRadius" Value="4"/>
+    </Style>
+    <Style Selector="MenuItem:pointerover /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="#F2F4F8"/>
+    </Style>
+
+    <!-- ── Expander ────────────────────────────────────────────── -->
+    <Style Selector="Expander /template/ ToggleButton#ExpanderHeader">
+        <Setter Property="Padding" Value="0 6"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="MinHeight" Value="32"/>
+    </Style>
+    <Style Selector="Expander /template/ ToggleButton#ExpanderHeader:pointerover">
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+
+    <!-- ── ToolTip ────────────────────────────────────────────── -->
+    <Style Selector="ToolTip">
+        <Setter Property="Background" Value="#23262E"/>
+        <Setter Property="Foreground" Value="#FFFFFF"/>
+        <Setter Property="BorderBrush" Value="#23262E"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="Padding" Value="8 5"/>
+    </Style>
+
+</Styles>

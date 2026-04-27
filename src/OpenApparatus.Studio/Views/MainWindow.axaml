@@ -730,8 +730,14 @@
                             Margin="4 0 0 0"
                             IsVisible="{Binding ShowPathsSection}"
                             Command="{Binding TogglePathAnimationCommand}"
-                            Content="{Binding IsPathAnimating, Converter={x:Static converters:BoolToTextConverter.Instance}, ConverterParameter='■|▶'}"
-                            ToolTip.Tip="Animate the path overlay. Loops while running."/>
+                            ToolTip.Tip="Animate the path overlay. Loops while running.">
+                        <Panel>
+                            <views:Icon Symbol="Play" Size="11"
+                                        IsVisible="{Binding !IsPathAnimating}"/>
+                            <views:Icon Symbol="Stop" Size="11"
+                                        IsVisible="{Binding IsPathAnimating}"/>
+                        </Panel>
+                    </Button>
                     <!-- Speed slider, only while the animation is running.
                          0.25× = slow study; 4× = quick reveal. -->
                     <StackPanel Orientation="Horizontal" Spacing="0" VerticalAlignment="Center"
@@ -1125,9 +1131,11 @@
                                FontWeight="SemiBold" FontSize="{StaticResource FontTitle}"
                                Foreground="{StaticResource TextPrimaryBrush}"
                                VerticalAlignment="Center"/>
-                    <Button Grid.Column="1" Classes="toolIcon" Content="✕"
+                    <Button Grid.Column="1" Classes="toolIcon"
                             Command="{Binding DismissShortcutOverlayCommand}"
-                            ToolTip.Tip="Close (Esc)"/>
+                            ToolTip.Tip="Close (Esc)">
+                        <views:Icon Symbol="Close"/>
+                    </Button>
                 </Grid>
                 <Border Height="1" Background="{StaticResource BorderHairlineBrush}"/>
 
