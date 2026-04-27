@@ -58,6 +58,13 @@
             <Setter Property="FontSize" Value="{StaticResource FontBody}"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
+        <!-- propLabel that's wired to a DragScrub target should hint at
+             that with a hover colour shift — gives the user a reason to
+             try dragging. Cursor change is handled by DragScrub itself. -->
+        <Style Selector="TextBlock.propLabel:pointerover">
+            <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="TextDecorations" Value="Underline"/>
+        </Style>
         <!-- Compact NumericUpDown — keeps the spinner buttons but styled
              slimmer + visually inset into the right side of the input,
              with the inner TextBox styled via a descendant selector so
