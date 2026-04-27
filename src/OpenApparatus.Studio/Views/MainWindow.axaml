@@ -33,7 +33,7 @@
             <Setter Property="Margin" Value="2 14 2 6"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="FontSize" Value="{StaticResource FontBodyStrong}"/>
-            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
         </Style>
         <Style Selector="StackPanel.section">
             <Setter Property="Margin" Value="0 0 0 4"/>
@@ -42,19 +42,19 @@
              panels. White surface, hairline border, Level-1 shadow, soft
              rounding. Replaces the flat panel-on-panel look. -->
         <Style Selector="Border.section">
-            <Setter Property="Background" Value="{StaticResource SurfaceRaisedBrush}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource BorderHairlineBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderHairlineBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="{StaticResource CornerMd}"/>
-            <Setter Property="BoxShadow" Value="{StaticResource Elevation1}"/>
+            <Setter Property="BoxShadow" Value="{DynamicResource Elevation1}"/>
             <Setter Property="Padding" Value="12"/>
             <Setter Property="Margin" Value="0 0 0 4"/>
         </Style>
         <!-- Card variant without shadow — for content that's already on a
              nested surface and shouldn't double-elevate. -->
         <Style Selector="Border.sectionFlat">
-            <Setter Property="Background" Value="{StaticResource SurfaceRaisedBrush}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource BorderHairlineBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderHairlineBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="{StaticResource CornerMd}"/>
             <Setter Property="Padding" Value="12"/>
@@ -66,7 +66,7 @@
             <Setter Property="Margin" Value="0 0 0 8"/>
         </Style>
         <Style Selector="TextBlock.propLabel">
-            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
             <Setter Property="FontSize" Value="{StaticResource FontBody}"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
@@ -74,7 +74,7 @@
              that with a hover colour shift — gives the user a reason to
              try dragging. Cursor change is handled by DragScrub itself. -->
         <Style Selector="TextBlock.propLabel:pointerover">
-            <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
             <Setter Property="TextDecorations" Value="Underline"/>
         </Style>
         <!-- Compact NumericUpDown — keeps the spinner buttons but styled
@@ -86,7 +86,7 @@
             <Setter Property="MinHeight" Value="0"/>
             <Setter Property="HorizontalContentAlignment" Value="Right"/>
             <Setter Property="FontSize" Value="{StaticResource FontBody}"/>
-            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
             <!-- Lets users type "3+2" / "(1.2+0.05)*2" etc. and get
                  the result on Enter / blur. -->
             <Setter Property="behaviors:NumericExpression.Enabled" Value="True"/>
@@ -96,19 +96,19 @@
             <Setter Property="Height" Value="28"/>
             <Setter Property="Padding" Value="8 4"/>
             <Setter Property="FontSize" Value="{StaticResource FontBody}"/>
-            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="HorizontalContentAlignment" Value="Right"/>
             <Setter Property="CornerRadius" Value="{StaticResource CornerSm}"/>
-            <Setter Property="Background" Value="{StaticResource SurfacePrimaryBrush}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource BorderHairlineBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource SurfacePrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderHairlineBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
         </Style>
         <Style Selector="NumericUpDown.compact TextBox:pointerover">
-            <Setter Property="BorderBrush" Value="{StaticResource BorderStrongBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}"/>
         </Style>
         <Style Selector="NumericUpDown.compact TextBox:focus">
-            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
         </Style>
         <!-- Slim ButtonSpinner inside compact NumericUpDown. The buttons
              are RepeatButtons inside the ButtonSpinner template, so we
@@ -124,15 +124,15 @@
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
             <Setter Property="CornerRadius" Value="0"/>
         </Style>
         <Style Selector="NumericUpDown.compact ButtonSpinner /template/ RepeatButton:pointerover">
-            <Setter Property="Background" Value="{StaticResource SurfaceSecondaryBrush}"/>
-            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource SurfaceSecondaryBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
         </Style>
         <Style Selector="Button.primary">
-            <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
@@ -140,7 +140,7 @@
             <Setter Property="Padding" Value="10 6"/>
         </Style>
         <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource AccentHoverBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}"/>
             <Setter Property="Foreground" Value="White"/>
         </Style>
         <Style Selector="Button.action">
@@ -157,7 +157,7 @@
              colour. Same pattern as iOS / SwiftUI segmented controls. -->
         <Style Selector="RadioButton.modePill">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Padding" Value="22 6"/>
@@ -200,18 +200,18 @@
             <Setter Property="Background" Value="#eef2f7"/>
         </Style>
         <Style Selector="RadioButton.modePill:checked /template/ Border#PART_Border">
-            <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
             <Setter Property="BoxShadow" Value="inset 0 2 3 0 #33000000"/>
         </Style>
         <Style Selector="RadioButton.modePill:checked /template/ ContentPresenter">
-            <Setter Property="Foreground" Value="{StaticResource TextOnDarkBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextOnDarkBrush}"/>
         </Style>
         <Style Selector="RadioButton.modePill:checked:pointerover /template/ Border#PART_Border">
-            <Setter Property="Background" Value="{StaticResource AccentHoverBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}"/>
         </Style>
         <Style Selector="RadioButton.tab">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="{StaticResource BorderHairlineBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderHairlineBrush}"/>
             <Setter Property="BorderThickness" Value="1 1 1 0"/>
             <Setter Property="CornerRadius" Value="4 4 0 0"/>
             <Setter Property="Margin" Value="0 0 4 0"/>
@@ -224,14 +224,14 @@
         <Style Selector="TextBlock.sectionLabel">
             <Setter Property="FontSize" Value="9.5"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="Margin" Value="0 0 8 0"/>
         </Style>
         <!-- Inline label for sliders ("Opacity", "Saturation", etc.). -->
         <Style Selector="TextBlock.sliderLabel">
             <Setter Property="FontSize" Value="11"/>
-            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="Margin" Value="8 0 5 0"/>
         </Style>
@@ -239,7 +239,7 @@
              fixed width so the slider doesn't reflow as the value scrubs. -->
         <Style Selector="TextBlock.sliderValue">
             <Setter Property="FontSize" Value="11"/>
-            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="Margin" Value="4 0 0 0"/>
             <Setter Property="MinWidth" Value="28"/>
@@ -248,7 +248,7 @@
         <!-- Vertical hairline divider between toolbar sections. -->
         <Style Selector="Border.vsep">
             <Setter Property="Width" Value="1"/>
-            <Setter Property="Background" Value="{StaticResource BorderHairlineBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource BorderHairlineBrush}"/>
             <Setter Property="Margin" Value="10 2"/>
             <Setter Property="VerticalAlignment" Value="Stretch"/>
         </Style>
@@ -276,19 +276,19 @@
             </Setter>
         </Style>
         <Style Selector="ToggleButton.pill:checked /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
             <Setter Property="Foreground" Value="White"/>
         </Style>
         <Style Selector="ToggleButton.pill:checked">
-            <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
             <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderBrush" Value="{StaticResource AccentHoverBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentHoverBrush}"/>
         </Style>
         <Style Selector="ToggleButton.pill:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="#eef2f7"/>
         </Style>
         <Style Selector="ToggleButton.pill:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource AccentHoverBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}"/>
         </Style>
         <!-- Mutual-exclusion pill — same look as ToggleButton.pill but for
              RadioButton, so a group of pills bound to one enum (e.g.
@@ -299,7 +299,7 @@
             <Setter Property="MinWidth" Value="0"/>
             <Setter Property="FontSize" Value="11"/>
             <Setter Property="Background" Value="#ffffff"/>
-            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
             <Setter Property="BorderBrush" Value="#c8ccd6"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="12"/>
@@ -326,14 +326,14 @@
             <Setter Property="Background" Value="#eef2f7"/>
         </Style>
         <Style Selector="RadioButton.pill:checked /template/ Border#PART_Border">
-            <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource AccentHoverBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentHoverBrush}"/>
         </Style>
         <Style Selector="RadioButton.pill:checked /template/ ContentPresenter">
-            <Setter Property="Foreground" Value="{StaticResource TextOnDarkBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextOnDarkBrush}"/>
         </Style>
         <Style Selector="RadioButton.pill:checked:pointerover /template/ Border#PART_Border">
-            <Setter Property="Background" Value="{StaticResource AccentHoverBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}"/>
         </Style>
 
         <!-- Slim modern slider — full ControlTemplate replacement so we don't
@@ -342,7 +342,7 @@
              blue thumb with a white halo. -->
         <Style Selector="Slider">
             <Setter Property="Background" Value="#dde1e8"/>
-            <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
         </Style>
         <Style Selector="Slider:horizontal">
             <Setter Property="MinHeight" Value="0"/>
@@ -360,7 +360,7 @@
                                 <RepeatButton Name="PART_DecreaseButton" Focusable="False">
                                     <RepeatButton.Template>
                                         <ControlTemplate>
-                                            <Border Height="3" CornerRadius="1.5" Background="{StaticResource AccentBrush}" VerticalAlignment="Center"/>
+                                            <Border Height="3" CornerRadius="1.5" Background="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
                                         </ControlTemplate>
                                     </RepeatButton.Template>
                                 </RepeatButton>
@@ -378,7 +378,7 @@
                                 <Thumb.Template>
                                     <ControlTemplate TargetType="Thumb">
                                         <Border Width="12" Height="12" CornerRadius="6"
-                                                Background="{StaticResource AccentBrush}"
+                                                Background="{DynamicResource AccentBrush}"
                                                 BorderBrush="White" BorderThickness="1.5"/>
                                     </ControlTemplate>
                                 </Thumb.Template>
@@ -404,7 +404,7 @@
                                 <RepeatButton Name="PART_DecreaseButton" Focusable="False">
                                     <RepeatButton.Template>
                                         <ControlTemplate>
-                                            <Border Width="3" CornerRadius="1.5" Background="{StaticResource AccentBrush}" HorizontalAlignment="Center"/>
+                                            <Border Width="3" CornerRadius="1.5" Background="{DynamicResource AccentBrush}" HorizontalAlignment="Center"/>
                                         </ControlTemplate>
                                     </RepeatButton.Template>
                                 </RepeatButton>
@@ -422,7 +422,7 @@
                                 <Thumb.Template>
                                     <ControlTemplate TargetType="Thumb">
                                         <Border Width="12" Height="12" CornerRadius="6"
-                                                Background="{StaticResource AccentBrush}"
+                                                Background="{DynamicResource AccentBrush}"
                                                 BorderBrush="White" BorderThickness="1.5"/>
                                     </ControlTemplate>
                                 </Thumb.Template>
@@ -463,24 +463,24 @@
             <Setter Property="Width" Value="26"/>
             <Setter Property="Height" Value="26"/>
             <Setter Property="CornerRadius" Value="{StaticResource CornerSm}"/>
-            <Setter Property="Background" Value="{StaticResource SurfaceRaisedBrush}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource BorderHairlineBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderHairlineBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="FontSize" Value="13"/>
-            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
         </Style>
         <Style Selector="Button.play:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource SurfacePrimaryBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource SurfacePrimaryBrush}"/>
         </Style>
         <!-- Active state: filled brand-blue while the animation is
              running, so the play/stop button reads as "live". -->
         <Style Selector="Button.play.playing">
-            <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource AccentHoverBrush}"/>
-            <Setter Property="Foreground" Value="{StaticResource TextOnDarkBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentHoverBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextOnDarkBrush}"/>
         </Style>
         <!-- Top-bar icon button (undo/redo/overflow). Glyph-only, square,
              tight padding so they read as a tool palette rather than form
@@ -497,20 +497,20 @@
             <Setter Property="FontSize" Value="16"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
         </Style>
         <Style Selector="Button.toolIcon:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource SurfaceRaisedBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBrush}"/>
         </Style>
         <Style Selector="Button.toolIcon:disabled">
-            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
             <Setter Property="Opacity" Value="0.5"/>
         </Style>
 
         <!-- Keyboard-shortcut overlay styles. -->
         <Style Selector="Border.kbd">
-            <Setter Property="Background" Value="{StaticResource SurfacePrimaryBrush}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource BorderHairlineBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource SurfacePrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderHairlineBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="{StaticResource CornerSm}"/>
             <Setter Property="Padding" Value="6 2"/>
@@ -519,10 +519,10 @@
         <Style Selector="Border.kbd > TextBlock">
             <Setter Property="FontFamily" Value="Consolas, 'Courier New', monospace"/>
             <Setter Property="FontSize" Value="11"/>
-            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
         </Style>
         <Style Selector="TextBlock.kbdDesc">
-            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
             <Setter Property="FontSize" Value="{StaticResource FontBody}"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
@@ -540,8 +540,8 @@
              actions. Items use platform-standard hotkeys (Ctrl+S /
              Ctrl+O / Ctrl+N) wired through the VM commands. -->
         <Menu DockPanel.Dock="Top"
-              Background="{StaticResource SurfaceSecondaryBrush}"
-              BorderBrush="{StaticResource BorderHairlineBrush}"
+              Background="{DynamicResource SurfaceSecondaryBrush}"
+              BorderBrush="{DynamicResource BorderHairlineBrush}"
               BorderThickness="0 0 0 1"
               Padding="6 2">
             <MenuItem Header="_File">
@@ -607,6 +607,16 @@
                 <Separator/>
                 <MenuItem Header="_Reset zoom"
                           Command="{Binding ResetViewCommand}"/>
+                <MenuItem Header="_Frame selection"
+                          InputGesture="F"
+                          Command="{Binding FrameSelectionCommand}"/>
+                <Separator/>
+                <MenuItem Header="T_heme">
+                    <MenuItem Header="_Light"
+                              Command="{Binding SetLightThemeCommand}"/>
+                    <MenuItem Header="_Dark"
+                              Command="{Binding SetDarkThemeCommand}"/>
+                </MenuItem>
             </MenuItem>
             <MenuItem Header="_Help">
                 <MenuItem Header="_Keyboard shortcuts"
@@ -626,7 +636,7 @@
              icon buttons; Random Fill is text (Layout-mode only); Reset
              is demoted into an overflow menu; Export is one SplitButton-
              style flyout (glTF is the goal-state, JSON is alternate). -->
-        <Border DockPanel.Dock="Top" Background="{StaticResource SurfaceSecondaryBrush}" BorderBrush="{StaticResource BorderHairlineBrush}" BorderThickness="0 0 0 1" Padding="14 6">
+        <Border DockPanel.Dock="Top" Background="{DynamicResource SurfaceSecondaryBrush}" BorderBrush="{DynamicResource BorderHairlineBrush}" BorderThickness="0 0 0 1" Padding="14 6">
             <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
                 <!-- Brand / project title. Editable would require a TextBox;
                      start with a static label that's easy to swap out later. -->
@@ -636,7 +646,7 @@
                          in/out via the Opacity transition rather than
                          popping. -->
                     <Ellipse Width="8" Height="8"
-                             Fill="{StaticResource AccentBrush}"
+                             Fill="{DynamicResource AccentBrush}"
                              VerticalAlignment="Center"
                              Opacity="{Binding HasUnsavedChanges, Converter={x:Static converters:BoolToTextConverter.Instance}, ConverterParameter='1|0', FallbackValue=0}"
                              ToolTip.Tip="Unsaved changes">
@@ -649,13 +659,13 @@
                     <TextBlock Text="OpenApparatus Studio"
                                FontWeight="SemiBold"
                                FontSize="{StaticResource FontBodyStrong}"
-                               Foreground="{StaticResource TextPrimaryBrush}"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
                                VerticalAlignment="Center"/>
                     <TextBlock Text="·"
-                               Foreground="{StaticResource TextMutedBrush}"
+                               Foreground="{DynamicResource TextMutedBrush}"
                                VerticalAlignment="Center"/>
                     <TextBlock Text="{Binding ProjectTitle}"
-                               Foreground="{StaticResource TextSecondaryBrush}"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
                                FontSize="{StaticResource FontBody}"
                                VerticalAlignment="Center"/>
                 </StackPanel>
@@ -718,7 +728,7 @@
              uppercase caption. Wrapped in a horizontal ScrollViewer so
              on narrow windows the strip can scroll instead of clipping
              or wrapping. -->
-        <Border DockPanel.Dock="Top" Background="{StaticResource SurfacePrimaryBrush}" BorderBrush="{StaticResource BorderHairlineBrush}" BorderThickness="0 0 0 1" Padding="14 8">
+        <Border DockPanel.Dock="Top" Background="{DynamicResource SurfacePrimaryBrush}" BorderBrush="{DynamicResource BorderHairlineBrush}" BorderThickness="0 0 0 1" Padding="14 8">
             <ScrollViewer HorizontalScrollBarVisibility="Auto"
                           VerticalScrollBarVisibility="Disabled"
                           PointerWheelChanged="OnToolbarWheel">
@@ -843,14 +853,14 @@
                           IsVisible="{Binding ShowPathsSection}"
                           VerticalAlignment="Center">
                         <Button Classes="icon"
-                                BorderBrush="{StaticResource BorderHairlineBrush}" BorderThickness="1"
+                                BorderBrush="{DynamicResource BorderHairlineBrush}" BorderThickness="1"
                                 Background="{Binding PathColor, Converter={x:Static converters:Vector3ToBrushConverter.Instance}}"
                                 Click="OnPickPathColor"
                                 ToolTip.Tip="Path overlay colour"/>
                         <TextBlock Text="…" FontSize="11" FontWeight="Bold"
                                    HorizontalAlignment="Right" VerticalAlignment="Bottom"
                                    Margin="0 0 3 0"
-                                   Foreground="{StaticResource TextOnDarkBrush}"
+                                   Foreground="{DynamicResource TextOnDarkBrush}"
                                    IsHitTestVisible="False"/>
                     </Grid>
                     <!-- Square media-control button. Filled brand-blue while
@@ -891,7 +901,7 @@
               left   cursor world position (top-down only)
               centre live status message + accent dot
               right  scene summary (room / object / mode counts) -->
-        <Border DockPanel.Dock="Bottom" Background="{StaticResource StatusBgBrush}" Padding="14 6">
+        <Border DockPanel.Dock="Bottom" Background="{DynamicResource StatusBgBrush}" Padding="14 6">
             <Grid ColumnDefinitions="*,2*,*" VerticalAlignment="Center">
                 <!-- Cursor position. Hidden when cursor isn't over the
                      canvas or in 3D mode (where 2D coords don't apply). -->
@@ -911,7 +921,7 @@
                             VerticalAlignment="Center"
                             HorizontalAlignment="Center">
                     <Ellipse Width="6" Height="6" VerticalAlignment="Center"
-                             Fill="{StaticResource AccentBrush}"
+                             Fill="{DynamicResource AccentBrush}"
                              IsVisible="{Binding HasStatusMessage}"/>
                     <TextBlock IsVisible="{Binding HasStatusMessage}"
                                Text="{Binding StatusMessage}"
@@ -945,7 +955,7 @@
                 <ColumnDefinition Width="*" MinWidth="380"/>
                 <ColumnDefinition Width="280" MinWidth="240"/>
             </Grid.ColumnDefinitions>
-            <ScrollViewer Grid.Column="0" Background="{StaticResource SurfacePrimaryBrush}">
+            <ScrollViewer Grid.Column="0" Background="{DynamicResource SurfacePrimaryBrush}">
                 <StackPanel Margin="12" Spacing="0">
 
                     <!-- ─── LAYOUT MODE LEFT PANEL ─── -->
@@ -973,14 +983,14 @@
                                      there's a selection. Tells the user how
                                      big the resulting room will be. -->
                                 <TextBlock IsVisible="{Binding HasSelectedTiles}"
-                                           Foreground="{StaticResource TextMutedBrush}"
+                                           Foreground="{DynamicResource TextMutedBrush}"
                                            FontSize="11"
                                            Text="{Binding SelectedTilesCount, StringFormat='{}{0} tile(s) selected'}"/>
                                 <Button Classes="action"
                                         Command="{Binding ClearSelectionCommand}">
                                     <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
                                         <TextBlock Text="Clear Selection"/>
-                                        <Border BorderBrush="{StaticResource BorderHairlineBrush}" BorderThickness="1" CornerRadius="3" Padding="4 1">
+                                        <Border BorderBrush="{DynamicResource BorderHairlineBrush}" BorderThickness="1" CornerRadius="3" Padding="4 1">
                                             <TextBlock Text="Esc" FontSize="10"/>
                                         </Border>
                                     </StackPanel>
@@ -1001,7 +1011,7 @@
                                         Click="OnPickDefaultFloor"
                                         Padding="0" MinHeight="0" Height="24"
                                         HorizontalAlignment="Stretch"
-                                        BorderBrush="{StaticResource BorderHairlineBrush}" BorderThickness="1"
+                                        BorderBrush="{DynamicResource BorderHairlineBrush}" BorderThickness="1"
                                         CornerRadius="4"
                                         Background="{Binding DefaultFloorColor, Converter={x:Static converters:Vector3ToBrushConverter.Instance}}"
                                         ToolTip.Tip="Click to change. Used when a new room is created."/>
@@ -1010,7 +1020,7 @@
                                         Click="OnPickDefaultCeiling"
                                         Padding="0" MinHeight="0" Height="24"
                                         HorizontalAlignment="Stretch"
-                                        BorderBrush="{StaticResource BorderHairlineBrush}" BorderThickness="1"
+                                        BorderBrush="{DynamicResource BorderHairlineBrush}" BorderThickness="1"
                                         CornerRadius="4"
                                         Background="{Binding DefaultCeilingColor, Converter={x:Static converters:Vector3ToBrushConverter.Instance}}"
                                         ToolTip.Tip="Click to change. Used when a new room is created."/>
@@ -1109,13 +1119,13 @@
                                    IsVisible="{Binding HasNoRooms}"/>
                         <Border Classes="sectionFlat" IsVisible="{Binding HasNoRooms}">
                             <StackPanel Spacing="6">
-                                <TextBlock TextWrapping="Wrap" Foreground="{StaticResource TextSecondaryBrush}" FontSize="{StaticResource FontBody}"
+                                <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="{StaticResource FontBody}"
                                            Text="• Click + drag empty tiles to select. Press R to make a room."/>
-                                <TextBlock TextWrapping="Wrap" Foreground="{StaticResource TextSecondaryBrush}" FontSize="{StaticResource FontBody}"
+                                <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="{StaticResource FontBody}"
                                            Text="• Click a wall to select. D = door · W = window · O = open · C = closed."/>
-                                <TextBlock TextWrapping="Wrap" Foreground="{StaticResource TextSecondaryBrush}" FontSize="{StaticResource FontBody}"
+                                <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="{StaticResource FontBody}"
                                            Text="• Switch to Object mode to populate rooms with objects."/>
-                                <TextBlock TextWrapping="Wrap" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontCaption}"
+                                <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextMutedBrush}" FontSize="{StaticResource FontCaption}"
                                            Margin="0 4 0 0"
                                            Text="Press F1 anytime for the full keyboard reference."/>
                             </StackPanel>
@@ -1144,7 +1154,7 @@
                                      for a concept the user will hit straight
                                      away. -->
                                 <TextBlock TextWrapping="Wrap"
-                                           Foreground="{StaticResource TextMutedBrush}"
+                                           Foreground="{DynamicResource TextMutedBrush}"
                                            FontSize="{StaticResource FontCaption}"
                                            Text="Each tile splits into N × N placement cells. 1 = whole tile."/>
                                 <Button Content="Snap objects to grid" Classes="action"
@@ -1168,7 +1178,7 @@
 
             <Grid Grid.Column="1" RowDefinitions="*,Auto">
                 <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
-                    <Border Grid.Column="0" Background="{StaticResource EditorBgBrush}">
+                    <Border Grid.Column="0" Background="{DynamicResource EditorBgBrush}">
                         <Grid>
                             <views:GridEditorView EditVersion="{Binding EditVersion}" Margin="8">
                                 <views:GridEditorView.ContextMenu>
@@ -1208,10 +1218,10 @@
                                     Margin="0 14 0 0"
                                     Padding="3"
                                     CornerRadius="18"
-                                    Background="{StaticResource SurfaceRaisedBrush}"
-                                    BorderBrush="{StaticResource BorderHairlineBrush}"
+                                    Background="{DynamicResource SurfaceRaisedBrush}"
+                                    BorderBrush="{DynamicResource BorderHairlineBrush}"
                                     BorderThickness="1"
-                                    BoxShadow="{StaticResource Elevation2}">
+                                    BoxShadow="{DynamicResource Elevation2}">
                                 <StackPanel Orientation="Horizontal">
                                     <RadioButton GroupName="EditMode"
                                                  Classes="modePill modePillLeft"
@@ -1239,16 +1249,16 @@
                          dolly distance and a separate slider would be
                          duplicative + take 48 px. -->
                     <Border Grid.Column="1"
-                            Background="{StaticResource SurfaceSecondaryBrush}"
-                            BorderBrush="{StaticResource BorderHairlineBrush}"
+                            Background="{DynamicResource SurfaceSecondaryBrush}"
+                            BorderBrush="{DynamicResource BorderHairlineBrush}"
                             BorderThickness="1 0 0 0" Padding="6 10" Width="48"
                             IsVisible="{Binding IsTopDownView}">
                         <DockPanel>
                             <TextBlock DockPanel.Dock="Top" Text="Zoom" HorizontalAlignment="Center"
-                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
                                        FontSize="{StaticResource FontCaption}"/>
                             <TextBlock DockPanel.Dock="Top" HorizontalAlignment="Center"
-                                       Foreground="{StaticResource TextMutedBrush}"
+                                       Foreground="{DynamicResource TextMutedBrush}"
                                        FontSize="{StaticResource FontCaption}"
                                        Margin="0 0 0 4"
                                        Text="{Binding ZoomFactor, StringFormat={}{0:0.0}×}"/>
@@ -1317,17 +1327,17 @@
                 Cursor="Arrow"/>
         <Border HorizontalAlignment="Center" VerticalAlignment="Center"
                 MinWidth="420" MaxWidth="520"
-                Background="{StaticResource SurfaceRaisedBrush}"
-                BorderBrush="{StaticResource BorderHairlineBrush}"
+                Background="{DynamicResource SurfaceRaisedBrush}"
+                BorderBrush="{DynamicResource BorderHairlineBrush}"
                 BorderThickness="1"
                 CornerRadius="{StaticResource CornerLg}"
-                BoxShadow="{StaticResource Elevation2}"
+                BoxShadow="{DynamicResource Elevation2}"
                 Padding="22 18">
             <StackPanel Spacing="12">
                 <Grid ColumnDefinitions="*,Auto">
                     <TextBlock Grid.Column="0" Text="Keyboard shortcuts"
                                FontWeight="SemiBold" FontSize="{StaticResource FontTitle}"
-                               Foreground="{StaticResource TextPrimaryBrush}"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
                                VerticalAlignment="Center"/>
                     <Button Grid.Column="1" Classes="toolIcon"
                             Command="{Binding DismissShortcutOverlayCommand}"
@@ -1336,7 +1346,7 @@
                         <views:Icon Symbol="Close"/>
                     </Button>
                 </Grid>
-                <Border Height="1" Background="{StaticResource BorderHairlineBrush}"/>
+                <Border Height="1" Background="{DynamicResource BorderHairlineBrush}"/>
 
                 <!-- Shortcuts grouped by category. Each group has a tiny
                      uppercase header followed by a kbd | description grid. -->
@@ -1409,7 +1419,7 @@
                 </StackPanel>
 
                 <TextBlock Text="Tip: drag a property label horizontally to scrub its value (Shift = fine, Ctrl = coarse)."
-                           Foreground="{StaticResource TextMutedBrush}"
+                           Foreground="{DynamicResource TextMutedBrush}"
                            FontSize="{StaticResource FontBody}"
                            TextWrapping="Wrap"/>
             </StackPanel>

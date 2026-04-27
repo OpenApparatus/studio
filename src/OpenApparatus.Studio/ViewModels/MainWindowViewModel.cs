@@ -322,6 +322,48 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     void Set3DView() => CameraView = CameraKind.Iso;
 
+    /// <summary>App-wide theme variant. Light is the default; Dark
+    /// flips Application.RequestedThemeVariant which cascades through
+    /// the DynamicResource bindings on every Token.axaml entry.
+    /// Persisted across sessions via AppSettings.</summary>
+    public enum ThemeVariantKind { Light, Dark }
+    [ObservableProperty] ThemeVariantKind _themeVariant = ThemeVariantKind.Light;
+
+    public bool IsLightTheme => ThemeVariant == ThemeVariantKind.Light;
+    public bool IsDarkTheme  => ThemeVariant == ThemeVariantKind.Dark;
+
+    partial void OnThemeVariantChanged(ThemeVariantKind value)
+    {
+        OnPropertyChanged(nameof(IsLightTheme));
+        OnPropertyChanged(nameof(IsDarkTheme));
+        ApplyThemeVariant();
+        // Persist so it survives next launch.
+        var settings = OpenApparatus.Studio.Services.AppSettings.LoadOrDefault();
+        settings.ThemeVariant = value.ToString();
+        settings.Save();
+    }
+
+    public void ApplyThemeVariant()
+    {
+        var app = Avalonia.Application.Current;
+        if (app is null) return;
+        app.RequestedThemeVariant = ThemeVariant == ThemeVariantKind.Dark
+            ? Avalonia.Styling.ThemeVariant.Dark
+            : Avalonia.Styling.ThemeVariant.Light;
+    }
+
+    [RelayCommand]
+    void SetLightTheme() => ThemeVariant = ThemeVariantKind.Light;
+
+    [RelayCommand]
+    void SetDarkTheme() => ThemeVariant = ThemeVariantKind.Dark;
+
+    [RelayCommand]
+    void ToggleTheme() => ThemeVariant =
+        ThemeVariant == ThemeVariantKind.Light
+            ? ThemeVariantKind.Dark
+            : ThemeVariantKind.Light;
+
     [RelayCommand]
     void ResetIsoCamera()
     {

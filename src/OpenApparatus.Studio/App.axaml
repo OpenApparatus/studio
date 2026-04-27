@@ -3,11 +3,13 @@
              x:Class="OpenApparatus.Studio.App"
              xmlns:local="using:OpenApparatus.Studio"
              RequestedThemeVariant="Light">
-             <!-- Forced Light theme: the studio's hardcoded panel colors (toolbar, status
-                  bar, left panel background) are tuned for a light surface. Following the
-                  system theme would put light text from the Fluent dark theme on a light
-                  panel background and vice versa. Consistent rendering across users also
-                  matters for screenshots used in papers / methods sections. -->
+             <!-- Default theme is Light. The View → Theme menu lets the
+                  user flip to Dark; the choice is persisted in
+                  AppSettings and re-applied on launch via
+                  MainWindowViewModel.ApplyThemeVariant. Tokens.axaml
+                  carries Light + Dark variants of every colour brush,
+                  exposed via {DynamicResource} so the chrome flips
+                  cleanly without a full re-render. -->
 
     <Application.DataTemplates>
         <local:ViewLocator/>

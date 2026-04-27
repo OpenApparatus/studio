@@ -74,6 +74,19 @@ public partial class MainWindow : Window
         if (!double.IsNaN(_settings.WindowX) && !double.IsNaN(_settings.WindowY))
             Position = new PixelPoint((int)_settings.WindowX, (int)_settings.WindowY);
         if (_settings.WindowMaximized) WindowState = WindowState.Maximized;
+
+        // Restore the persisted theme variant. The VM apply-method
+        // talks to Application.RequestedThemeVariant which cascades to
+        // every {DynamicResource} binding in the chrome.
+        if (Vm is { } vm)
+        {
+            if (System.Enum.TryParse<MainWindowViewModel.ThemeVariantKind>(
+                _settings.ThemeVariant, out var th))
+            {
+                vm.ThemeVariant = th;
+            }
+            vm.ApplyThemeVariant();
+        }
     }
 
     void OnClosing(object? sender, WindowClosingEventArgs e)

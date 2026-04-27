@@ -1,19 +1,13 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <!--
-        Application-wide control styling on top of FluentTheme.
-
-        FluentTheme leaves several controls at default Windows-stock
-        appearance — visible mostly as scroll bars on the side panels,
-        the system context-menu chrome, default Button hover, ComboBox
-        dropdown chrome, and text-input borders. This file overrides
-        those so the entire UI matches the design tokens.
+        Application-wide control styling on top of FluentTheme. All
+        colour values flow through {DynamicResource …} so the theme
+        variant (Light / Dark) cascades cleanly when the user toggles
+        it from the View menu.
     -->
 
-    <!-- ── ScrollBar ───────────────────────────────────────────── -->
-    <!-- The Fluent default scrollbars are 14 px-wide grey rails with
-         visible up/down chevrons. We trim to a slim 8 px hover-only
-         track that doesn't draw attention away from content. -->
+    <!-- ── ScrollBar — slim hover-only thumb. -->
     <Style Selector="ScrollBar:vertical">
         <Setter Property="Width" Value="10"/>
         <Setter Property="MinWidth" Value="10"/>
@@ -25,87 +19,87 @@
         <Setter Property="Background" Value="Transparent"/>
     </Style>
     <Style Selector="ScrollBar /template/ Thumb">
-        <Setter Property="Background" Value="#A8AEBB"/>
+        <Setter Property="Background" Value="{DynamicResource BorderStrongBrush}"/>
         <Setter Property="MinWidth" Value="6"/>
         <Setter Property="MinHeight" Value="6"/>
     </Style>
     <Style Selector="ScrollBar /template/ Thumb:pointerover">
-        <Setter Property="Background" Value="#7A808C"/>
+        <Setter Property="Background" Value="{DynamicResource TextMutedBrush}"/>
     </Style>
     <Style Selector="ScrollBar /template/ RepeatButton">
         <Setter Property="IsVisible" Value="False"/>
     </Style>
 
-    <!-- ── ComboBox ────────────────────────────────────────────── -->
+    <!-- ── ComboBox -->
     <Style Selector="ComboBox">
         <Setter Property="MinHeight" Value="0"/>
         <Setter Property="Padding" Value="10 4"/>
-        <Setter Property="Background" Value="#FFFFFF"/>
-        <Setter Property="BorderBrush" Value="#D3D7DF"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderHairlineBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="4"/>
-        <Setter Property="Foreground" Value="#23262E"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
         <Setter Property="FontSize" Value="12"/>
     </Style>
     <Style Selector="ComboBox:pointerover">
-        <Setter Property="BorderBrush" Value="#A8AEBB"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}"/>
     </Style>
     <Style Selector="ComboBox:focus-within, ComboBox:pressed">
-        <Setter Property="BorderBrush" Value="#1F6FEB"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
     </Style>
 
-    <!-- ── TextBox (used outside the compact NumericUpDown) ──── -->
+    <!-- ── TextBox -->
     <Style Selector="TextBox">
         <Setter Property="MinHeight" Value="0"/>
         <Setter Property="Padding" Value="8 4"/>
-        <Setter Property="Background" Value="#FFFFFF"/>
-        <Setter Property="BorderBrush" Value="#D3D7DF"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderHairlineBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="4"/>
-        <Setter Property="Foreground" Value="#23262E"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
         <Setter Property="FontSize" Value="12"/>
-        <Setter Property="SelectionBrush" Value="#3B86F2"/>
-        <Setter Property="SelectionForegroundBrush" Value="#FFFFFF"/>
+        <Setter Property="SelectionBrush" Value="{DynamicResource AccentBrush}"/>
+        <Setter Property="SelectionForegroundBrush" Value="{DynamicResource TextOnDarkBrush}"/>
     </Style>
     <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
-        <Setter Property="BorderBrush" Value="#A8AEBB"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}"/>
     </Style>
     <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
-        <Setter Property="BorderBrush" Value="#1F6FEB"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
     </Style>
 
-    <!-- ── Button (default — non-classed) ──────────────────────── -->
+    <!-- ── Button (default) -->
     <Style Selector="Button">
-        <Setter Property="Background" Value="#FFFFFF"/>
-        <Setter Property="BorderBrush" Value="#D3D7DF"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderHairlineBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="4"/>
         <Setter Property="Padding" Value="10 5"/>
         <Setter Property="MinHeight" Value="28"/>
-        <Setter Property="Foreground" Value="#23262E"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
         <Setter Property="FontSize" Value="12"/>
     </Style>
     <Style Selector="Button:pointerover /template/ ContentPresenter">
-        <Setter Property="Background" Value="#F2F4F8"/>
-        <Setter Property="BorderBrush" Value="#A8AEBB"/>
+        <Setter Property="Background" Value="{DynamicResource SurfacePrimaryBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}"/>
     </Style>
     <Style Selector="Button:pressed /template/ ContentPresenter">
-        <Setter Property="Background" Value="#E6EAF2"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceSecondaryBrush}"/>
     </Style>
     <Style Selector="Button:disabled">
         <Setter Property="Opacity" Value="0.5"/>
     </Style>
 
-    <!-- ── CheckBox ────────────────────────────────────────────── -->
+    <!-- ── CheckBox -->
     <Style Selector="CheckBox">
-        <Setter Property="Foreground" Value="#23262E"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
         <Setter Property="FontSize" Value="12"/>
     </Style>
 
-    <!-- ── ContextMenu / MenuFlyout ────────────────────────────── -->
+    <!-- ── ContextMenu / MenuFlyout -->
     <Style Selector="MenuFlyoutPresenter">
-        <Setter Property="Background" Value="#FFFFFF"/>
-        <Setter Property="BorderBrush" Value="#D3D7DF"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderHairlineBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="6"/>
         <Setter Property="Padding" Value="4"/>
@@ -114,14 +108,14 @@
         <Setter Property="MinHeight" Value="28"/>
         <Setter Property="Padding" Value="10 4"/>
         <Setter Property="FontSize" Value="12"/>
-        <Setter Property="Foreground" Value="#23262E"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
         <Setter Property="CornerRadius" Value="4"/>
     </Style>
     <Style Selector="MenuItem:pointerover /template/ Border#PART_LayoutRoot">
-        <Setter Property="Background" Value="#F2F4F8"/>
+        <Setter Property="Background" Value="{DynamicResource SurfacePrimaryBrush}"/>
     </Style>
 
-    <!-- ── Expander ────────────────────────────────────────────── -->
+    <!-- ── Expander -->
     <Style Selector="Expander /template/ ToggleButton#ExpanderHeader">
         <Setter Property="Padding" Value="0 6"/>
         <Setter Property="Background" Value="Transparent"/>
@@ -132,11 +126,11 @@
         <Setter Property="Background" Value="Transparent"/>
     </Style>
 
-    <!-- ── ToolTip ────────────────────────────────────────────── -->
+    <!-- ── ToolTip — inverted on light theme; uses StatusBg on dark -->
     <Style Selector="ToolTip">
-        <Setter Property="Background" Value="#23262E"/>
-        <Setter Property="Foreground" Value="#FFFFFF"/>
-        <Setter Property="BorderBrush" Value="#23262E"/>
+        <Setter Property="Background" Value="{DynamicResource StatusBgBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextOnDarkBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource StatusBgBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="4"/>
         <Setter Property="FontSize" Value="11"/>

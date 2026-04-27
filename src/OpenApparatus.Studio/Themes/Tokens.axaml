@@ -3,78 +3,106 @@
     <!--
         OpenApparatus Studio design tokens.
 
-        A small, deliberate set of resources that every view should use
-        instead of literal hex codes / pixel values / font sizes. The point
-        is consistency: any time you reach for "another light grey" or
-        "another margin," reach for one of these instead.
-
-        Surfaces       — light chrome layers. Two only.
-        Editor         — the dark canvas + status bar.
-        Borders        — hairline grey for dividers, deeper grey for accents.
-        Accent         — the brand blue and a darker hover.
-        Text           — three-step grey scale.
-        Validity       — green / red used by measurement coloring.
-        Spacing        — 4 px grid.
-        Font sizes     — four-step type scale.
-        Corners        — three-step radius scale.
+        Theme-aware colour resources are stashed inside ThemeDictionaries
+        keyed by the Avalonia theme variant ("Light" / "Dark") so the
+        same {DynamicResource Foo} reference in markup picks up the
+        right colour after Application.RequestedThemeVariant flips.
+        Non-colour tokens (spacing, type scale, corner radii) sit at
+        the top level — they're identical between themes.
     -->
 
-    <!-- ─── Surfaces ────────────────────────────────────────────── -->
-    <SolidColorBrush x:Key="SurfacePrimaryBrush"   Color="#F7F8FA"/>
-    <SolidColorBrush x:Key="SurfaceSecondaryBrush" Color="#ECEEF3"/>
-    <SolidColorBrush x:Key="SurfaceRaisedBrush"    Color="#FFFFFF"/>
+    <ResourceDictionary.ThemeDictionaries>
 
-    <!-- ─── Editor / dark surfaces ──────────────────────────────── -->
-    <SolidColorBrush x:Key="EditorBgBrush"  Color="#1A1A1F"/>
-    <SolidColorBrush x:Key="StatusBgBrush"  Color="#23232A"/>
+        <!-- ── Light (default) ───────────────────────────────────── -->
+        <ResourceDictionary x:Key="Light">
+            <!-- Surfaces -->
+            <SolidColorBrush x:Key="SurfacePrimaryBrush"   Color="#F7F8FA"/>
+            <SolidColorBrush x:Key="SurfaceSecondaryBrush" Color="#ECEEF3"/>
+            <SolidColorBrush x:Key="SurfaceRaisedBrush"    Color="#FFFFFF"/>
+            <!-- Editor / dark canvases -->
+            <SolidColorBrush x:Key="EditorBgBrush"  Color="#1A1A1F"/>
+            <SolidColorBrush x:Key="StatusBgBrush"  Color="#23232A"/>
+            <!-- Borders -->
+            <SolidColorBrush x:Key="BorderHairlineBrush" Color="#D3D7DF"/>
+            <SolidColorBrush x:Key="BorderStrongBrush"   Color="#A8AEBB"/>
+            <!-- Accent -->
+            <SolidColorBrush x:Key="AccentBrush"      Color="#1F6FEB"/>
+            <SolidColorBrush x:Key="AccentHoverBrush" Color="#1C5FC7"/>
+            <SolidColorBrush x:Key="AccentPressBrush" Color="#1850B0"/>
+            <!-- Text -->
+            <SolidColorBrush x:Key="TextPrimaryBrush"   Color="#23262E"/>
+            <SolidColorBrush x:Key="TextSecondaryBrush" Color="#5A6270"/>
+            <SolidColorBrush x:Key="TextMutedBrush"     Color="#7A808C"/>
+            <SolidColorBrush x:Key="TextOnDarkBrush"    Color="#FFFFFF"/>
+            <!-- Validity -->
+            <SolidColorBrush x:Key="ValidBrush"   Color="#28A05A"/>
+            <SolidColorBrush x:Key="InvalidBrush" Color="#C82828"/>
+            <!-- Elevation -->
+            <BoxShadows x:Key="Elevation1">0 1 2 0 #14000000</BoxShadows>
+            <BoxShadows x:Key="Elevation2">0 4 14 0 #33000000</BoxShadows>
+        </ResourceDictionary>
 
-    <!-- ─── Borders ─────────────────────────────────────────────── -->
-    <SolidColorBrush x:Key="BorderHairlineBrush" Color="#D3D7DF"/>
-    <SolidColorBrush x:Key="BorderStrongBrush"   Color="#A8AEBB"/>
+        <!-- ── Dark ─────────────────────────────────────────────── -->
+        <ResourceDictionary x:Key="Dark">
+            <!-- Surfaces — dark greys, not pitch black, so layered cards
+                 still read as "raised" against the background. -->
+            <SolidColorBrush x:Key="SurfacePrimaryBrush"   Color="#1A1B20"/>
+            <SolidColorBrush x:Key="SurfaceSecondaryBrush" Color="#15161B"/>
+            <SolidColorBrush x:Key="SurfaceRaisedBrush"    Color="#23252C"/>
+            <!-- Editor canvas + status bar — slightly distinct from
+                 SurfacePrimary so the canvas reads as a focus area. -->
+            <SolidColorBrush x:Key="EditorBgBrush"  Color="#0F1014"/>
+            <SolidColorBrush x:Key="StatusBgBrush"  Color="#0B0C10"/>
+            <!-- Borders -->
+            <SolidColorBrush x:Key="BorderHairlineBrush" Color="#2C2F37"/>
+            <SolidColorBrush x:Key="BorderStrongBrush"   Color="#454853"/>
+            <!-- Accent — a touch lighter / more saturated for dark bg
+                 contrast, still recognisably the brand blue. -->
+            <SolidColorBrush x:Key="AccentBrush"      Color="#3B86F2"/>
+            <SolidColorBrush x:Key="AccentHoverBrush" Color="#5A9BFA"/>
+            <SolidColorBrush x:Key="AccentPressBrush" Color="#1F6FEB"/>
+            <!-- Text — inverted scale. -->
+            <SolidColorBrush x:Key="TextPrimaryBrush"   Color="#E5E7EC"/>
+            <SolidColorBrush x:Key="TextSecondaryBrush" Color="#A8AEBB"/>
+            <SolidColorBrush x:Key="TextMutedBrush"     Color="#7A808C"/>
+            <SolidColorBrush x:Key="TextOnDarkBrush"    Color="#FFFFFF"/>
+            <!-- Validity tuned for dark surfaces. -->
+            <SolidColorBrush x:Key="ValidBrush"   Color="#3DD17A"/>
+            <SolidColorBrush x:Key="InvalidBrush" Color="#F26060"/>
+            <!-- Elevation — dark shadows on dark are subtle, so we lean
+                 on a thin highlight at the top. Same key, different
+                 values; rendered the same way. -->
+            <BoxShadows x:Key="Elevation1">0 1 2 0 #44000000</BoxShadows>
+            <BoxShadows x:Key="Elevation2">0 6 18 0 #66000000</BoxShadows>
+        </ResourceDictionary>
 
-    <!-- ─── Accent ──────────────────────────────────────────────── -->
-    <SolidColorBrush x:Key="AccentBrush"      Color="#1F6FEB"/>
-    <SolidColorBrush x:Key="AccentHoverBrush" Color="#1C5FC7"/>
-    <SolidColorBrush x:Key="AccentPressBrush" Color="#1850B0"/>
+    </ResourceDictionary.ThemeDictionaries>
 
-    <!-- ─── Text ────────────────────────────────────────────────── -->
-    <SolidColorBrush x:Key="TextPrimaryBrush"   Color="#23262E"/>
-    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#5A6270"/>
-    <SolidColorBrush x:Key="TextMutedBrush"     Color="#7A808C"/>
-    <SolidColorBrush x:Key="TextOnDarkBrush"    Color="#FFFFFF"/>
+    <!-- ── Theme-invariant tokens ─────────────────────────────────── -->
 
-    <!-- ─── Validity (constraint-aware overlays) ────────────────── -->
-    <SolidColorBrush x:Key="ValidBrush"   Color="#28A05A"/>
-    <SolidColorBrush x:Key="InvalidBrush" Color="#C82828"/>
-
-    <!-- ─── Spacing (4-px grid) ─────────────────────────────────── -->
+    <!-- Spacing (4-px grid) -->
     <x:Double x:Key="SpaceXs">4</x:Double>
     <x:Double x:Key="SpaceSm">8</x:Double>
     <x:Double x:Key="SpaceMd">12</x:Double>
     <x:Double x:Key="SpaceLg">16</x:Double>
     <x:Double x:Key="SpaceXl">24</x:Double>
 
-    <!-- Pre-baked Thickness convenience values for the common cases. -->
     <Thickness x:Key="PadSm">8</Thickness>
     <Thickness x:Key="PadMd">12</Thickness>
     <Thickness x:Key="PadLg">16</Thickness>
     <Thickness x:Key="PadStripH">14,8</Thickness>
     <Thickness x:Key="PadActionBar">12,6</Thickness>
 
-    <!-- ─── Type scale ──────────────────────────────────────────── -->
+    <!-- Type scale -->
     <x:Double x:Key="FontCaption">10.5</x:Double>
     <x:Double x:Key="FontBody">12</x:Double>
     <x:Double x:Key="FontBodyStrong">12</x:Double>
     <x:Double x:Key="FontTitle">14</x:Double>
 
-    <!-- ─── Corner radii ────────────────────────────────────────── -->
+    <!-- Corner radii -->
     <CornerRadius x:Key="CornerSm">4</CornerRadius>
     <CornerRadius x:Key="CornerMd">8</CornerRadius>
     <CornerRadius x:Key="CornerLg">14</CornerRadius>
     <CornerRadius x:Key="CornerPill">16</CornerRadius>
-
-    <!-- ─── Elevation (BoxShadows) ──────────────────────────────── -->
-    <BoxShadows x:Key="Elevation1">0 1 2 0 #14000000</BoxShadows>
-    <BoxShadows x:Key="Elevation2">0 4 14 0 #33000000</BoxShadows>
 
 </ResourceDictionary>
