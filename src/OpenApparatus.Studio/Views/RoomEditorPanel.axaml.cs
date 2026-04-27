@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
@@ -52,7 +54,9 @@ public partial class RoomEditorPanel : UserControl
                           or nameof(MainWindowViewModel.CurrentEnvironment)
                           or nameof(MainWindowViewModel.ViewMode)
                           or nameof(MainWindowViewModel.IsObjectsMode)
-                          or nameof(MainWindowViewModel.SelectedObjectIndex))
+                          or nameof(MainWindowViewModel.SelectedObjectIndex)
+                          or nameof(MainWindowViewModel.SelectedObjectsCount)
+                          or nameof(MainWindowViewModel.HasMultipleObjectsSelected))
         {
             Rebuild();
         }
@@ -71,7 +75,11 @@ public partial class RoomEditorPanel : UserControl
         //   - nothing → placeholder
         if (_vm.IsObjectsMode)
         {
-            if (_vm.SelectedObjectIndex >= 0 && _vm.SelectedObjectIndex < _vm.Objects.Count)
+            // Multi-select takes priority — the user explicitly assembled
+            // a group, so the inspector should reflect that.
+            if (_vm.SelectedObjectIndices.Count > 1)
+                BuildMultiSelectEditor();
+            else if (_vm.SelectedObjectIndex >= 0 && _vm.SelectedObjectIndex < _vm.Objects.Count)
                 BuildSingleObjectEditor(_vm.SelectedObjectIndex);
             else if (_vm.SelectedRoomId >= 0)
                 BuildStackedObjectsForRoom(_vm.SelectedRoomId);
@@ -152,7 +160,65 @@ public partial class RoomEditorPanel : UserControl
     void BuildObjectModePlaceholder()
     {
         AddInspectorHeader("No selection");
-        AddPlaceholderBody("Click an object to edit its type, position, or rotation. Click a tile in a room to view all of that room's objects together.");
+        AddPlaceholderBody("Click an object to edit. Ctrl-click to multi-select. Click a room tile to see every object in that room.");
+    }
+
+    /// <summary>Inspector body when more than one object is selected via
+    /// Ctrl/Shift-click. Shows a summary + a single bulk Delete action.
+    /// Per-object editing is deliberately not exposed at this level — it
+    /// would need true multi-edit support (mixed-value indicators etc).</summary>
+    void BuildMultiSelectEditor()
+    {
+        if (_vm is null) return;
+        int n = _vm.SelectedObjectIndices.Count;
+        AddInspectorHeader($"{n} objects selected", "Ctrl-click to add / remove · Esc to clear");
+
+        // Summary list — show up to ~12 distinct types so the user can
+        // sanity-check what's in the set without scrolling forever.
+        var byType = new Dictionary<string, int>();
+        foreach (var idx in _vm.SelectedObjectIndices)
+        {
+            if (idx < 0 || idx >= _vm.Objects.Count) continue;
+            var t = _vm.GetObjectType(_vm.Objects[idx].Slot);
+            string name = t?.Name ?? $"Slot {_vm.Objects[idx].Slot}";
+            byType[name] = byType.TryGetValue(name, out var c) ? c + 1 : 1;
+        }
+        var summary = new StackPanel { Spacing = 4 };
+        foreach (var kv in byType.OrderByDescending(kv => kv.Value).Take(12))
+        {
+            summary.Children.Add(new TextBlock
+            {
+                Text = $"{kv.Value}× {kv.Key}",
+                FontSize = 12,
+                Foreground = TextSecondary,
+            });
+        }
+        BodyPanel.Children.Add(new Border
+        {
+            Background = SurfaceRaised,
+            BorderBrush = BorderHair,
+            BorderThickness = new Thickness(1),
+            CornerRadius = new Avalonia.CornerRadius(8),
+            Padding = new Thickness(12),
+            Margin = new Thickness(0, 0, 0, 12),
+            Child = summary,
+        });
+
+        var bulkDelete = new Button
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(0, 0, 0, 0),
+            Background = new SolidColorBrush(Color.FromRgb(0xFD, 0xEC, 0xEC)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(0xE3, 0xB6, 0xB6)),
+            BorderThickness = new Thickness(1),
+            Foreground = new SolidColorBrush(Color.FromRgb(0xC8, 0x28, 0x28)),
+            FontWeight = FontWeight.SemiBold,
+            Padding = new Thickness(10, 6),
+            Content = $"Delete {n} objects",
+        };
+        bulkDelete.Click += (_, _) => _vm.DeleteSelectedObjectsCommand.Execute(null);
+        BodyPanel.Children.Add(bulkDelete);
     }
 
     void BuildSingleObjectEditor(int idx)

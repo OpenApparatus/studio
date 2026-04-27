@@ -167,7 +167,18 @@ public partial class MainWindow : Window
             }
             if (e.Key is Key.Delete or Key.Back)
             {
-                vm.DeleteSelectedObjectCommand.Execute(null);
+                // Multi-select aware: if more than one object is in the
+                // selection set, do a bulk delete with an Undo toast.
+                if (vm.SelectedObjectIndices.Count > 1)
+                    vm.DeleteSelectedObjectsCommand.Execute(null);
+                else
+                    vm.DeleteSelectedObjectCommand.Execute(null);
+                e.Handled = true;
+                return;
+            }
+            if (ctrl && e.Key == Key.A)
+            {
+                vm.SelectAllObjectsCommand.Execute(null);
                 e.Handled = true;
                 return;
             }

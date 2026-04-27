@@ -125,7 +125,7 @@ public class GridEditorView : Control
 
         if (vm.IsObjectsMode)
         {
-            HandleObjectsModeClick(vm, pos, origin, tilePxSize);
+            HandleObjectsModeClick(vm, pos, origin, tilePxSize, e.KeyModifiers);
             e.Handled = true;
             return;
         }
@@ -417,11 +417,12 @@ public class GridEditorView : Control
     /// if the sub-cell underneath is also a valid placement target). Falling
     /// off both clears the selection.
     /// </summary>
-    void HandleObjectsModeClick(MainWindowViewModel vm, Point pos, Point origin, double tilePxSize)
+    void HandleObjectsModeClick(MainWindowViewModel vm, Point pos, Point origin, double tilePxSize, KeyModifiers modifiers)
     {
         // 1. Object hit-test. Use a small screen-space radius around the
         //    object's projected centre.
         const double ObjHitRadiusPx = 10.0;
+        bool additive = (modifiers & (KeyModifiers.Control | KeyModifiers.Shift)) != 0;
         for (int i = 0; i < vm.Objects.Count; i++)
         {
             var o = vm.Objects[i];
@@ -431,7 +432,8 @@ public class GridEditorView : Control
             double dx = screen.X - pos.X, dy = screen.Y - pos.Y;
             if (dx * dx + dy * dy <= ObjHitRadiusPx * ObjHitRadiusPx)
             {
-                vm.SelectedObjectIndex = i;
+                if (additive) vm.ToggleObjectInSelection(i);
+                else vm.SetObjectSelection(i);
                 vm.SelectedSubCell = null;
                 return;
             }
@@ -441,7 +443,7 @@ public class GridEditorView : Control
         if (TryHitSubCell(vm, pos, origin, tilePxSize, out var sc))
         {
             vm.SelectedSubCell = sc;
-            vm.SelectedObjectIndex = -1;
+            vm.SetObjectSelection(-1);
             return;
         }
 
@@ -1772,7 +1774,11 @@ public class GridEditorView : Control
             var fill = new SolidColorBrush(Color.FromArgb(alpha,
                 (byte)(type.Color.X * 255), (byte)(type.Color.Y * 255), (byte)(type.Color.Z * 255)));
             var border = new Pen(new SolidColorBrush(Color.FromArgb(alpha, 30, 30, 40)), 1.2);
-            bool selected = vm.IsObjectsMode && i == vm.SelectedObjectIndex;
+            // Multi-select: any object in vm.SelectedObjectIndices gets a
+            // ring; the primary (single) selection still drives the
+            // inspector binding.
+            bool selected = vm.IsObjectsMode &&
+                (vm.SelectedObjectIndices.Contains(i) || i == vm.SelectedObjectIndex);
             // 2D icon footprint: roughly 1/3 of a tile, capped at 16 px.
             double iconR = System.Math.Min(16.0, System.Math.Max(6.0, tileSize * 0.25));
             DrawObjectIcon(ctx, type.Shape, screen, iconR, fill, border);

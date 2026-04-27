@@ -1821,6 +1821,76 @@ public partial class MainWindowViewModel : ViewModelBase
         _nextRoomId = 0;
     }
 
+    /// <summary>Multi-selection set for objects. Shadows
+    /// SelectedObjectIndex (which stays the "primary" / inspector-shown
+    /// item). Click sets {idx}; Ctrl/Shift+click toggles in place.</summary>
+    public HashSet<int> SelectedObjectIndices { get; } = new();
+    public int SelectedObjectsCount => SelectedObjectIndices.Count;
+    public bool HasMultipleObjectsSelected => SelectedObjectIndices.Count > 1;
+
+    /// <summary>Replaces the multi-selection with a single index. Use
+    /// for plain (no-modifier) clicks.</summary>
+    public void SetObjectSelection(int idx)
+    {
+        SelectedObjectIndices.Clear();
+        if (idx >= 0) SelectedObjectIndices.Add(idx);
+        SelectedObjectIndex = idx;
+        OnPropertyChanged(nameof(SelectedObjectsCount));
+        OnPropertyChanged(nameof(HasMultipleObjectsSelected));
+    }
+    /// <summary>Toggles a single index in / out of the multi-selection.
+    /// Used for Ctrl-click. Updates SelectedObjectIndex to be the most
+    /// recently added index (or -1 if the last entry was removed).</summary>
+    public void ToggleObjectInSelection(int idx)
+    {
+        if (idx < 0) return;
+        if (!SelectedObjectIndices.Add(idx))
+            SelectedObjectIndices.Remove(idx);
+        SelectedObjectIndex = SelectedObjectIndices.Contains(idx)
+            ? idx
+            : (SelectedObjectIndices.Count > 0 ? SelectedObjectIndices.GetEnumerator() is { } e && e.MoveNext() ? e.Current : -1 : -1);
+        OnPropertyChanged(nameof(SelectedObjectsCount));
+        OnPropertyChanged(nameof(HasMultipleObjectsSelected));
+    }
+    /// <summary>Ctrl+A — select every object on the canvas.</summary>
+    [RelayCommand]
+    void SelectAllObjects()
+    {
+        if (!IsObjectsMode) return;
+        SelectedObjectIndices.Clear();
+        for (int i = 0; i < _objects.Count; i++) SelectedObjectIndices.Add(i);
+        SelectedObjectIndex = _objects.Count > 0 ? 0 : -1;
+        OnPropertyChanged(nameof(SelectedObjectsCount));
+        OnPropertyChanged(nameof(HasMultipleObjectsSelected));
+        EditVersion++;
+    }
+
+    /// <summary>Bulk delete — removes every object in the multi-select.
+    /// Indices are removed in descending order so the underlying List
+    /// stays consistent during iteration.</summary>
+    [RelayCommand]
+    void DeleteSelectedObjects()
+    {
+        if (SelectedObjectIndices.Count == 0) return;
+        PushUndo();
+        int removed = 0;
+        foreach (var idx in SelectedObjectIndices.OrderByDescending(i => i))
+        {
+            if (idx < 0 || idx >= _objects.Count) continue;
+            _objects.RemoveAt(idx);
+            removed++;
+        }
+        SelectedObjectIndices.Clear();
+        SelectedObjectIndex = -1;
+        OnPropertyChanged(nameof(SelectedObjectsCount));
+        OnPropertyChanged(nameof(HasMultipleObjectsSelected));
+        EditVersion++;
+        OpenApparatus.Studio.Services.Toasts.Default.Show(
+            $"Deleted {removed} object{(removed == 1 ? "" : "s")}.",
+            OpenApparatus.Studio.Services.ToastSeverity.Warning,
+            undo: () => UndoCommand.Execute(null));
+    }
+
     /// <summary>True when any empty tiles are currently selected. Drives
     /// the enabled state of "Create Room from Selection" so it grays
     /// out when nothing is selected.</summary>
