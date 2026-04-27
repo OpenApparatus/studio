@@ -614,9 +614,19 @@
                 </StackPanel>
         </Border>
 
-        <!-- Status bar -->
-        <Border DockPanel.Dock="Bottom" Background="{StaticResource StatusBgBrush}" Padding="12 6">
-            <TextBlock Text="{Binding StatusMessage}" Foreground="#cccccc"/>
+        <!-- Status bar — sits below the editor surface. Lighter than the
+             editor canvas so the chrome doesn't out-weigh the content,
+             with a small accent dot before the message to make it feel
+             like a live status indicator rather than a passive footer. -->
+        <Border DockPanel.Dock="Bottom" Background="{StaticResource StatusBgBrush}" Padding="14 6">
+            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                <Ellipse Width="6" Height="6" VerticalAlignment="Center"
+                         Fill="{StaticResource AccentBrush}"/>
+                <TextBlock Text="{Binding StatusMessage}"
+                           Foreground="#E5E7EC"
+                           FontSize="{StaticResource FontBody}"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
         </Border>
 
         <Grid ColumnDefinitions="280,*,260">
