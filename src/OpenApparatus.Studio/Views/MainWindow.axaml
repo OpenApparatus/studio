@@ -73,11 +73,6 @@
             <Setter Property="Padding" Value="10 6"/>
             <Setter Property="HorizontalAlignment" Value="Stretch"/>
         </Style>
-        <Style Selector="Border.card CheckBox">
-            <Setter Property="FontSize" Value="11"/>
-            <Setter Property="MinHeight" Value="0"/>
-            <Setter Property="Padding" Value="4 0 0 0"/>
-        </Style>
         <Style Selector="Border.card TextBlock">
             <Setter Property="FontSize" Value="11"/>
         </Style>
@@ -86,6 +81,28 @@
             <Setter Property="FontSize" Value="10"/>
             <Setter Property="Foreground" Value="#5a6270"/>
             <Setter Property="Margin" Value="0 0 0 3"/>
+        </Style>
+        <!-- Pill-style toggle buttons: a single chip with the label inside.
+             Lit blue when checked. -->
+        <Style Selector="ToggleButton.pill">
+            <Setter Property="Padding" Value="8 3"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="MinWidth" Value="0"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Background" Value="#f4f5f7"/>
+            <Setter Property="BorderBrush" Value="#c8ccd6"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="14"/>
+            <Setter Property="Margin" Value="0 0 4 0"/>
+        </Style>
+        <Style Selector="ToggleButton.pill:checked /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#1f6feb"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        <Style Selector="ToggleButton.pill:checked">
+            <Setter Property="Background" Value="#1f6feb"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#1c5fc7"/>
         </Style>
     </Window.Styles>
 
@@ -134,66 +151,63 @@
         <Border DockPanel.Dock="Top" Background="#eef0f5" BorderBrush="#cdd1d9" BorderThickness="0 0 0 1" Padding="8">
             <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="6">
 
-                <!-- View card -->
+                <!-- View card — single row of pill toggles + compact sliders. -->
                 <Border Grid.Column="0" Classes="card">
                     <StackPanel Spacing="2">
                         <TextBlock Classes="cardHdr" Text="VIEW"/>
-                        <Grid ColumnDefinitions="Auto,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="14" RowSpacing="2">
-                            <CheckBox Grid.Row="0" Grid.Column="0" Content="Wall borders"
-                                      IsChecked="{Binding ShowWallBorders}"
-                                      ToolTip.Tip="14-px coloured ribbons just inside each wall."/>
-                            <CheckBox Grid.Row="0" Grid.Column="1" Content="Room labels"
-                                      IsChecked="{Binding ShowRoomLabels}"
-                                      ToolTip.Tip="Room id + name at room centre."/>
-                            <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" Spacing="4">
-                                <TextBlock Text="Border α" VerticalAlignment="Center" Foreground="#555"/>
-                                <Slider Width="80" Minimum="0" Maximum="1" Margin="0"
-                                        Value="{Binding WallBorderOpacity, Mode=TwoWay}"
-                                        IsEnabled="{Binding ShowWallBorders}"
-                                        ToolTip.Tip="Opacity of the wall border ribbons."/>
-                            </StackPanel>
-                            <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="4">
-                                <TextBlock Text="Saturation" VerticalAlignment="Center" Foreground="#555"/>
-                                <Slider Width="80" Minimum="0" Maximum="1" Margin="0"
-                                        Value="{Binding TileSaturation, Mode=TwoWay}"
-                                        ToolTip.Tip="Mute room tile colours."/>
-                            </StackPanel>
-                        </Grid>
+                        <StackPanel Orientation="Horizontal" Spacing="0" VerticalAlignment="Center">
+                            <ToggleButton Classes="pill" Content="Borders"
+                                          IsChecked="{Binding ShowWallBorders}"
+                                          ToolTip.Tip="14-px coloured ribbons inside each wall."/>
+                            <ToggleButton Classes="pill" Content="Labels"
+                                          IsChecked="{Binding ShowRoomLabels}"
+                                          ToolTip.Tip="Room id + name at room centre."/>
+                            <Slider Width="64" Minimum="0" Maximum="1" Margin="6 0 0 0"
+                                    Value="{Binding WallBorderOpacity, Mode=TwoWay}"
+                                    IsEnabled="{Binding ShowWallBorders}"
+                                    VerticalAlignment="Center"
+                                    ToolTip.Tip="Wall border opacity."/>
+                            <Slider Width="64" Minimum="0" Maximum="1" Margin="6 0 0 0"
+                                    Value="{Binding TileSaturation, Mode=TwoWay}"
+                                    VerticalAlignment="Center"
+                                    ToolTip.Tip="Tile colour saturation."/>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
 
-                <!-- Layout measurements card -->
+                <!-- Layout measurements card — three pill toggles. -->
                 <Border Grid.Column="1" Classes="card">
                     <StackPanel Spacing="2">
                         <TextBlock Classes="cardHdr" Text="LAYOUT MEASUREMENTS"/>
-                        <Grid ColumnDefinitions="Auto,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="14" RowSpacing="2">
-                            <CheckBox Grid.Row="0" Grid.Column="0" Content="Room dims"
-                                      IsChecked="{Binding ShowRoomDimensions}"
-                                      ToolTip.Tip="W × D label per room."/>
-                            <CheckBox Grid.Row="0" Grid.Column="1" Content="Floor area"
-                                      IsChecked="{Binding ShowFloorAreaLabels}"
-                                      ToolTip.Tip="m² label per room."/>
-                            <CheckBox Grid.Row="1" Grid.Column="0" Content="Wall lengths"
-                                      IsChecked="{Binding ShowWallLengthLabels}"
-                                      ToolTip.Tip="Length per wall segment."/>
-                            <CheckBox Grid.Row="1" Grid.Column="1" Content="Opening sizes"
-                                      IsChecked="{Binding ShowOpeningSizeLabels}"
-                                      ToolTip.Tip="Width × height per door / window."/>
-                        </Grid>
+                        <StackPanel Orientation="Horizontal" Spacing="0">
+                            <ToggleButton Classes="pill" Content="Dimensions"
+                                          IsChecked="{Binding ShowRoomDimensions}"
+                                          ToolTip.Tip="W × D label per room."/>
+                            <ToggleButton Classes="pill" Content="Area"
+                                          IsChecked="{Binding ShowFloorAreaLabels}"
+                                          ToolTip.Tip="m² label per room."/>
+                            <ToggleButton Classes="pill" Content="Openings"
+                                          IsChecked="{Binding ShowOpeningSizeLabels}"
+                                          ToolTip.Tip="Width × height per door / window."/>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
 
-                <!-- Object measurements card -->
+                <!-- Object measurements card — three independent pill toggles. -->
                 <Border Grid.Column="2" Classes="card">
                     <StackPanel Spacing="2">
                         <TextBlock Classes="cardHdr" Text="OBJECT MEASUREMENTS"/>
-                        <CheckBox Content="Show measurements"
-                                  IsChecked="{Binding ShowMeasurements}"
-                                  ToolTip.Tip="Door→object distance + angle and inter-object distance lines."/>
-                        <CheckBox Content="Selected room only"
-                                  IsChecked="{Binding MeasurementsSelectedRoomOnly}"
-                                  IsEnabled="{Binding ShowMeasurements}"
-                                  ToolTip.Tip="When on (and a room is selected) only that room's lines render."/>
+                        <StackPanel Orientation="Horizontal" Spacing="0">
+                            <ToggleButton Classes="pill" Content="Object distances"
+                                          IsChecked="{Binding ShowObjectDistances}"
+                                          ToolTip.Tip="Inter-object distance line + label."/>
+                            <ToggleButton Classes="pill" Content="Door angles"
+                                          IsChecked="{Binding ShowDoorAngles}"
+                                          ToolTip.Tip="Angle arc + |angle| label at every door, plus 0° tick."/>
+                            <ToggleButton Classes="pill" Content="Door distances"
+                                          IsChecked="{Binding ShowDoorDistances}"
+                                          ToolTip.Tip="Door→object line + distance label."/>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
 
@@ -201,18 +215,17 @@
                 <Border Grid.Column="3" Classes="card">
                     <StackPanel Spacing="2">
                         <TextBlock Classes="cardHdr" Text="PATHS"/>
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <CheckBox Content="Show paths"
-                                      IsChecked="{Binding ShowPaths}"
-                                      VerticalAlignment="Center"
-                                      ToolTip.Tip="Polyline through every traversable wall (open / doorway)."/>
-                            <Button Width="18" Height="18" Padding="0"
+                        <StackPanel Orientation="Horizontal" Spacing="0" VerticalAlignment="Center">
+                            <ToggleButton Classes="pill" Content="Show"
+                                          IsChecked="{Binding ShowPaths}"
+                                          ToolTip.Tip="Polyline through every traversable wall (open / doorway)."/>
+                            <Button Width="20" Height="20" Padding="0" Margin="4 0 0 0"
                                     BorderBrush="#888" BorderThickness="1"
                                     Background="{Binding PathColor, Converter={x:Static converters:Vector3ToBrushConverter.Instance}}"
                                     Click="OnPickPathColor"
                                     VerticalAlignment="Center"
                                     ToolTip.Tip="Path overlay colour"/>
-                            <Button Width="22" Height="22" Padding="0"
+                            <Button Width="22" Height="22" Padding="0" Margin="4 0 0 0"
                                     Command="{Binding TogglePathAnimationCommand}"
                                     VerticalAlignment="Center"
                                     Content="{Binding IsPathAnimating, Converter={x:Static converters:BoolToTextConverter.Instance}, ConverterParameter='■|▶'}"

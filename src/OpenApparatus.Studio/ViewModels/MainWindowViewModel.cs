@@ -542,16 +542,22 @@ public partial class MainWindowViewModel : ViewModelBase
         EditVersion++;
     }
 
-    /// <summary>Master toggle for the measurement overlay (door→object lines
-    /// with angle, plus inter-object distance lines). On by default.</summary>
-    [ObservableProperty] bool _showMeasurements = true;
-    partial void OnShowMeasurementsChanged(bool value) => EditVersion++;
+    /// <summary>Inter-object distance line + label.</summary>
+    [ObservableProperty] bool _showObjectDistances;
+    partial void OnShowObjectDistancesChanged(bool value) => EditVersion++;
 
-    /// <summary>When true and a room is selected, only that room's
-    /// measurements are drawn. When false, every room's measurements show.
-    /// On by default. Has no effect when <see cref="ShowMeasurements"/> is off.</summary>
-    [ObservableProperty] bool _measurementsSelectedRoomOnly = true;
-    partial void OnMeasurementsSelectedRoomOnlyChanged(bool value) => EditVersion++;
+    /// <summary>Door→object angle arc + |angle| label.</summary>
+    [ObservableProperty] bool _showDoorAngles;
+    partial void OnShowDoorAnglesChanged(bool value) => EditVersion++;
+
+    /// <summary>Door→object distance line + label.</summary>
+    [ObservableProperty] bool _showDoorDistances;
+    partial void OnShowDoorDistancesChanged(bool value) => EditVersion++;
+
+    /// <summary>True when any object-measurement layer is on. Used by the
+    /// renderer to short-circuit early.</summary>
+    public bool AnyObjectMeasurementsVisible
+        => ShowObjectDistances || ShowDoorAngles || ShowDoorDistances;
 
     /// <summary>Active placement constraints. Stored as a single instance so
     /// the panel can mutate fields directly; mutations call

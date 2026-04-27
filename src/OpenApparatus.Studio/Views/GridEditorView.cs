@@ -985,8 +985,7 @@ public class GridEditorView : Control
     {
         if (!vm.ShowRoomDimensions
             && !vm.ShowFloorAreaLabels
-            && !vm.ShowOpeningSizeLabels
-            && !vm.ShowWallLengthLabels) return;
+            && !vm.ShowOpeningSizeLabels) return;
         if (vm.CurrentEnvironment is not { } env) return;
 
         Point ToScreen(System.Numerics.Vector2 worldXz)
@@ -1027,21 +1026,6 @@ public class GridEditorView : Control
                         $"{rect.Width * rect.Depth:0.00} m²",
                         new Point(p.X, y));
                 }
-            }
-        }
-
-        // Per-wall length labels at each segment's midpoint, slightly offset
-        // outward (or just at midpoint — outward needs a side choice; centre
-        // works fine and reads against the wall outline).
-        if (vm.ShowWallLengthLabels)
-        {
-            foreach (var adj in env.Adjacencies)
-            {
-                var seg = adj.SharedSegment;
-                var mid = seg.Midpoint;
-                var p = ToScreen(mid);
-                DrawLabel(ctx, typeface, labelBrush, labelBg, labelBorder,
-                    $"{seg.Length:0.00} m", p);
             }
         }
 
@@ -1089,16 +1073,7 @@ public class GridEditorView : Control
         // (the same scope as measurements: every room or just the selected).
         if (c.DoorToObjectEnabled && (c.DoorToObjectMin > 0 || c.DoorToObjectMax > 0 || c.DoorAngleBandEnabled))
         {
-            var rooms = new List<OpenApparatus.Topology.Room>();
-            if (vm.MeasurementsSelectedRoomOnly && vm.SelectedRoomId >= 0)
-            {
-                foreach (var r in env.Rooms)
-                    if (r.Id == vm.SelectedRoomId) { rooms.Add(r); break; }
-            }
-            else
-            {
-                foreach (var r in env.Rooms) rooms.Add(r);
-            }
+            var rooms = new List<OpenApparatus.Topology.Room>(env.Rooms);
 
             var zoneFill = new SolidColorBrush(Color.FromArgb(60, 90, 200, 130));
             var zoneEdge = new Pen(new SolidColorBrush(Color.FromArgb(180, 60, 160, 100)), 0.8);
@@ -1267,27 +1242,21 @@ public class GridEditorView : Control
     }
 
     /// <summary>
-    /// Draws the door-to-object and object-to-object measurement overlay for
-    /// the rooms currently in scope. Honors both ShowMeasurements (master
-    /// toggle) and MeasurementsSelectedRoomOnly (filter).
+    /// Draws the object-measurement overlay. Three independent sub-layers,
+    /// each gated by its own VM toggle:
+    ///   ShowDoorDistances  - door→object line + midpoint distance label.
+    ///   ShowDoorAngles     - door→object angle arc + |angle| label + 0° tick.
+    ///   ShowObjectDistances- object↔object line + midpoint distance label.
     /// </summary>
     static void DrawMeasurements(DrawingContext ctx, MainWindowViewModel vm, Point origin, double tileSize)
     {
-        if (!vm.ShowMeasurements) return;
+        if (!vm.AnyObjectMeasurementsVisible) return;
         if (vm.CurrentEnvironment is not { } env) return;
         if (vm.Objects.Count == 0) return;
 
-        // Which rooms get measurements?
-        var rooms = new List<OpenApparatus.Topology.Room>();
-        if (vm.MeasurementsSelectedRoomOnly && vm.SelectedRoomId >= 0)
-        {
-            foreach (var r in env.Rooms)
-                if (r.Id == vm.SelectedRoomId) { rooms.Add(r); break; }
-        }
-        else
-        {
-            foreach (var r in env.Rooms) rooms.Add(r);
-        }
+        // Always run across every room — fine-grained toggles drive what
+        // actually renders. (The 'Selected room only' filter is gone.)
+        var rooms = new List<OpenApparatus.Topology.Room>(env.Rooms);
         if (rooms.Count == 0) return;
 
         Point ToScreen(System.Numerics.Vector2 worldXz)
@@ -1341,11 +1310,13 @@ public class GridEditorView : Control
 
             // 0° reference tick at every door — short line pointing inward
             // along the door's normal, with a small "0°" label so the angle
-            // zero is explicit.
+            // zero is explicit. Gated by the door-angles toggle since it's
+            // an angle aid.
             var zeroPen = new Pen(new SolidColorBrush(Color.FromArgb(160, 70, 70, 90)), 1.0)
             {
                 DashStyle = new DashStyle(new[] { 2.0, 2.0 }, 0),
             };
+            if (vm.ShowDoorAngles)
             foreach (var (doorPos, inward) in doors)
             {
                 var doorScr = ToScreen(doorPos);
@@ -1366,8 +1337,10 @@ public class GridEditorView : Control
                               tickEnd.Y + inU.Y * 2 - zeroFmt.Height * 0.5));
             }
 
-            // Door → object: line + midpoint distance label + angle arc + angle
-            // label at the door.
+            // Door → object: per door, per object. Distance line + midpoint
+            // label is the ShowDoorDistances layer; angle arc + |angle| label
+            // is the ShowDoorAngles layer. Each is rendered independently.
+            if (vm.ShowDoorDistances || vm.ShowDoorAngles)
             foreach (var (doorPos, inward) in doors)
             {
                 var doorScr = ToScreen(doorPos);
@@ -1378,28 +1351,30 @@ public class GridEditorView : Control
                     var v = objPos - doorPos;
                     double dist = v.Length();
 
-                    ctx.DrawLine(doorObjPen, doorScr, objScr);
+                    if (vm.ShowDoorDistances)
+                    {
+                        ctx.DrawLine(doorObjPen, doorScr, objScr);
+                        DrawLabel(ctx, typeface, labelBrush, labelBg, labelBorder,
+                            $"{dist:0.00} m",
+                            new Point((doorScr.X + objScr.X) * 0.5, (doorScr.Y + objScr.Y) * 0.5));
+                    }
 
-                    // Angle: 0° = along the door's inward normal. Positive =
-                    // the user's left (CCW when looking down +Y in world; on
-                    // screen Y is flipped so we negate the cross-product
-                    // component to keep "left" consistent with the world).
-                    double forward = v.X * inward.X + v.Y * inward.Y;
-                    double perp = v.X * inward.Y - v.Y * inward.X; // cross-z
-                    double angleRad = System.Math.Atan2(perp, forward);
-                    double angleDeg = angleRad * 180.0 / System.Math.PI;
-
-                    DrawAngleArc(ctx, arcPen, doorScr, inward, angleRad, vm.TileSize, tileSize);
-                    DrawLabel(ctx, typeface, labelBrush, labelBg, labelBorder,
-                        $"{dist:0.00} m",
-                        new Point((doorScr.X + objScr.X) * 0.5, (doorScr.Y + objScr.Y) * 0.5));
-                    DrawLabel(ctx, typeface, labelBrush, labelBg, labelBorder,
-                        $"{System.Math.Abs(angleDeg):0}°",
-                        AngleLabelAnchor(doorScr, inward, angleRad, vm.TileSize, tileSize));
+                    if (vm.ShowDoorAngles)
+                    {
+                        double forward = v.X * inward.X + v.Y * inward.Y;
+                        double perp = v.X * inward.Y - v.Y * inward.X;
+                        double angleRad = System.Math.Atan2(perp, forward);
+                        double angleDeg = angleRad * 180.0 / System.Math.PI;
+                        DrawAngleArc(ctx, arcPen, doorScr, inward, angleRad, vm.TileSize, tileSize);
+                        DrawLabel(ctx, typeface, labelBrush, labelBg, labelBorder,
+                            $"{System.Math.Abs(angleDeg):0}°",
+                            AngleLabelAnchor(doorScr, inward, angleRad, vm.TileSize, tileSize));
+                    }
                 }
             }
 
-            // Object ↔ object: just a line + distance label.
+            // Object ↔ object distances.
+            if (vm.ShowObjectDistances)
             for (int i = 0; i < objs.Count; i++)
                 for (int j = i + 1; j < objs.Count; j++)
                 {
