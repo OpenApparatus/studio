@@ -204,6 +204,25 @@ public sealed class WelcomePanel : ContentControl
             VerticalAlignment = VerticalAlignment.Center,
             Width = 620,
             BoxShadow = BoxShadows.Parse("0 12 36 0 #44000000"),
+            // Entrance animation: fade in + slide up. Set initial state
+            // here, animate after layout via the dispatcher post below.
+            Opacity = 0,
+            RenderTransform = new TranslateTransform(0, 12),
+            Transitions = new Avalonia.Animation.Transitions
+            {
+                new Avalonia.Animation.DoubleTransition
+                {
+                    Property = OpacityProperty,
+                    Duration = TimeSpan.FromMilliseconds(280),
+                    Easing = new Avalonia.Animation.Easings.CubicEaseOut(),
+                },
+                new Avalonia.Animation.TransformOperationsTransition
+                {
+                    Property = RenderTransformProperty,
+                    Duration = TimeSpan.FromMilliseconds(320),
+                    Easing = new Avalonia.Animation.Easings.CubicEaseOut(),
+                },
+            },
             Child = new StackPanel
             {
                 Children =
@@ -235,15 +254,15 @@ public sealed class WelcomePanel : ContentControl
 
         Content = backdrop;
 
-        // Auto-focus the primary action so Enter / Space triggers
-        // immediately (matches Figma / Notion welcome flows). Posted
-        // to the dispatcher so focus runs after this build cycle.
-        if (_primaryAction is not null)
+        // Run the entrance animation + auto-focus once the card has
+        // landed in the visual tree. Both posted at Render priority so
+        // they happen on the next frame after layout.
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
         {
-            Avalonia.Threading.Dispatcher.UIThread.Post(
-                () => _primaryAction?.Focus(),
-                Avalonia.Threading.DispatcherPriority.Render);
-        }
+            card.Opacity = 1;
+            card.RenderTransform = new TranslateTransform(0, 0);
+            _primaryAction?.Focus();
+        }, Avalonia.Threading.DispatcherPriority.Render);
     }
 
     Control MakeAction(string title, string subtitle, string iconSymbol, Action onClick, bool primary = false)

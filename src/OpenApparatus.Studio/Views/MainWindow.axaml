@@ -87,6 +87,9 @@
             <Setter Property="HorizontalContentAlignment" Value="Right"/>
             <Setter Property="FontSize" Value="{StaticResource FontBody}"/>
             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <!-- Lets users type "3+2" / "(1.2+0.05)*2" etc. and get
+                 the result on Enter / blur. -->
+            <Setter Property="behaviors:NumericExpression.Enabled" Value="True"/>
         </Style>
         <Style Selector="NumericUpDown.compact TextBox">
             <Setter Property="MinHeight" Value="0"/>

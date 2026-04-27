@@ -26,6 +26,44 @@ public partial class MainWindow : Window
         // is best-effort; a missing file just keeps the design defaults.
         Opened += OnOpened;
         Closing += OnClosing;
+
+        // Programmatic app icon — the same three-square brand mark used
+        // in the welcome screen + about dialog, rendered to a 64-px
+        // bitmap so the OS taskbar / Alt-Tab gets a real icon instead
+        // of falling back to a generic Avalonia placeholder.
+        Icon = BuildBrandIcon();
+    }
+
+    static Avalonia.Controls.WindowIcon BuildBrandIcon()
+    {
+        const int Size = 64;
+        var bmp = new Avalonia.Media.Imaging.RenderTargetBitmap(
+            new Avalonia.PixelSize(Size, Size),
+            new Avalonia.Vector(96, 96));
+        using (var ctx = bmp.CreateDrawingContext())
+        {
+            ctx.FillRectangle(
+                new Avalonia.Media.SolidColorBrush(Avalonia.Media.Colors.Transparent),
+                new Avalonia.Rect(0, 0, Size, Size));
+            for (int i = 0; i < 3; i++)
+            {
+                double s = 56 - i * 16;
+                double x = (Size - s) * 0.5;
+                var pen = new Avalonia.Media.Pen(
+                    new Avalonia.Media.SolidColorBrush(
+                        Avalonia.Media.Color.FromArgb(
+                            (byte)(220 - i * 50), 0x1F, 0x6F, 0xEB)),
+                    2.4);
+                Avalonia.Media.IBrush? fill = i == 0
+                    ? new Avalonia.Media.SolidColorBrush(
+                        Avalonia.Media.Color.FromArgb(40, 0x1F, 0x6F, 0xEB))
+                    : null;
+                ctx.DrawRectangle(fill, pen,
+                    new Avalonia.Rect(x, x, s, s),
+                    5, 5);
+            }
+        }
+        return new Avalonia.Controls.WindowIcon(bmp);
     }
 
     void OnOpened(object? sender, EventArgs e)

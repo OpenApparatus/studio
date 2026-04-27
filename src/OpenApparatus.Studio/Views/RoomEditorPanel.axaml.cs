@@ -225,6 +225,116 @@ public partial class RoomEditorPanel : UserControl
         });
     }
 
+    /// <summary>Builds a horizontal Vector3 row (label on top, three
+    /// axis-coloured NumericUpDowns side-by-side). Each axis carries
+    /// its standard colour: X = red, Y = green, Z = blue. Used by the
+    /// object inspector for Position; future use for Scale / etc.
+    /// would be a one-line drop-in.</summary>
+    Control BuildVector3Row(
+        string label, string unit,
+        float x, float y, float z,
+        (double Min, double Max, double Step) xRange,
+        (double Min, double Max, double Step) yRange,
+        (double Min, double Max, double Step) zRange,
+        System.Action<float, float, float> onChanged)
+    {
+        var holder = new StackPanel { Margin = new Thickness(0, 0, 0, 8) };
+        var headerRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+        headerRow.Children.Add(new TextBlock
+        {
+            Text = label,
+            FontSize = 12,
+            Foreground = TextSecondary,
+            VerticalAlignment = VerticalAlignment.Center,
+        });
+        headerRow.Children.Add(new TextBlock
+        {
+            Text = $"({unit})",
+            FontSize = 11,
+            Foreground = TextMuted,
+            VerticalAlignment = VerticalAlignment.Center,
+        });
+        holder.Children.Add(headerRow);
+
+        var grid = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitions("*,*,*"),
+            ColumnSpacing = 6,
+            Margin = new Thickness(0, 4, 0, 0),
+        };
+
+        // Track values so each handler can recompose the full Vector3.
+        float curX = x, curY = y, curZ = z;
+        bool suppress = false;
+
+        Control AxisCell(int col, string letter, Color axisColor,
+                         double value, (double Min, double Max, double Step) range,
+                         System.Action<float> setLocal)
+        {
+            var cell = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*") };
+            // Coloured letter chip on the left.
+            var chip = new Border
+            {
+                Background = new SolidColorBrush(axisColor),
+                CornerRadius = new Avalonia.CornerRadius(3, 0, 0, 3),
+                Padding = new Thickness(6, 0),
+                Width = 18,
+                Child = new TextBlock
+                {
+                    Text = letter,
+                    FontSize = 10,
+                    FontWeight = FontWeight.SemiBold,
+                    Foreground = new SolidColorBrush(Colors.White),
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                },
+            };
+            Grid.SetColumn(chip, 0);
+            cell.Children.Add(chip);
+
+            var box = new NumericUpDown
+            {
+                Value = (decimal)value,
+                Minimum = (decimal)range.Min,
+                Maximum = (decimal)range.Max,
+                Increment = (decimal)range.Step,
+                FormatString = "0.00",
+                ShowButtonSpinner = false,
+                MinHeight = 0,
+                Height = 28,
+                Padding = new Thickness(6, 4),
+                FontSize = 12,
+                Background = new SolidColorBrush(Color.FromRgb(0xF7, 0xF8, 0xFA)),
+                BorderBrush = new SolidColorBrush(Color.FromRgb(0xD3, 0xD7, 0xDF)),
+                BorderThickness = new Thickness(0, 1, 1, 1),
+                CornerRadius = new Avalonia.CornerRadius(0, 3, 3, 0),
+            };
+            box.ValueChanged += (_, e) =>
+            {
+                if (suppress) return;
+                if (!e.NewValue.HasValue) return;
+                setLocal((float)e.NewValue.Value);
+                onChanged(curX, curY, curZ);
+            };
+            Grid.SetColumn(box, 1);
+            cell.Children.Add(box);
+            Grid.SetColumn(cell, col);
+            return cell;
+        }
+
+        // Standard axis colour conventions — red/green/blue at slightly
+        // muted saturation so they don't shout next to the brand blue.
+        grid.Children.Add(AxisCell(0, "X", Color.FromRgb(0xD0, 0x46, 0x46),
+            x, xRange, v => { curX = v; }));
+        grid.Children.Add(AxisCell(1, "Y", Color.FromRgb(0x4D, 0xA8, 0x55),
+            y, yRange, v => { curY = v; }));
+        grid.Children.Add(AxisCell(2, "Z", Color.FromRgb(0x3A, 0x6E, 0xC4),
+            z, zRange, v => { curZ = v; }));
+
+        holder.Children.Add(grid);
+        return holder;
+    }
+
     /// <summary>Compass-direction caption for a wall, derived from the
     /// adjacency segment's outward normal in world XZ. World X is east,
     /// world Z is south. Returns one of "north / east / south / west".</summary>
@@ -332,12 +442,21 @@ public partial class RoomEditorPanel : UserControl
             Margin = new Thickness(0, 0, 0, 6),
         });
 
-        host.Children.Add(NumericRow("X (m)", sel.Position.X, -100, 100, 0.05,
-            v => { sel.Position = new System.Numerics.Vector3((float)v, sel.Position.Y, sel.Position.Z); _vm.OnEditedSelectedObject(); }));
-        host.Children.Add(NumericRow("Y (m)", sel.Position.Y, 0, 5, 0.05,
-            v => { sel.Position = new System.Numerics.Vector3(sel.Position.X, (float)v, sel.Position.Z); _vm.OnEditedSelectedObject(); }));
-        host.Children.Add(NumericRow("Z (m)", sel.Position.Z, -100, 100, 0.05,
-            v => { sel.Position = new System.Numerics.Vector3(sel.Position.X, sel.Position.Y, (float)v); _vm.OnEditedSelectedObject(); }));
+        // Position — single horizontal row with X/Y/Z side-by-side, each
+        // labelled in its axis colour (Unity / Blender / Houdini convention:
+        // red X, green Y, blue Z). Reads as one transform unit instead of
+        // four floating numeric inputs.
+        host.Children.Add(BuildVector3Row(
+            "Position", "m",
+            sel.Position.X, sel.Position.Y, sel.Position.Z,
+            (-100, 100, 0.05),
+            (0, 5, 0.05),
+            (-100, 100, 0.05),
+            (x, y, z) =>
+            {
+                sel.Position = new System.Numerics.Vector3(x, y, z);
+                _vm.OnEditedSelectedObject();
+            }));
         host.Children.Add(NumericRow("Rotation (°)", sel.Rotation * (180.0 / System.Math.PI), -360, 360, 5,
             v => { sel.Rotation = (float)(v * System.Math.PI / 180.0); _vm.OnEditedSelectedObject(); }));
 
