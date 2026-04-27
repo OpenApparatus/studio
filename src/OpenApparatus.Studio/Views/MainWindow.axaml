@@ -948,11 +948,19 @@
                                     <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="compact"
                                                    Value="{Binding DefaultObjectY}"
                                                    Minimum="0" Maximum="3.0" Increment="0.05" FormatString="0.00"/>
-                                    <TextBlock Grid.Row="1" Grid.Column="0" Classes="propLabel" Text="Sub-grid (per tile)"
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Classes="propLabel" Text="Sub-grid"
                                                ToolTip.Tip="Each tile is divided into N×N sub-cells. 1 = no subdivision."/>
                                     <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="compact"
                                                    Value="{Binding GridSubdivision}" Minimum="1" Maximum="8" Increment="1" FormatString="0"/>
                                 </Grid>
+                                <!-- One-line helper unpacking what "sub-grid"
+                                     does. Avoids a tooltip-only explanation
+                                     for a concept the user will hit straight
+                                     away. -->
+                                <TextBlock TextWrapping="Wrap"
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           FontSize="{StaticResource FontCaption}"
+                                           Text="Each tile splits into N × N placement cells. 1 = whole tile."/>
                                 <Button Content="Snap objects to grid" Classes="action"
                                         Command="{Binding SnapObjectsToGridCommand}"
                                         ToolTip.Tip="Round every object's X/Z to the nearest sub-cell centre. Y is preserved."/>
