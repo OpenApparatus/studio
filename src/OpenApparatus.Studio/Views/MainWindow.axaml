@@ -12,6 +12,10 @@
         Width="1200" Height="780"
         Title="OpenApparatus Studio">
 
+    <Window.KeyBindings>
+        <KeyBinding Gesture="F1" Command="{Binding ToggleShortcutOverlayCommand}"/>
+    </Window.KeyBindings>
+
     <Window.Styles>
         <Style Selector="TextBlock.label">
             <Setter Property="Margin" Value="2 14 2 6"/>
@@ -390,12 +394,33 @@
             <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
             <Setter Property="Opacity" Value="0.5"/>
         </Style>
+
+        <!-- Keyboard-shortcut overlay styles. -->
+        <Style Selector="Border.kbd">
+            <Setter Property="Background" Value="{StaticResource SurfacePrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderHairlineBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{StaticResource CornerSm}"/>
+            <Setter Property="Padding" Value="6 2"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+        </Style>
+        <Style Selector="Border.kbd > TextBlock">
+            <Setter Property="FontFamily" Value="Consolas, 'Courier New', monospace"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+        </Style>
+        <Style Selector="TextBlock.kbdDesc">
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="FontSize" Value="{StaticResource FontBody}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
     </Window.Styles>
 
     <Design.DataContext>
         <vm:MainWindowViewModel/>
     </Design.DataContext>
 
+    <Grid>
     <DockPanel LastChildFill="True">
 
         <!-- Top action bar. Undo/Redo as tool-palette icon buttons (glyphs
@@ -766,4 +791,93 @@
             <views:RoomEditorPanel Grid.Column="2"/>
         </Grid>
     </DockPanel>
+
+    <!-- Keyboard-shortcut help overlay. Toggled with F1; click the
+         backdrop or press the close button to dismiss. -->
+    <Grid IsVisible="{Binding IsShortcutOverlayVisible}"
+          Background="#88000000">
+        <Grid.GestureRecognizers>
+            <!-- Click backdrop dismisses. -->
+        </Grid.GestureRecognizers>
+        <Button Background="Transparent" BorderBrush="Transparent"
+                HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                Command="{Binding DismissShortcutOverlayCommand}"
+                Cursor="Arrow"/>
+        <Border HorizontalAlignment="Center" VerticalAlignment="Center"
+                MinWidth="420" MaxWidth="520"
+                Background="{StaticResource SurfaceRaisedBrush}"
+                BorderBrush="{StaticResource BorderHairlineBrush}"
+                BorderThickness="1"
+                CornerRadius="{StaticResource CornerLg}"
+                BoxShadow="{StaticResource Elevation2}"
+                Padding="22 18">
+            <StackPanel Spacing="12">
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Grid.Column="0" Text="Keyboard shortcuts"
+                               FontWeight="SemiBold" FontSize="{StaticResource FontTitle}"
+                               Foreground="{StaticResource TextPrimaryBrush}"
+                               VerticalAlignment="Center"/>
+                    <Button Grid.Column="1" Classes="toolIcon" Content="✕"
+                            Command="{Binding DismissShortcutOverlayCommand}"
+                            ToolTip.Tip="Close (Esc)"/>
+                </Grid>
+                <Border Height="1" Background="{StaticResource BorderHairlineBrush}"/>
+
+                <!-- Shortcut grid: <kbd> | description, two columns wide. -->
+                <Grid ColumnDefinitions="Auto,*" RowSpacing="8" ColumnSpacing="14">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0" Grid.Column="0" Classes="kbd"><TextBlock Text="R"/></Border>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Text="Create room from selected tiles"
+                               Classes="kbdDesc"/>
+
+                    <Border Grid.Row="1" Grid.Column="0" Classes="kbd"><TextBlock Text="Esc"/></Border>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Text="Clear selection / dismiss overlay"
+                               Classes="kbdDesc"/>
+
+                    <Border Grid.Row="2" Grid.Column="0" Classes="kbd"><TextBlock Text="D / W / O / C"/></Border>
+                    <TextBlock Grid.Row="2" Grid.Column="1" Text="On a selected wall: door / window / open / closed"
+                               Classes="kbdDesc"/>
+
+                    <Border Grid.Row="3" Grid.Column="0" Classes="kbd"><TextBlock Text="1 – 9"/></Border>
+                    <TextBlock Grid.Row="3" Grid.Column="1" Text="Place an object of that type (Object mode)"
+                               Classes="kbdDesc"/>
+
+                    <Border Grid.Row="4" Grid.Column="0" Classes="kbd"><TextBlock Text="Delete / Backspace"/></Border>
+                    <TextBlock Grid.Row="4" Grid.Column="1" Text="Delete the selected opening or object"
+                               Classes="kbdDesc"/>
+
+                    <Border Grid.Row="5" Grid.Column="0" Classes="kbd"><TextBlock Text="Ctrl + Z"/></Border>
+                    <TextBlock Grid.Row="5" Grid.Column="1" Text="Undo" Classes="kbdDesc"/>
+
+                    <Border Grid.Row="6" Grid.Column="0" Classes="kbd"><TextBlock Text="Ctrl + Y / Ctrl + Shift + Z"/></Border>
+                    <TextBlock Grid.Row="6" Grid.Column="1" Text="Redo" Classes="kbdDesc"/>
+
+                    <Border Grid.Row="7" Grid.Column="0" Classes="kbd"><TextBlock Text="Mouse wheel"/></Border>
+                    <TextBlock Grid.Row="7" Grid.Column="1" Text="Zoom in / out (Ctrl = pan; drag empty space to pan)"
+                               Classes="kbdDesc"/>
+
+                    <Border Grid.Row="8" Grid.Column="0" Classes="kbd"><TextBlock Text="F1"/></Border>
+                    <TextBlock Grid.Row="8" Grid.Column="1" Text="Toggle this help overlay"
+                               Classes="kbdDesc"/>
+                </Grid>
+
+                <TextBlock Text="Tip: drag a property label horizontally to scrub its value (Shift = fine, Ctrl = coarse)."
+                           Foreground="{StaticResource TextMutedBrush}"
+                           FontSize="{StaticResource FontBody}"
+                           TextWrapping="Wrap"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+    </Grid>
 </Window>

@@ -236,6 +236,16 @@ public partial class MainWindowViewModel : ViewModelBase
     public bool IsObjectsMode => EditMode == EditModeKind.Object;
     public bool IsLayoutMode => EditMode == EditModeKind.Layout;
 
+    /// <summary>Whether the keyboard-shortcut help overlay is showing. F1
+    /// toggles, Esc dismisses (handled in MainWindow code-behind).</summary>
+    [ObservableProperty] bool _isShortcutOverlayVisible;
+
+    [RelayCommand]
+    void ToggleShortcutOverlay() => IsShortcutOverlayVisible = !IsShortcutOverlayVisible;
+
+    [RelayCommand]
+    void DismissShortcutOverlay() => IsShortcutOverlayVisible = false;
+
     /// <summary>Tile-colour view used while in Layout mode. Floor shows each
     /// room's floor colour, Ceiling shows the ceiling colour. Has no effect in
     /// Object mode (always renders floor colours).</summary>
