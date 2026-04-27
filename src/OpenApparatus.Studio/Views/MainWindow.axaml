@@ -357,7 +357,10 @@
             <Setter Property="Opacity" Value="0.5"/>
         </Style>
 
-        <!-- Compact icon button used for the path play/stop + colour swatch. -->
+        <!-- Round icon button — used as the colour swatch in the PATHS
+             section. Round shape signals "colour" (matches palette puck
+             metaphor) and is visually distinct from the square play
+             button next to it. -->
         <Style Selector="Button.icon">
             <Setter Property="Padding" Value="0"/>
             <Setter Property="MinWidth" Value="0"/>
@@ -369,6 +372,28 @@
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="FontSize" Value="11"/>
+        </Style>
+        <!-- Square media-control button — used for the path animation
+             play / stop. Rounded-square shape signals "media control" and
+             distinguishes it from the round colour swatch. -->
+        <Style Selector="Button.play">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="MinWidth" Value="0"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="Width" Value="22"/>
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="CornerRadius" Value="{StaticResource CornerSm}"/>
+            <Setter Property="Background" Value="{StaticResource SurfaceRaisedBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderHairlineBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+        </Style>
+        <Style Selector="Button.play:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfacePrimaryBrush}"/>
         </Style>
         <!-- Top-bar icon button (undo/redo/overflow). Glyph-only, square,
              tight padding so they read as a tool palette rather than form
@@ -549,12 +574,16 @@
                     <ToggleButton Classes="pill" Content="Show"
                                   IsChecked="{Binding ShowPaths}"
                                   ToolTip.Tip="Polyline through every traversable wall (open / doorway)."/>
+                    <!-- Round colour swatch — matches its semantic ("colour") -->
                     <Button Classes="icon" Margin="2 0 0 0"
-                            BorderBrush="#888" BorderThickness="1"
+                            BorderBrush="{StaticResource BorderHairlineBrush}" BorderThickness="1"
                             Background="{Binding PathColor, Converter={x:Static converters:Vector3ToBrushConverter.Instance}}"
                             Click="OnPickPathColor"
                             ToolTip.Tip="Path overlay colour"/>
-                    <Button Classes="icon" Margin="4 0 0 0"
+                    <!-- Square media-control button — matches the "play / stop"
+                         metaphor and is visually distinct from the round
+                         swatch beside it. -->
+                    <Button Classes="play" Margin="4 0 0 0"
                             Command="{Binding TogglePathAnimationCommand}"
                             Content="{Binding IsPathAnimating, Converter={x:Static converters:BoolToTextConverter.Instance}, ConverterParameter='■|▶'}"
                             ToolTip.Tip="Animate the path overlay outward from the start room. Loops while running."/>
