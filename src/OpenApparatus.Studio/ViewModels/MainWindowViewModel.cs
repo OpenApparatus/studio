@@ -1134,6 +1134,29 @@ public partial class MainWindowViewModel : ViewModelBase
     /// follow-up.</summary>
     [ObservableProperty] string _projectTitle = "Untitled scene";
 
+    /// <summary>Last cursor world position (XZ, in metres). NaN when the
+    /// cursor isn't over the editor canvas. Surfaced in the status bar.</summary>
+    public float CursorWorldX { get; private set; } = float.NaN;
+    public float CursorWorldZ { get; private set; } = float.NaN;
+    public bool HasCursorWorldPos => !float.IsNaN(CursorWorldX);
+    public string CursorWorldDisplay =>
+        HasCursorWorldPos ? $"x {CursorWorldX:0.00} m   z {CursorWorldZ:0.00} m" : "";
+
+    public void SetCursorWorldPos(float x, float z)
+    {
+        CursorWorldX = x; CursorWorldZ = z;
+        OnPropertyChanged(nameof(CursorWorldX));
+        OnPropertyChanged(nameof(CursorWorldZ));
+        OnPropertyChanged(nameof(HasCursorWorldPos));
+        OnPropertyChanged(nameof(CursorWorldDisplay));
+    }
+    public void ClearCursorWorldPos()
+    {
+        CursorWorldX = float.NaN; CursorWorldZ = float.NaN;
+        OnPropertyChanged(nameof(HasCursorWorldPos));
+        OnPropertyChanged(nameof(CursorWorldDisplay));
+    }
+
     /// <summary>True while the in-memory scene has edits not yet exported
     /// or saved. The top bar's indicator dot lights brand-blue when set,
     /// transparent when clean. Toggled by the same code that bumps

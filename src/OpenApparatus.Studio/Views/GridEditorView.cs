@@ -517,6 +517,18 @@ public class GridEditorView : Control
         if (vm is null) return;
         var pos = e.GetPosition(this);
 
+        // Cursor world-position readout (top-down only — 3D coords would
+        // need ray-cast against the floor plane, future work).
+        if (!vm.IsIsoView)
+        {
+            var (originLayout, tileLayout) = ComputeLayout(vm);
+            if (tileLayout > 0)
+            {
+                var w = ScreenToWorld(pos, originLayout, tileLayout, vm);
+                vm.SetCursorWorldPos(w.X, w.Y);
+            }
+        }
+
         // ── 3D camera dragging ──
         if (_isoOrbiting)
         {
@@ -562,6 +574,12 @@ public class GridEditorView : Control
         if (!_dragging) return;
         if (TryHitTest(pos, vm, out int x, out int z))
             ApplyDrag(vm, x, z);
+    }
+
+    protected override void OnPointerExited(PointerEventArgs e)
+    {
+        base.OnPointerExited(e);
+        Vm?.ClearCursorWorldPos();
     }
 
     protected override void OnPointerReleased(PointerReleasedEventArgs e)
@@ -1060,6 +1078,12 @@ public class GridEditorView : Control
         // inter-object distance lines. Drawn last so labels stay legible.
         DrawMeasurements(ctx, vm, origin, tileSize);
 
+        // World origin marker — small "+" + "0,0" label at world (0,0).
+        // World z=0 maps to the bottom edge of the grid, so the marker
+        // sits at the bottom-left corner of the rendered area.
+        var originScreen = new Point(origin.X, origin.Y + vm.GridLength * tileSize);
+        DrawOriginMarker(ctx, originScreen, typeface);
+
         // Layout-measurement labels (room dimensions / floor area / opening
         // sizes / wall lengths) on top of everything else.
         DrawLayoutMeasurements(ctx, vm, origin, tileSize, typeface);
@@ -1075,6 +1099,23 @@ public class GridEditorView : Control
     /// Wording differs slightly per mode.</summary>
     public static void DrawEmptyStatePublic(DrawingContext ctx, Size size, Typeface typeface, bool isObjectsMode)
         => DrawEmptyState(ctx, size, typeface, isObjectsMode);
+    /// <summary>Renders a small "+ 0,0" mark at the world origin so users
+    /// can see where (0, 0) lives on the canvas. Useful when aligning the
+    /// design with externally-authored content that expects a specific
+    /// origin.</summary>
+    static void DrawOriginMarker(DrawingContext ctx, Point origin, Typeface typeface)
+    {
+        var pen = new Pen(new SolidColorBrush(Color.FromArgb(170, 31, 111, 235)), 1.0);
+        const double r = 5;
+        ctx.DrawLine(pen, new Point(origin.X - r, origin.Y), new Point(origin.X + r, origin.Y));
+        ctx.DrawLine(pen, new Point(origin.X, origin.Y - r), new Point(origin.X, origin.Y + r));
+        var fmt = new FormattedText("0, 0",
+            System.Globalization.CultureInfo.InvariantCulture,
+            FlowDirection.LeftToRight, typeface, 9.5,
+            new SolidColorBrush(Color.FromArgb(180, 31, 111, 235)));
+        ctx.DrawText(fmt, new Point(origin.X + r + 2, origin.Y + 2));
+    }
+
     static void DrawEmptyState(DrawingContext ctx, Size size, Typeface typeface, bool isObjectsMode)
     {
         var titleBrush = new SolidColorBrush(Color.FromArgb(160, 35, 38, 46));
