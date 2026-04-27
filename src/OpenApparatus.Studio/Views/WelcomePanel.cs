@@ -287,11 +287,15 @@ public sealed class WelcomePanel : ContentControl
         // overrides so the global Button hover rule (which paints a
         // light grey hover background) doesn't bleach white text on
         // the blue primary action into invisibility.
-        Color baseFill   = primary ? Color.FromRgb(0x1F, 0x6F, 0xEB) : Color.FromRgb(0xFF, 0xFF, 0xFF);
-        Color hoverFill  = primary ? Color.FromRgb(0x1C, 0x5F, 0xC7) : Color.FromRgb(0xF2, 0xF4, 0xF8);
-        Color pressFill  = primary ? Color.FromRgb(0x18, 0x50, 0xB0) : Color.FromRgb(0xE6, 0xEA, 0xF2);
+        // Primary action: dark surface, white content — keeps text +
+        // icon contrast on every state without fighting the global
+        // Button hover. Hover lightens the surface a notch; the white
+        // foreground stays.
+        Color baseFill   = primary ? Color.FromRgb(0x23, 0x26, 0x2E) : Color.FromRgb(0xFF, 0xFF, 0xFF);
+        Color hoverFill  = primary ? Color.FromRgb(0x3A, 0x40, 0x4B) : Color.FromRgb(0xF2, 0xF4, 0xF8);
+        Color pressFill  = primary ? Color.FromRgb(0x14, 0x16, 0x1B) : Color.FromRgb(0xE6, 0xEA, 0xF2);
         _ = pressFill; // reserved for future :pressed wiring
-        Color borderC    = primary ? Color.FromRgb(0x1C, 0x5F, 0xC7) : Color.FromRgb(0xE5, 0xE7, 0xEC);
+        Color borderC    = primary ? Color.FromRgb(0x14, 0x16, 0x1B) : Color.FromRgb(0xE5, 0xE7, 0xEC);
         btn.Background  = new SolidColorBrush(baseFill);
         btn.BorderBrush = new SolidColorBrush(borderC);
         btn.PointerEntered += (_, _) => btn.Background = new SolidColorBrush(hoverFill);
