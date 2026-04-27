@@ -936,13 +936,23 @@
                                     BoxShadow="{StaticResource Elevation2}">
                                 <StackPanel Orientation="Horizontal">
                                     <RadioButton GroupName="EditMode"
-                                                 Content="Layout"
                                                  Classes="modePill modePillLeft"
-                                                 IsChecked="{Binding EditMode, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=Layout}"/>
+                                                 IsChecked="{Binding EditMode, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=Layout}"
+                                                 ToolTip.Tip="Layout mode (rooms, walls, openings)">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <TextBlock Text="▦" FontSize="14" VerticalAlignment="Center"/>
+                                            <TextBlock Text="Layout" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </RadioButton>
                                     <RadioButton GroupName="EditMode"
-                                                 Content="Object"
                                                  Classes="modePill modePillRight"
-                                                 IsChecked="{Binding EditMode, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=Object}"/>
+                                                 IsChecked="{Binding EditMode, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=Object}"
+                                                 ToolTip.Tip="Object mode (place, move, edit objects)">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <TextBlock Text="◆" FontSize="13" VerticalAlignment="Center"/>
+                                            <TextBlock Text="Object" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </RadioButton>
                                 </StackPanel>
                             </Border>
                         </Grid>
