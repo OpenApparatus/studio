@@ -56,7 +56,8 @@ public partial class RoomEditorPanel : UserControl
                           or nameof(MainWindowViewModel.IsObjectsMode)
                           or nameof(MainWindowViewModel.SelectedObjectIndex)
                           or nameof(MainWindowViewModel.SelectedObjectsCount)
-                          or nameof(MainWindowViewModel.HasMultipleObjectsSelected))
+                          or nameof(MainWindowViewModel.HasMultipleObjectsSelected)
+                          or nameof(MainWindowViewModel.ThemeVariant))
         {
             Rebuild();
         }
@@ -104,14 +105,25 @@ public partial class RoomEditorPanel : UserControl
         BuildRoomEditor();
     }
 
-    // Inspector design tokens — duplicated from Themes/Tokens.axaml so the
-    // code-behind builders can match the XAML palette without round-tripping
-    // through Application.Resources.
-    static readonly IBrush TextPrimary   = new SolidColorBrush(Color.FromRgb(0x23, 0x26, 0x2E));
-    static readonly IBrush TextSecondary = new SolidColorBrush(Color.FromRgb(0x5A, 0x62, 0x70));
-    static readonly IBrush TextMuted     = new SolidColorBrush(Color.FromRgb(0x7A, 0x80, 0x8C));
-    static readonly IBrush BorderHair    = new SolidColorBrush(Color.FromRgb(0xD3, 0xD7, 0xDF));
-    static readonly IBrush SurfaceRaised = new SolidColorBrush(Colors.White);
+    // Inspector design tokens — pulled from Application.Resources at
+    // access time so the inspector's code-built rows respect the active
+    // theme variant. Falls back to the Light values if a key is missing
+    // (e.g. during DataContext initialisation before App resources are
+    // wired up).
+    static IBrush LookupBrush(string key, Color fallback)
+    {
+        var app = Avalonia.Application.Current;
+        if (app is not null
+            && app.Resources.TryGetResource(key, app.ActualThemeVariant, out var v)
+            && v is IBrush b)
+            return b;
+        return new SolidColorBrush(fallback);
+    }
+    static IBrush TextPrimary   => LookupBrush("TextPrimaryBrush",   Color.FromRgb(0x23, 0x26, 0x2E));
+    static IBrush TextSecondary => LookupBrush("TextSecondaryBrush", Color.FromRgb(0x5A, 0x62, 0x70));
+    static IBrush TextMuted     => LookupBrush("TextMutedBrush",     Color.FromRgb(0x7A, 0x80, 0x8C));
+    static IBrush BorderHair    => LookupBrush("BorderHairlineBrush", Color.FromRgb(0xD3, 0xD7, 0xDF));
+    static IBrush SurfaceRaised => LookupBrush("SurfaceRaisedBrush", Colors.White);
 
     /// <summary>Inspector header — title + optional subtitle, separated from
     /// the body by a hairline rule. Used by every Build* state so the
