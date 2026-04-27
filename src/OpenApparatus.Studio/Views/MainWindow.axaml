@@ -1138,6 +1138,9 @@
                                     </ContextMenu>
                                 </views:GridEditorView.ContextMenu>
                             </views:GridEditorView>
+                            <!-- Welcome screen — overlays the editor when no
+                                 project is open and no rooms exist. -->
+                            <views:WelcomePanel/>
                             <!-- Floating Layout / Object segmented control,
                                  anchored top-centre over the editor. White
                                  rail with rounded ends; inactive half blends

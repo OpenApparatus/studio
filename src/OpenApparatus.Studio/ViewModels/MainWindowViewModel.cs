@@ -1231,6 +1231,7 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(HasNoRooms));
         OnPropertyChanged(nameof(SceneSummary));
+        OnPropertyChanged(nameof(ShowWelcomePanel));
     }
     [ObservableProperty] string _statusMessage = "Click and drag to select tiles, then click 'Create Room'.";
 
@@ -1333,7 +1334,11 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] string? _projectFilePath;
     public bool HasProjectFilePath => !string.IsNullOrEmpty(ProjectFilePath);
     partial void OnProjectFilePathChanged(string? value)
-        => OnPropertyChanged(nameof(HasProjectFilePath));
+    {
+        OnPropertyChanged(nameof(HasProjectFilePath));
+        OnPropertyChanged(nameof(ShowWelcomePanel));
+        RefreshRecentFiles();
+    }
 
     [RelayCommand]
     void MarkSaved()
@@ -2510,6 +2515,33 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             OpenApparatus.Studio.Services.Toasts.Default.ShowError($"Couldn't open {file.Name}: {ex.Message}");
         }
+    }
+
+    /// <summary>List of recent project file paths surfaced to the
+    /// File → Recent menu and the welcome screen. Refreshed each time
+    /// a new file is loaded or saved.</summary>
+    public System.Collections.ObjectModel.ObservableCollection<RecentFileEntry> RecentFiles { get; } = new();
+
+    public void RefreshRecentFiles()
+    {
+        var settings = OpenApparatus.Studio.Services.AppSettings.LoadOrDefault();
+        RecentFiles.Clear();
+        foreach (var p in settings.ExistingRecentFiles)
+            RecentFiles.Add(new RecentFileEntry(p));
+    }
+
+    /// <summary>Whether the welcome panel should be visible — true on
+    /// startup with no rooms and no current file path. Hidden as soon as
+    /// the user creates a room, opens a project, or starts a new one.</summary>
+    public bool ShowWelcomePanel => HasNoRooms && !HasProjectFilePath;
+
+    [RelayCommand]
+    void DismissWelcome()
+    {
+        // Forces ShowWelcomePanel to false even if the user keeps the
+        // empty scene — they've signalled they want the editor instead.
+        ProjectFilePath = "";
+        OnPropertyChanged(nameof(ShowWelcomePanel));
     }
 
     /// <summary>Open a project file directly by path — used by recent
