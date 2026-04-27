@@ -977,6 +977,45 @@ public class GridEditorView : Control
         // Layout-measurement labels (room dimensions / floor area / opening
         // sizes / wall lengths) on top of everything else.
         DrawLayoutMeasurements(ctx, vm, origin, tileSize, typeface);
+
+        // Empty-state overlay — only shown when the environment has no
+        // rooms yet, so a fresh project doesn't read as an inert grid.
+        if (vm.CurrentEnvironment is { } envForEmpty && envForEmpty.Rooms.Count == 0)
+            DrawEmptyState(ctx, size, typeface, vm.IsObjectsMode);
+    }
+
+    /// <summary>Faded centred prompt drawn over the empty grid so a
+    /// freshly-created project has a clear "what do I do next" cue.
+    /// Wording differs slightly per mode.</summary>
+    static void DrawEmptyState(DrawingContext ctx, Size size, Typeface typeface, bool isObjectsMode)
+    {
+        var titleBrush = new SolidColorBrush(Color.FromArgb(160, 35, 38, 46));
+        var bodyBrush  = new SolidColorBrush(Color.FromArgb(140, 90, 98, 112));
+
+        string title = isObjectsMode
+            ? "No rooms to populate yet"
+            : "Start by drawing a room";
+        string body = isObjectsMode
+            ? "Switch to Layout, drag empty tiles to select, then press R to create a room."
+            : "Click and drag empty tiles to select. Press R to make a room from the selection.";
+
+        var titleFmt = new FormattedText(title,
+            System.Globalization.CultureInfo.InvariantCulture,
+            FlowDirection.LeftToRight,
+            new Typeface(typeface.FontFamily, FontStyle.Normal, FontWeight.SemiBold),
+            18, titleBrush);
+        var bodyFmt = new FormattedText(body,
+            System.Globalization.CultureInfo.InvariantCulture,
+            FlowDirection.LeftToRight, typeface, 12.5, bodyBrush)
+        { MaxTextWidth = System.Math.Min(size.Width - 80, 420) };
+
+        double cx = size.Width * 0.5;
+        double cy = size.Height * 0.5;
+        double totalH = titleFmt.Height + 6 + bodyFmt.Height;
+        double y = cy - totalH * 0.5;
+        ctx.DrawText(titleFmt, new Point(cx - titleFmt.Width * 0.5, y));
+        ctx.DrawText(bodyFmt, new Point(cx - bodyFmt.Width * 0.5,
+                                        y + titleFmt.Height + 6));
     }
 
     static void DrawLayoutMeasurements(
