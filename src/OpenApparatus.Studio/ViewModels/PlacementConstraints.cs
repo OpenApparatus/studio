@@ -52,6 +52,30 @@ public sealed class PlacementConstraints
 
     // ---- Visualisation ----
     public bool HighlightViolations { get; set; } = true;
+
+    /// <summary>Field-by-field copy from another instance. Used by
+    /// project-file load to refresh the existing VM-owned Constraints
+    /// instance without breaking bindings to it.</summary>
+    public void CopyFrom(PlacementConstraints o)
+    {
+        ObjectToObjectEnabled = o.ObjectToObjectEnabled;
+        ObjectToObjectMin = o.ObjectToObjectMin;
+        ObjectToObjectMax = o.ObjectToObjectMax;
+        ObjectToObjectAcrossConnectedRooms = o.ObjectToObjectAcrossConnectedRooms;
+        DoorToObjectEnabled = o.DoorToObjectEnabled;
+        DoorToObjectMin = o.DoorToObjectMin;
+        DoorToObjectMax = o.DoorToObjectMax;
+        DoorAppliesToEveryDoor = o.DoorAppliesToEveryDoor;
+        DoorAngleBandEnabled = o.DoorAngleBandEnabled;
+        DoorAngleMinDeg = o.DoorAngleMinDeg;
+        DoorAngleMaxDeg = o.DoorAngleMaxDeg;
+        ObjectToWallEnabled = o.ObjectToWallEnabled;
+        ObjectToWallMin = o.ObjectToWallMin;
+        PerRoomCountsEnabled = o.PerRoomCountsEnabled;
+        PerRoomCountMin = o.PerRoomCountMin;
+        PerRoomCountMax = o.PerRoomCountMax;
+        HighlightViolations = o.HighlightViolations;
+    }
 }
 
 /// <summary>One reason an object (or a room, for count constraints) violates

@@ -1,12 +1,17 @@
+using System;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using OpenApparatus.Studio.Services;
 using OpenApparatus.Studio.ViewModels;
 
 namespace OpenApparatus.Studio.Views;
 
 public partial class MainWindow : Window
 {
+    AppSettings _settings = new();
+
     public MainWindow()
     {
         InitializeComponent();
@@ -15,6 +20,39 @@ public partial class MainWindow : Window
         // typing a letter (e.g. 'O') in the room name field stays in the
         // field instead of firing the OpenSelectedWall command.
         AddHandler(KeyDownEvent, OnGlobalKey, RoutingStrategies.Tunnel);
+
+        // Restore window geometry from per-user settings, then watch for
+        // geometry changes and persist on every move/resize. Settings load
+        // is best-effort; a missing file just keeps the design defaults.
+        Opened += OnOpened;
+        Closing += OnClosing;
+    }
+
+    void OnOpened(object? sender, EventArgs e)
+    {
+        _settings = AppSettings.LoadOrDefault();
+        if (_settings.WindowWidth  > 200) Width  = _settings.WindowWidth;
+        if (_settings.WindowHeight > 200) Height = _settings.WindowHeight;
+        if (!double.IsNaN(_settings.WindowX) && !double.IsNaN(_settings.WindowY))
+            Position = new PixelPoint((int)_settings.WindowX, (int)_settings.WindowY);
+        if (_settings.WindowMaximized) WindowState = WindowState.Maximized;
+    }
+
+    void OnClosing(object? sender, WindowClosingEventArgs e)
+    {
+        _settings.WindowMaximized = WindowState == WindowState.Maximized;
+        if (_settings.WindowMaximized)
+        {
+            // Don't overwrite the restore-size when closing maximized.
+        }
+        else
+        {
+            _settings.WindowWidth  = Width;
+            _settings.WindowHeight = Height;
+            _settings.WindowX = Position.X;
+            _settings.WindowY = Position.Y;
+        }
+        _settings.Save();
     }
 
     void OnGlobalKey(object? sender, KeyEventArgs e)
@@ -102,6 +140,8 @@ public partial class MainWindow : Window
     }
 
     MainWindowViewModel? Vm => DataContext as MainWindowViewModel;
+
+    void OnExitClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => Close();
 
     async void OnPickDefaultFloor(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {

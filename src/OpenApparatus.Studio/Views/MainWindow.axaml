@@ -14,6 +14,13 @@
 
     <Window.KeyBindings>
         <KeyBinding Gesture="F1" Command="{Binding ToggleShortcutOverlayCommand}"/>
+        <KeyBinding Gesture="Ctrl+N" Command="{Binding NewProjectCommand}"/>
+        <KeyBinding Gesture="Ctrl+O" Command="{Binding OpenProjectCommand}"
+                    CommandParameter="{Binding $parent[Window]}"/>
+        <KeyBinding Gesture="Ctrl+S" Command="{Binding SaveProjectCommand}"
+                    CommandParameter="{Binding $parent[Window]}"/>
+        <KeyBinding Gesture="Ctrl+Shift+S" Command="{Binding SaveProjectAsCommand}"
+                    CommandParameter="{Binding $parent[Window]}"/>
     </Window.KeyBindings>
 
     <Window.Styles>
@@ -505,6 +512,76 @@
 
     <Grid>
     <DockPanel LastChildFill="True">
+
+        <!-- Application menu bar. Hosts file / edit / view / help
+             commands so the action bar can stay focused on creative
+             actions. Items use platform-standard hotkeys (Ctrl+S /
+             Ctrl+O / Ctrl+N) wired through the VM commands. -->
+        <Menu DockPanel.Dock="Top"
+              Background="{StaticResource SurfaceSecondaryBrush}"
+              BorderBrush="{StaticResource BorderHairlineBrush}"
+              BorderThickness="0 0 0 1"
+              Padding="6 2">
+            <MenuItem Header="_File">
+                <MenuItem Header="_New scene"
+                          InputGesture="Ctrl+N"
+                          Command="{Binding NewProjectCommand}"/>
+                <MenuItem Header="_Open…"
+                          InputGesture="Ctrl+O"
+                          Command="{Binding OpenProjectCommand}"
+                          CommandParameter="{Binding $parent[Window]}"/>
+                <Separator/>
+                <MenuItem Header="_Save"
+                          InputGesture="Ctrl+S"
+                          Command="{Binding SaveProjectCommand}"
+                          CommandParameter="{Binding $parent[Window]}"/>
+                <MenuItem Header="Save _As…"
+                          InputGesture="Ctrl+Shift+S"
+                          Command="{Binding SaveProjectAsCommand}"
+                          CommandParameter="{Binding $parent[Window]}"/>
+                <Separator/>
+                <MenuItem Header="_Export">
+                    <MenuItem Header="Export _glTF…"
+                              Command="{Binding ExportGltfCommand}"
+                              CommandParameter="{Binding $parent[Window]}"/>
+                    <MenuItem Header="Export _JSON…"
+                              Command="{Binding ExportJsonCommand}"
+                              CommandParameter="{Binding $parent[Window]}"/>
+                </MenuItem>
+                <Separator/>
+                <MenuItem Header="E_xit" Click="OnExitClick"/>
+            </MenuItem>
+            <MenuItem Header="_Edit">
+                <MenuItem Header="_Undo"
+                          InputGesture="Ctrl+Z"
+                          Command="{Binding UndoCommand}"
+                          IsEnabled="{Binding CanUndo}"/>
+                <MenuItem Header="_Redo"
+                          InputGesture="Ctrl+Y"
+                          Command="{Binding RedoCommand}"
+                          IsEnabled="{Binding CanRedo}"/>
+                <Separator/>
+                <MenuItem Header="Clear _selection"
+                          InputGesture="Esc"
+                          Command="{Binding ClearSelectionCommand}"/>
+                <MenuItem Header="_Reset scene…"
+                          Command="{Binding ResetAllCommand}"/>
+            </MenuItem>
+            <MenuItem Header="_View">
+                <MenuItem Header="_Top-down"
+                          Command="{Binding SetTopViewCommand, FallbackValue=null}"/>
+                <MenuItem Header="_3D"
+                          Command="{Binding Set3DViewCommand, FallbackValue=null}"/>
+                <Separator/>
+                <MenuItem Header="_Reset zoom"
+                          Command="{Binding ResetViewCommand}"/>
+            </MenuItem>
+            <MenuItem Header="_Help">
+                <MenuItem Header="_Keyboard shortcuts"
+                          InputGesture="F1"
+                          Command="{Binding ToggleShortcutOverlayCommand}"/>
+            </MenuItem>
+        </Menu>
 
         <!-- Top action bar. Document title + unsaved indicator on the
              left, command cluster on the right. Undo/Redo are glyph-only

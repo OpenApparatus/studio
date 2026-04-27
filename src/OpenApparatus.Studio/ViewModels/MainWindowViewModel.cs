@@ -311,6 +311,12 @@ public partial class MainWindowViewModel : ViewModelBase
     public bool IsoCameraInitialised { get; set; }
 
     [RelayCommand]
+    void SetTopView() => CameraView = CameraKind.TopDown;
+
+    [RelayCommand]
+    void Set3DView() => CameraView = CameraKind.Iso;
+
+    [RelayCommand]
     void ResetIsoCamera()
     {
         IsoYaw = (float)(System.Math.PI * 0.25);
@@ -1189,6 +1195,16 @@ public partial class MainWindowViewModel : ViewModelBase
     /// state.</summary>
     public void RaiseEditVersion() => EditVersion++;
 
+    /// <summary>Auto-mark unsaved on any edit-version bump (every state
+    /// mutation routes through that property). Skipped during project
+    /// load via the field setter directly so a fresh load is "clean".</summary>
+    partial void OnEditVersionChanged(int value)
+    {
+        // First load arrives with HasUnsavedChanges still false from the
+        // RestoreFromProjectFile reset; subsequent edits flip it on.
+        HasUnsavedChanges = true;
+    }
+
     /// <summary>Project title displayed in the top action bar. Defaults
     /// to "Untitled scene"; persistence + filename binding is a future
     /// follow-up.</summary>
@@ -1223,8 +1239,18 @@ public partial class MainWindowViewModel : ViewModelBase
     /// EditVersion, with a dedicated reset on export.</summary>
     [ObservableProperty] bool _hasUnsavedChanges;
 
+    /// <summary>Path of the file the project was last saved to / loaded
+    /// from. Null for unsaved sessions; drives Save vs Save As routing.</summary>
+    [ObservableProperty] string? _projectFilePath;
+    public bool HasProjectFilePath => !string.IsNullOrEmpty(ProjectFilePath);
+    partial void OnProjectFilePathChanged(string? value)
+        => OnPropertyChanged(nameof(HasProjectFilePath));
+
     [RelayCommand]
-    void MarkSaved() => HasUnsavedChanges = false;
+    void MarkSaved()
+    {
+        HasUnsavedChanges = false;
+    }
 
     // ---- Undo / redo state. Snapshots are deep copies of authored state; we
     // push one before every user-initiated mutation. Selection / view state is
@@ -1288,6 +1314,237 @@ public partial class MainWindowViewModel : ViewModelBase
     // exposing the underlying dictionaries so the public API stays clean.
     internal int NextRoomIdRaw => _nextRoomId;
     internal Dictionary<(int, int), (Passage, System.Numerics.Vector2)> PassageOverridesRaw => _passageOverrides;
+
+    // ── Project file IO helpers ──
+    // ProjectIO uses these to round-trip authored state to disk; the
+    // dictionaries are kept private otherwise.
+
+    /// <summary>Snapshots passage overrides into a flat list of entries
+    /// keyed by world-mm Start coordinates. Used by ProjectIO.Save.</summary>
+    public List<OpenApparatus.Studio.Services.PassageOverrideEntry> SerializePassageOverrides()
+    {
+        var list = new List<OpenApparatus.Studio.Services.PassageOverrideEntry>();
+        foreach (var kv in _passageOverrides)
+        {
+            var (passage, start) = kv.Value;
+            // Reconstruct end coords from the key (which is mid * 1000):
+            // mid = (start + end) / 2, so end = 2 * mid - start.
+            float midXm = kv.Key.Item1 / 1000f;
+            float midZm = kv.Key.Item2 / 1000f;
+            float endX = 2f * midXm - start.X;
+            float endZ = 2f * midZm - start.Y;
+            string kind = passage switch
+            {
+                Passage.Open => "Open",
+                Passage.Closed => "Closed",
+                Passage.Doorway => "Doorway",
+                _ => "Closed",
+            };
+            var entry = new OpenApparatus.Studio.Services.PassageOverrideEntry
+            {
+                StartX = start.X, StartZ = start.Y,
+                EndX = endX, EndZ = endZ,
+                Kind = kind,
+            };
+            if (passage is Passage.Doorway d)
+            {
+                entry.Openings = d.Openings.Select(o =>
+                    new OpenApparatus.Studio.Services.OpeningEntry
+                    {
+                        Offset = o.OffsetAlongEdge,
+                        Width = o.Width,
+                        Height = o.Height,
+                        SillHeight = o.SillHeight,
+                        HingeAtEnd = o.HingeAtEnd,
+                        SwingNegative = o.SwingNegative,
+                    }).ToList();
+            }
+            list.Add(entry);
+        }
+        return list;
+    }
+
+    /// <summary>Replaces the entire VM state with the contents of a
+    /// project file. Used by ProjectIO.Load.</summary>
+    public void RestoreFromProjectFile(OpenApparatus.Studio.Services.ProjectFile f)
+    {
+        // Push undo so the user can step back to whatever was open.
+        PushUndo();
+
+        // Simple props.
+        ProjectTitle = f.Title ?? "Untitled scene";
+        GridWidth = f.GridWidth;
+        GridLength = f.GridLength;
+        TileSize = f.TileSize;
+        WallThickness = f.WallThickness;
+        WallHeight = f.WallHeight;
+        DoorWidth = f.DoorWidth;
+        DoorHeight = f.DoorHeight;
+        WindowWidth = f.WindowWidth;
+        WindowHeight = f.WindowHeight;
+        WindowSillHeight = f.WindowSillHeight;
+        if (f.GridSubdivision > 0) GridSubdivision = f.GridSubdivision;
+        DefaultObjectY = f.DefaultObjectY;
+        if (f.DefaultFloorColor   is { Length: 3 } a) DefaultFloorColor   = new(a[0], a[1], a[2]);
+        if (f.DefaultCeilingColor is { Length: 3 } b) DefaultCeilingColor = new(b[0], b[1], b[2]);
+
+        // Grid ownership.
+        ResetGrid();
+        if (f.RoomGrid is { Length: > 0 } g)
+        {
+            int maxId = -1;
+            for (int x = 0; x < f.GridWidth; x++)
+                for (int z = 0; z < f.GridLength; z++)
+                {
+                    int id = g[x * f.GridLength + z];
+                    RoomGrid[x, z] = id;
+                    if (id > maxId) maxId = id;
+                }
+            _nextRoomId = maxId + 1;
+        }
+
+        // Per-room palettes / state.
+        _roomFloorColors.Clear();
+        if (f.RoomFloorColors is not null)
+            foreach (var kv in f.RoomFloorColors)
+                if (kv.Value is { Length: 3 })
+                    _roomFloorColors[kv.Key] = new(kv.Value[0], kv.Value[1], kv.Value[2]);
+        _roomCeilingColors.Clear();
+        if (f.RoomCeilingColors is not null)
+            foreach (var kv in f.RoomCeilingColors)
+                if (kv.Value is { Length: 3 })
+                    _roomCeilingColors[kv.Key] = new(kv.Value[0], kv.Value[1], kv.Value[2]);
+        _roomSingleWallColors.Clear();
+        if (f.RoomSingleWallColors is not null)
+            foreach (var kv in f.RoomSingleWallColors)
+                if (kv.Value is { Length: 3 })
+                    _roomSingleWallColors[kv.Key] = new(kv.Value[0], kv.Value[1], kv.Value[2]);
+        _roomNames.Clear();
+        if (f.RoomNames is not null)
+            foreach (var kv in f.RoomNames) _roomNames[kv.Key] = kv.Value;
+        _multiColorRoomIds.Clear();
+        if (f.MultiColorRoomIds is not null)
+            foreach (var id in f.MultiColorRoomIds) _multiColorRoomIds.Add(id);
+        _wallColors.Clear();
+        if (f.WallColors is not null)
+            foreach (var kv in f.WallColors)
+            {
+                var parts = kv.Key.Split('_');
+                if (parts.Length != 3) continue;
+                if (!int.TryParse(parts[0], out int rid)) continue;
+                if (!int.TryParse(parts[1], out int mx))  continue;
+                if (!int.TryParse(parts[2], out int mz))  continue;
+                if (kv.Value is { Length: 3 } col)
+                    _wallColors[(rid, mx, mz)] = new(col[0], col[1], col[2]);
+            }
+
+        // Object types + instances.
+        _objectTypes.Clear();
+        if (f.ObjectTypes is not null && f.ObjectTypes.Count > 0)
+        {
+            foreach (var t in f.ObjectTypes)
+            {
+                _objectTypes.Add(new ObjectType
+                {
+                    Name = t.Name,
+                    Shape = System.Enum.TryParse<ObjectShape>(t.Shape, out var s) ? s : ObjectShape.Cube,
+                    Color = (t.Color is { Length: 3 } cc)
+                        ? new System.Numerics.Vector3(cc[0], cc[1], cc[2])
+                        : new System.Numerics.Vector3(0.7f, 0.7f, 0.75f),
+                    Size = t.Size > 0 ? t.Size : 0.3f,
+                });
+            }
+        }
+        else
+        {
+            // No types in file → seed at least one default so the UI is usable.
+            _objectTypes.Add(new ObjectType { Name = "Object 1", Shape = ObjectShape.Cube,
+                Color = new System.Numerics.Vector3(0.55f, 0.65f, 0.8f), Size = 0.3f });
+        }
+        _objects.Clear();
+        if (f.Objects is not null)
+        {
+            foreach (var o in f.Objects)
+                _objects.Add(new RoomObject
+                {
+                    Slot = o.Slot,
+                    OwningRoomId = o.OwningRoomId,
+                    Position = new System.Numerics.Vector3(o.X, o.Y, o.Z),
+                    Rotation = o.Rotation,
+                });
+        }
+
+        // Camera.
+        if (f.CameraView is not null && System.Enum.TryParse<CameraKind>(f.CameraView, out var cam))
+            CameraView = cam;
+        if (f.ZoomFactor > 0) ZoomFactor = f.ZoomFactor;
+        PanOffsetX = f.PanOffsetX;
+        PanOffsetY = f.PanOffsetY;
+        IsoYaw = f.IsoYaw;
+        IsoPitch = f.IsoPitch;
+        IsoDistance = f.IsoDistance > 0 ? f.IsoDistance : 28f;
+        IsoPivotX = f.IsoPivotX;
+        IsoPivotZ = f.IsoPivotZ;
+        IsoCameraInitialised = true;
+
+        // Constraints — copy field-by-field since the property is the
+        // VM's own POCO instance (its identity matters for binding).
+        if (f.Constraints is not null) Constraints.CopyFrom(f.Constraints);
+
+        // Rebuild adjacencies from the room grid before applying passage
+        // overrides — overrides need real Adjacency objects to attach to.
+        Rebuild();
+
+        // Passage overrides — match by Start coordinates against newly-
+        // built adjacencies.
+        _passageOverrides.Clear();
+        if (f.PassageOverrides is not null && CurrentEnvironment is { } env)
+        {
+            foreach (var po in f.PassageOverrides)
+            {
+                Passage p = po.Kind switch
+                {
+                    "Open" => Passage.Open.Instance,
+                    "Doorway" => new Passage.Doorway(
+                        (po.Openings ?? new List<OpenApparatus.Studio.Services.OpeningEntry>())
+                        .Select(o => new Opening(
+                            offsetAlongEdge: o.Offset,
+                            width: o.Width,
+                            height: o.Height,
+                            sillHeight: o.SillHeight,
+                            hingeAtEnd: o.HingeAtEnd,
+                            swingNegative: o.SwingNegative))
+                        .ToList()),
+                    _ => Passage.Closed.Instance,
+                };
+                // Find adjacency whose segment Start matches (within 1 mm).
+                foreach (var adj in env.Adjacencies)
+                {
+                    var s = adj.SharedSegment.Start;
+                    if (System.MathF.Abs(s.X - po.StartX) < 0.001f &&
+                        System.MathF.Abs(s.Y - po.StartZ) < 0.001f)
+                    {
+                        adj.Passage = p;
+                        _passageOverrides[PassageKey(adj)] = (p, adj.SharedSegment.Start);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Final refresh.
+        SelectedRoomId = -1;
+        SelectedAdjacency = null;
+        SelectedOpeningIndex = -1;
+        SelectedSubCell = null;
+        SelectedObjectIndex = -1;
+        EditVersion++;
+        Rebuild();
+        HasUnsavedChanges = false;
+        OnPropertyChanged(nameof(ObjectTypes));
+        OnPropertyChanged(nameof(Objects));
+        OnPropertyChanged(nameof(SceneSummary));
+    }
 
     /// <summary>Internal hook used by <see cref="Snapshot.Restore"/>. Do not
     /// call directly — go through Undo / Redo / push-and-mutate instead.</summary>
@@ -2070,6 +2327,132 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             StatusMessage = $"Random fill failed: {ex.Message}";
         }
+    }
+
+    /// <summary>Save the current scene to disk. Routes to SaveAs when no
+    /// path is set yet; otherwise overwrites the existing file. Updates
+    /// the recent-files list and clears the unsaved indicator on success.</summary>
+    [RelayCommand]
+    async Task SaveProjectAsync(Window? owner)
+    {
+        if (string.IsNullOrEmpty(ProjectFilePath))
+        {
+            await SaveProjectAsAsync(owner);
+            return;
+        }
+        try
+        {
+            OpenApparatus.Studio.Services.ProjectIO.Save(ProjectFilePath, this);
+            HasUnsavedChanges = false;
+            OpenApparatus.Studio.Services.Toasts.Default.ShowSuccess(
+                $"Saved → {System.IO.Path.GetFileName(ProjectFilePath)}");
+        }
+        catch (Exception ex)
+        {
+            OpenApparatus.Studio.Services.Toasts.Default.ShowError($"Save failed: {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
+    async Task SaveProjectAsAsync(Window? owner)
+    {
+        if (owner is null) return;
+        var file = await owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Save scene",
+            SuggestedFileName = string.IsNullOrEmpty(ProjectTitle) ? "scene" : ProjectTitle,
+            DefaultExtension = OpenApparatus.Studio.Services.ProjectIO.FileExtension.TrimStart('.'),
+            FileTypeChoices = new[]
+            {
+                new FilePickerFileType("OpenApparatus project (*.oapp)")
+                    { Patterns = new[] { "*.oapp" } },
+            },
+        });
+        if (file is null) return;
+
+        try
+        {
+            string path = file.Path.LocalPath;
+            OpenApparatus.Studio.Services.ProjectIO.Save(path, this);
+            ProjectFilePath = path;
+            ProjectTitle = System.IO.Path.GetFileNameWithoutExtension(path);
+            HasUnsavedChanges = false;
+            // Track in recent.
+            var settings = OpenApparatus.Studio.Services.AppSettings.LoadOrDefault();
+            settings.RecordRecent(path);
+            OpenApparatus.Studio.Services.Toasts.Default.ShowSuccess($"Saved → {file.Name}");
+        }
+        catch (Exception ex)
+        {
+            OpenApparatus.Studio.Services.Toasts.Default.ShowError($"Save failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>Pick a project file and load it. Replaces the current
+    /// scene; the user's previous in-memory scene goes onto the undo
+    /// stack via RestoreFromProjectFile so they can step back.</summary>
+    [RelayCommand]
+    async Task OpenProjectAsync(Window? owner)
+    {
+        if (owner is null) return;
+        var files = await owner.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Open scene",
+            AllowMultiple = false,
+            FileTypeFilter = new[]
+            {
+                new FilePickerFileType("OpenApparatus project (*.oapp)")
+                    { Patterns = new[] { "*.oapp" } },
+            },
+        });
+        var file = files?.Count > 0 ? files[0] : null;
+        if (file is null) return;
+        try
+        {
+            string path = file.Path.LocalPath;
+            OpenApparatus.Studio.Services.ProjectIO.Load(path, this);
+            ProjectFilePath = path;
+            ProjectTitle = System.IO.Path.GetFileNameWithoutExtension(path);
+            var settings = OpenApparatus.Studio.Services.AppSettings.LoadOrDefault();
+            settings.RecordRecent(path);
+            OpenApparatus.Studio.Services.Toasts.Default.ShowSuccess($"Opened {file.Name}");
+        }
+        catch (Exception ex)
+        {
+            OpenApparatus.Studio.Services.Toasts.Default.ShowError($"Couldn't open {file.Name}: {ex.Message}");
+        }
+    }
+
+    /// <summary>Open a project file directly by path — used by recent
+    /// files menu and by command-line / drag-drop hand-offs.</summary>
+    public void OpenProjectFromPath(string path)
+    {
+        try
+        {
+            OpenApparatus.Studio.Services.ProjectIO.Load(path, this);
+            ProjectFilePath = path;
+            ProjectTitle = System.IO.Path.GetFileNameWithoutExtension(path);
+            var settings = OpenApparatus.Studio.Services.AppSettings.LoadOrDefault();
+            settings.RecordRecent(path);
+            OpenApparatus.Studio.Services.Toasts.Default.ShowSuccess(
+                $"Opened {System.IO.Path.GetFileName(path)}");
+        }
+        catch (Exception ex)
+        {
+            OpenApparatus.Studio.Services.Toasts.Default.ShowError(
+                $"Couldn't open {System.IO.Path.GetFileName(path)}: {ex.Message}");
+        }
+    }
+
+    /// <summary>New empty scene. Asks for confirm via toast if there are
+    /// unsaved edits.</summary>
+    [RelayCommand]
+    void NewProject()
+    {
+        ResetAllCommand.Execute(null);
+        ProjectFilePath = null;
+        ProjectTitle = "Untitled scene";
+        HasUnsavedChanges = false;
     }
 
     [RelayCommand]
