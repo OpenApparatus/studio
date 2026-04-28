@@ -291,7 +291,7 @@
             <Setter Property="CornerRadius" Value="4 14 14 4"/>
         </Style>
         <Style Selector="RadioButton.modePill:pointerover /template/ Border#PART_Border">
-            <Setter Property="Background" Value="#eef2f7"/>
+            <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}"/>
         </Style>
         <Style Selector="RadioButton.modePill:checked /template/ Border#PART_Border">
             <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
@@ -347,7 +347,7 @@
             <Setter Property="VerticalAlignment" Value="Stretch"/>
         </Style>
         <!-- Pill-style toggle buttons: a single chip with the label inside.
-             Lit blue when checked. Smooth 120 ms colour transitions on
+             Lit emerald when checked. Smooth 120 ms colour transitions on
              state changes so the toggle reads as a deliberate action,
              not an instantaneous snap. -->
         <Style Selector="ToggleButton.pill">
@@ -355,8 +355,8 @@
             <Setter Property="MinHeight" Value="0"/>
             <Setter Property="MinWidth" Value="0"/>
             <Setter Property="FontSize" Value="11"/>
-            <Setter Property="Background" Value="#ffffff"/>
-            <Setter Property="BorderBrush" Value="#c8ccd6"/>
+            <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderHairlineBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="12"/>
             <Setter Property="Margin" Value="0 0 4 0"/>
@@ -379,7 +379,7 @@
             <Setter Property="BorderBrush" Value="{DynamicResource AccentHoverBrush}"/>
         </Style>
         <Style Selector="ToggleButton.pill:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="#eef2f7"/>
+            <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}"/>
         </Style>
         <Style Selector="ToggleButton.pill:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}"/>
@@ -392,9 +392,9 @@
             <Setter Property="MinHeight" Value="0"/>
             <Setter Property="MinWidth" Value="0"/>
             <Setter Property="FontSize" Value="11"/>
-            <Setter Property="Background" Value="#ffffff"/>
+            <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBrush}"/>
             <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
-            <Setter Property="BorderBrush" Value="#c8ccd6"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderHairlineBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="12"/>
             <Setter Property="Margin" Value="0 0 4 0"/>
@@ -417,7 +417,7 @@
             </Setter>
         </Style>
         <Style Selector="RadioButton.pill:pointerover /template/ Border#PART_Border">
-            <Setter Property="Background" Value="#eef2f7"/>
+            <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}"/>
         </Style>
         <Style Selector="RadioButton.pill:checked /template/ Border#PART_Border">
             <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
@@ -433,9 +433,9 @@
         <!-- Slim modern slider — full ControlTemplate replacement so we don't
              have to fight the Fluent default's chunky red thumb. Both
              orientations supported. Thin (3 px) track, small (12 px) flat
-             blue thumb with a white halo. -->
+             emerald thumb with a white halo. -->
         <Style Selector="Slider">
-            <Setter Property="Background" Value="#dde1e8"/>
+            <Setter Property="Background" Value="{DynamicResource SurfacePressedBrush}"/>
             <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
         </Style>
         <Style Selector="Slider:horizontal">
@@ -444,7 +444,7 @@
             <Setter Property="Template">
                 <ControlTemplate TargetType="Slider">
                     <Grid Margin="0">
-                        <Border Height="3" CornerRadius="1.5" Background="#dde1e8" VerticalAlignment="Center"/>
+                        <Border Height="3" CornerRadius="1.5" Background="{DynamicResource SurfacePressedBrush}" VerticalAlignment="Center"/>
                         <Track Name="PART_Track" Orientation="Horizontal"
                                Minimum="{TemplateBinding Minimum}"
                                Maximum="{TemplateBinding Maximum}"
@@ -488,7 +488,7 @@
             <Setter Property="Template">
                 <ControlTemplate TargetType="Slider">
                     <Grid Margin="0">
-                        <Border Width="3" CornerRadius="1.5" Background="#dde1e8" HorizontalAlignment="Center"/>
+                        <Border Width="3" CornerRadius="1.5" Background="{DynamicResource SurfacePressedBrush}" HorizontalAlignment="Center"/>
                         <Track Name="PART_Track" Orientation="Vertical"
                                Minimum="{TemplateBinding Minimum}"
                                Maximum="{TemplateBinding Maximum}"
@@ -1010,12 +1010,12 @@
                      canvas or in 3D mode (where 2D coords don't apply). -->
                 <TextBlock Grid.Column="0"
                            Text="{Binding CursorWorldDisplay}"
-                           Foreground="#A8AEBB"
+                           Foreground="{DynamicResource TextMutedBrush}"
                            FontSize="{StaticResource FontCaption}"
                            FontFamily="Consolas, 'Courier New', monospace"
                            VerticalAlignment="Center"
                            HorizontalAlignment="Left"/>
-                <!-- Live message + contextual hint. The brand-blue dot
+                <!-- Live message + contextual hint. The emerald accent dot
                      only lights when there's an active StatusMessage; the
                      hint takes over when the message is empty (auto-cleared
                      after 6 s) so the centre never just sits blank. -->
@@ -1028,19 +1028,19 @@
                              IsVisible="{Binding HasStatusMessage}"/>
                     <TextBlock IsVisible="{Binding HasStatusMessage}"
                                Text="{Binding StatusMessage}"
-                               Foreground="#E5E7EC"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
                                FontSize="{StaticResource FontBody}"
                                VerticalAlignment="Center"/>
                     <TextBlock IsVisible="{Binding !HasStatusMessage}"
                                Text="{Binding ContextualHint}"
-                               Foreground="#A8AEBB"
+                               Foreground="{DynamicResource TextMutedBrush}"
                                FontSize="{StaticResource FontCaption}"
                                VerticalAlignment="Center"/>
                 </StackPanel>
                 <!-- Scene summary. -->
                 <TextBlock Grid.Column="2"
                            Text="{Binding SceneSummary}"
-                           Foreground="#A8AEBB"
+                           Foreground="{DynamicResource TextMutedBrush}"
                            FontSize="{StaticResource FontCaption}"
                            VerticalAlignment="Center"
                            HorizontalAlignment="Right"/>

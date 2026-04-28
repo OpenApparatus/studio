@@ -6,6 +6,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Shapes;
 using Avalonia.Layout;
 using Avalonia.Media;
+using OpenApparatus.Studio.Themes;
 using OpenApparatus.Studio.ViewModels;
 
 namespace OpenApparatus.Studio.Views;
@@ -61,15 +62,16 @@ public sealed class WelcomePanel : ContentControl
         // Vector-only "hero" mark — three nested rounded squares forming
         // a stylised floor plan. Cheap, on-brand, no external assets.
         var hero = new Canvas { Width = 96, Height = 96 };
+        var accent = Tokens.AccentColor;
         for (int i = 0; i < 3; i++)
         {
             var rect = new Avalonia.Controls.Shapes.Rectangle
             {
                 Width = 92 - i * 24, Height = 92 - i * 24,
                 StrokeThickness = 1.6,
-                Stroke = new SolidColorBrush(Color.FromArgb((byte)(180 - i * 35), 0x1F, 0x6F, 0xEB)),
+                Stroke = new SolidColorBrush(Color.FromArgb((byte)(180 - i * 35), accent.R, accent.G, accent.B)),
                 RadiusX = 7, RadiusY = 7,
-                Fill = i == 0 ? new SolidColorBrush(Color.FromArgb(20, 0x1F, 0x6F, 0xEB)) : null,
+                Fill = i == 0 ? new SolidColorBrush(Color.FromArgb(20, accent.R, accent.G, accent.B)) : null,
             };
             Canvas.SetLeft(rect, 2 + i * 12);
             Canvas.SetTop(rect, 2 + i * 12);
@@ -93,7 +95,7 @@ public sealed class WelcomePanel : ContentControl
             Text = greet,
             FontSize = 11,
             FontWeight = FontWeight.SemiBold,
-            Foreground = new SolidColorBrush(Color.FromRgb(0x1F, 0x6F, 0xEB)),
+            Foreground = Tokens.AccentEmphasis,
             HorizontalAlignment = HorizontalAlignment.Center,
             Margin = new Thickness(0, 18, 0, 2),
         };
@@ -102,7 +104,7 @@ public sealed class WelcomePanel : ContentControl
         {
             Text = "OpenApparatus Studio",
             FontSize = 22, FontWeight = FontWeight.SemiBold,
-            Foreground = new SolidColorBrush(Color.FromRgb(0x23, 0x26, 0x2E)),
+            Foreground = Tokens.TextPrimary,
             HorizontalAlignment = HorizontalAlignment.Center,
             Margin = new Thickness(0, 0, 0, 4),
         };
@@ -110,7 +112,7 @@ public sealed class WelcomePanel : ContentControl
         {
             Text = "Author multi-room nav environments.",
             FontSize = 13,
-            Foreground = new SolidColorBrush(Color.FromRgb(0x7A, 0x80, 0x8C)),
+            Foreground = Tokens.TextMuted,
             HorizontalAlignment = HorizontalAlignment.Center,
             TextAlignment = TextAlignment.Center,
             TextWrapping = TextWrapping.Wrap,
@@ -139,7 +141,7 @@ public sealed class WelcomePanel : ContentControl
             recents.Children.Add(new TextBlock
             {
                 Text = "No recent projects yet.",
-                Foreground = new SolidColorBrush(Color.FromRgb(0x7A, 0x80, 0x8C)),
+                Foreground = Tokens.TextMuted,
                 FontSize = 12,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 Margin = new Thickness(0, 8, 0, 0),
@@ -152,7 +154,7 @@ public sealed class WelcomePanel : ContentControl
                 Text = "Recent",
                 FontWeight = FontWeight.SemiBold,
                 FontSize = 12,
-                Foreground = new SolidColorBrush(Color.FromRgb(0x5A, 0x62, 0x70)),
+                Foreground = Tokens.TextSecondary,
                 Margin = new Thickness(2, 0, 0, 6),
             });
             foreach (var entry in _vm.RecentFiles)
@@ -163,8 +165,8 @@ public sealed class WelcomePanel : ContentControl
                     HorizontalAlignment = HorizontalAlignment.Stretch,
                     HorizontalContentAlignment = HorizontalAlignment.Stretch,
                     Padding = new Thickness(12, 8),
-                    BorderBrush = new SolidColorBrush(Color.FromRgb(0xE5, 0xE7, 0xEC)),
-                    Background = new SolidColorBrush(Color.FromRgb(0xFF, 0xFF, 0xFF)),
+                    BorderBrush = Tokens.SurfacePressed,
+                    Background = Tokens.SurfaceRaised,
                     BorderThickness = new Thickness(1),
                     CornerRadius = new Avalonia.CornerRadius(6),
                     Margin = new Thickness(0, 0, 0, 4),
@@ -176,13 +178,13 @@ public sealed class WelcomePanel : ContentControl
                     Text = entry.Name,
                     FontSize = 13,
                     FontWeight = FontWeight.SemiBold,
-                    Foreground = new SolidColorBrush(Color.FromRgb(0x23, 0x26, 0x2E)),
+                    Foreground = Tokens.TextPrimary,
                 });
                 leftStack.Children.Add(new TextBlock
                 {
                     Text = entry.Folder,
                     FontSize = 11,
-                    Foreground = new SolidColorBrush(Color.FromRgb(0x7A, 0x80, 0x8C)),
+                    Foreground = Tokens.TextMuted,
                     TextTrimming = TextTrimming.CharacterEllipsis,
                 });
                 Grid.SetColumn(leftStack, 0);
@@ -195,8 +197,8 @@ public sealed class WelcomePanel : ContentControl
 
         var card = new Border
         {
-            Background = new SolidColorBrush(Color.FromRgb(0xFF, 0xFF, 0xFF)),
-            BorderBrush = new SolidColorBrush(Color.FromRgb(0xE5, 0xE7, 0xEC)),
+            Background = Tokens.SurfaceRaised,
+            BorderBrush = Tokens.SurfacePressed,
             BorderThickness = new Thickness(1),
             CornerRadius = new Avalonia.CornerRadius(14),
             Padding = new Thickness(36, 32),
@@ -237,7 +239,7 @@ public sealed class WelcomePanel : ContentControl
                     {
                         Text = "F1 shortcuts · Ctrl+K palette",
                         FontSize = 11,
-                        Foreground = new SolidColorBrush(Color.FromRgb(0xA8, 0xAE, 0xBB)),
+                        Foreground = Tokens.TextMuted,
                         HorizontalAlignment = HorizontalAlignment.Center,
                         Margin = new Thickness(0, 16, 0, 0),
                     },
@@ -248,7 +250,7 @@ public sealed class WelcomePanel : ContentControl
 
         var backdrop = new Border
         {
-            Background = new SolidColorBrush(Color.FromRgb(0xF7, 0xF8, 0xFA)),
+            Background = Tokens.SurfacePrimary,
             Child = card,
         };
 
@@ -287,10 +289,8 @@ public sealed class WelcomePanel : ContentControl
         // class-scoped Setters in Themes/Controls.axaml — setting them on
         // the Button here doesn't beat the Fluent default, which paints
         // the inner ContentPresenter directly during pointerover.
-        Color baseFill   = primary ? Color.FromRgb(0x1F, 0x6F, 0xEB) : Color.FromRgb(0xFF, 0xFF, 0xFF);
-        Color baseBorder = primary ? Color.FromRgb(0x18, 0x58, 0xB8) : Color.FromRgb(0xE5, 0xE7, 0xEC);
-        btn.Background  = new SolidColorBrush(baseFill);
-        btn.BorderBrush = new SolidColorBrush(baseBorder);
+        btn.Background  = primary ? Tokens.AccentEmphasis : Tokens.SurfaceRaised;
+        btn.BorderBrush = primary ? Tokens.Accent         : Tokens.SurfacePressed;
         Avalonia.Automation.AutomationProperties.SetName(btn, $"{title}: {subtitle}");
         if (primary) _primaryAction = btn;
         var sp = new StackPanel
@@ -300,27 +300,26 @@ public sealed class WelcomePanel : ContentControl
         sp.Children.Add(new Icon
         {
             Symbol = iconSymbol, Size = 22,
-            Foreground = primary
-                ? new SolidColorBrush(Color.FromRgb(0xFF, 0xFF, 0xFF))
-                : new SolidColorBrush(Color.FromRgb(0x1F, 0x6F, 0xEB)),
+            Foreground = primary ? Tokens.TextOnDark : Tokens.AccentEmphasis,
         });
         sp.Children.Add(new TextBlock
         {
             Text = title,
             FontSize = 13,
             FontWeight = FontWeight.SemiBold,
-            Foreground = primary
-                ? new SolidColorBrush(Color.FromRgb(0xFF, 0xFF, 0xFF))
-                : new SolidColorBrush(Color.FromRgb(0x23, 0x26, 0x2E)),
+            Foreground = primary ? Tokens.TextOnDark : Tokens.TextPrimary,
             HorizontalAlignment = HorizontalAlignment.Center,
         });
         sp.Children.Add(new TextBlock
         {
             Text = subtitle,
             FontSize = 11,
+            // Primary subtitle is white-on-emerald at 75% — kept inline
+            // because it's an opacity blend on the on-dark text colour
+            // rather than a base palette stop.
             Foreground = primary
                 ? new SolidColorBrush(Color.FromArgb(0xC0, 0xFF, 0xFF, 0xFF))
-                : new SolidColorBrush(Color.FromRgb(0x7A, 0x80, 0x8C)),
+                : Tokens.TextMuted,
             HorizontalAlignment = HorizontalAlignment.Center,
             TextAlignment = TextAlignment.Center,
             TextWrapping = TextWrapping.Wrap,
@@ -340,7 +339,7 @@ public sealed class WelcomePanel : ContentControl
             Content = "Skip",
             Background = Brushes.Transparent,
             BorderBrush = Brushes.Transparent,
-            Foreground = new SolidColorBrush(Color.FromRgb(0x1F, 0x6F, 0xEB)),
+            Foreground = Tokens.AccentEmphasis,
             FontSize = 11,
             Padding = new Thickness(4, 2),
             HorizontalAlignment = HorizontalAlignment.Center,

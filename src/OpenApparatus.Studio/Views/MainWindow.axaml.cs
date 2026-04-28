@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using OpenApparatus.Studio.Services;
+using OpenApparatus.Studio.Themes;
 using OpenApparatus.Studio.ViewModels;
 
 namespace OpenApparatus.Studio.Views;
@@ -45,6 +46,7 @@ public partial class MainWindow : Window
             ctx.FillRectangle(
                 new Avalonia.Media.SolidColorBrush(Avalonia.Media.Colors.Transparent),
                 new Avalonia.Rect(0, 0, Size, Size));
+            var accent = Tokens.AccentColor;
             for (int i = 0; i < 3; i++)
             {
                 double s = 56 - i * 16;
@@ -52,11 +54,11 @@ public partial class MainWindow : Window
                 var pen = new Avalonia.Media.Pen(
                     new Avalonia.Media.SolidColorBrush(
                         Avalonia.Media.Color.FromArgb(
-                            (byte)(220 - i * 50), 0x1F, 0x6F, 0xEB)),
+                            (byte)(220 - i * 50), accent.R, accent.G, accent.B)),
                     2.4);
                 Avalonia.Media.IBrush? fill = i == 0
                     ? new Avalonia.Media.SolidColorBrush(
-                        Avalonia.Media.Color.FromArgb(40, 0x1F, 0x6F, 0xEB))
+                        Avalonia.Media.Color.FromArgb(40, accent.R, accent.G, accent.B))
                     : null;
                 ctx.DrawRectangle(fill, pen,
                     new Avalonia.Rect(x, x, s, s),

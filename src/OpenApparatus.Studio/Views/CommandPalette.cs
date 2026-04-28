@@ -8,6 +8,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
+using OpenApparatus.Studio.Themes;
 using OpenApparatus.Studio.ViewModels;
 
 namespace OpenApparatus.Studio.Views;
@@ -71,7 +72,7 @@ public sealed class CommandPalette : ContentControl
         _input = new TextBox
         {
             Watermark = "Type a command…",
-            Background = new SolidColorBrush(Color.FromRgb(0xFA, 0xFB, 0xFD)),
+            Background = Tokens.SurfaceSecondary,
             BorderBrush = Brushes.Transparent,
             FontSize = 15,
             Padding = new Thickness(14, 12),
@@ -96,7 +97,7 @@ public sealed class CommandPalette : ContentControl
         inner.Children.Add(new Border
         {
             Height = 1,
-            Background = new SolidColorBrush(Color.FromRgb(0xE5, 0xE7, 0xEC)),
+            Background = Tokens.SurfacePressed,
         });
         inner.Children.Add(new ScrollViewer
         {
@@ -107,8 +108,8 @@ public sealed class CommandPalette : ContentControl
 
         _root = new Border
         {
-            Background = new SolidColorBrush(Color.FromRgb(0xFF, 0xFF, 0xFF)),
-            BorderBrush = new SolidColorBrush(Color.FromRgb(0xD3, 0xD7, 0xDF)),
+            Background = Tokens.SurfaceRaised,
+            BorderBrush = Tokens.SurfacePressed,
             BorderThickness = new Thickness(1),
             CornerRadius = new Avalonia.CornerRadius(10),
             Width = 560,
@@ -227,7 +228,7 @@ public sealed class CommandPalette : ContentControl
             {
                 Padding = new Thickness(14, 8),
                 Background = i == _highlight
-                    ? new SolidColorBrush(Color.FromRgb(0xEE, 0xF2, 0xF7))
+                    ? Tokens.SurfaceHover
                     : Brushes.Transparent,
                 Cursor = new Cursor(StandardCursorType.Hand),
             };
@@ -239,7 +240,7 @@ public sealed class CommandPalette : ContentControl
             {
                 Text = e.Title,
                 FontSize = 13,
-                Foreground = new SolidColorBrush(Color.FromRgb(0x23, 0x26, 0x2E)),
+                Foreground = Tokens.TextPrimary,
                 VerticalAlignment = VerticalAlignment.Center,
             };
             Grid.SetColumn(title, 0);
@@ -248,7 +249,7 @@ public sealed class CommandPalette : ContentControl
             {
                 Text = e.Category,
                 FontSize = 10.5,
-                Foreground = new SolidColorBrush(Color.FromRgb(0x7A, 0x80, 0x8C)),
+                Foreground = Tokens.TextMuted,
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(8, 0, 8, 0),
             };
@@ -258,8 +259,8 @@ public sealed class CommandPalette : ContentControl
             {
                 var hk = new Border
                 {
-                    Background = new SolidColorBrush(Color.FromRgb(0xF7, 0xF8, 0xFA)),
-                    BorderBrush = new SolidColorBrush(Color.FromRgb(0xD3, 0xD7, 0xDF)),
+                    Background = Tokens.SurfacePrimary,
+                    BorderBrush = Tokens.SurfacePressed,
                     BorderThickness = new Thickness(1),
                     CornerRadius = new Avalonia.CornerRadius(3),
                     Padding = new Thickness(6, 1),
@@ -269,7 +270,7 @@ public sealed class CommandPalette : ContentControl
                         Text = e.Hotkey,
                         FontFamily = new FontFamily("Consolas, 'Courier New', monospace"),
                         FontSize = 10,
-                        Foreground = new SolidColorBrush(Color.FromRgb(0x5A, 0x62, 0x70)),
+                        Foreground = Tokens.TextSecondary,
                     },
                 };
                 Grid.SetColumn(hk, 2);
@@ -287,7 +288,7 @@ public sealed class CommandPalette : ContentControl
                 Text = "No matching commands",
                 Margin = new Thickness(14, 14),
                 FontSize = 12,
-                Foreground = new SolidColorBrush(Color.FromRgb(0x7A, 0x80, 0x8C)),
+                Foreground = Tokens.TextMuted,
             });
         }
     }

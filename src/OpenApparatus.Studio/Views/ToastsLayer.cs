@@ -8,6 +8,7 @@ using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using OpenApparatus.Studio.Services;
+using OpenApparatus.Studio.Themes;
 
 namespace OpenApparatus.Studio.Views;
 
@@ -21,7 +22,10 @@ public sealed class ToastsLayer : ContentControl
     static readonly Color SuccessColor = Color.FromRgb(0x28, 0xA0, 0x5A);
     static readonly Color WarningColor = Color.FromRgb(0xE6, 0x9C, 0x18);
     static readonly Color ErrorColor   = Color.FromRgb(0xC8, 0x28, 0x28);
-    static readonly Color InfoColor    = Color.FromRgb(0x1F, 0x6F, 0xEB);
+    // Info severity tracks the AR HUD accent so it stays in sync with
+    // the brand emerald — resolved per-toast so it picks up the active
+    // theme variant.
+    static Color InfoColor => Tokens.AccentColor;
 
     readonly StackPanel _stack;
 
@@ -81,7 +85,7 @@ public sealed class ToastsLayer : ContentControl
             Text = toast.Message,
             FontSize = 12.5,
             VerticalAlignment = VerticalAlignment.Center,
-            Foreground = new SolidColorBrush(Color.FromRgb(0xE5, 0xE7, 0xEC)),
+            Foreground = Tokens.TextOnDark,
             TextWrapping = TextWrapping.Wrap,
             MaxWidth = 320,
         };
@@ -103,7 +107,7 @@ public sealed class ToastsLayer : ContentControl
                 Background = Brushes.Transparent,
                 BorderBrush = new SolidColorBrush(Color.FromArgb(80, 255, 255, 255)),
                 BorderThickness = new Thickness(1),
-                Foreground = new SolidColorBrush(Color.FromRgb(0xE5, 0xE7, 0xEC)),
+                Foreground = Tokens.TextOnDark,
                 Padding = new Thickness(8, 3),
                 MinHeight = 0,
                 CornerRadius = new Avalonia.CornerRadius(3),
@@ -121,7 +125,7 @@ public sealed class ToastsLayer : ContentControl
 
         var card = new Border
         {
-            Background = new SolidColorBrush(Color.FromRgb(0x23, 0x26, 0x2E)),
+            Background = Tokens.SurfaceInk,
             BorderBrush = new SolidColorBrush(Color.FromArgb(40, 255, 255, 255)),
             BorderThickness = new Thickness(1),
             CornerRadius = new Avalonia.CornerRadius(8),

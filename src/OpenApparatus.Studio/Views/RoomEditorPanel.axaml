@@ -5,7 +5,7 @@
              x:DataType="vm:MainWindowViewModel"
              MinWidth="220">
     <!-- Width managed by the parent GridSplitter; just enforce a minimum. -->
-    <Border Background="#f4f4f7" BorderBrush="#c8c8cf" BorderThickness="1 0 0 0">
+    <Border Background="{DynamicResource SurfaceSecondaryBrush}" BorderBrush="{DynamicResource BorderHairlineBrush}" BorderThickness="1 0 0 0">
         <ScrollViewer>
             <StackPanel Margin="14" Spacing="0" x:Name="Body">
                 <!-- Populated by code-behind: shows opening editor when an

@@ -5,6 +5,7 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
+using OpenApparatus.Studio.Themes;
 using OpenApparatus.Studio.ViewModels;
 
 namespace OpenApparatus.Studio.Views;
@@ -66,7 +67,7 @@ public partial class ObjectTypesPanel : UserControl
                 System.Math.Min(_vm.ObjectTypes.Count, 9) +
                 " in the editor with a sub-cell selected to place that type.",
             TextWrapping = TextWrapping.Wrap,
-            Foreground = new SolidColorBrush(Color.FromRgb(120, 120, 130)),
+            Foreground = Tokens.TextMuted,
             FontSize = 11,
             Margin = new Thickness(0, 0, 0, 6),
         });
@@ -120,19 +121,19 @@ public partial class ObjectTypesPanel : UserControl
         // this row is bound to a hotkey.
         var slotChip = new Border
         {
-            BorderBrush = new SolidColorBrush(Color.FromRgb(0xD3, 0xD7, 0xDF)),
+            BorderBrush = Tokens.SurfacePressed,
             BorderThickness = new Thickness(1),
             CornerRadius = new Avalonia.CornerRadius(3),
             Padding = new Thickness(5, 1),
             Margin = new Thickness(8, 0, 6, 0),
             VerticalAlignment = VerticalAlignment.Center,
-            Background = new SolidColorBrush(Color.FromRgb(0xF7, 0xF8, 0xFA)),
+            Background = Tokens.SurfacePrimary,
             Child = new TextBlock
             {
                 Text = (index + 1).ToString(),
                 FontSize = 10,
                 FontFamily = new FontFamily("Consolas, 'Courier New', monospace"),
-                Foreground = new SolidColorBrush(Color.FromRgb(0x23, 0x26, 0x2E)),
+                Foreground = Tokens.TextPrimary,
             },
         };
         ToolTip.SetTip(slotChip, $"Press {index + 1} on the keyboard to place this object type.");
