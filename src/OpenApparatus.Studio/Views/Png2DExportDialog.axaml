@@ -17,7 +17,7 @@
                    FontSize="12"
                    TextWrapping="Wrap"
                    Margin="0 22 0 10"
-                   Text="The PNG mirrors the current 2D viewport at 2× resolution."/>
+                   Text="The PNG mirrors the current 2D viewport at viewport resolution."/>
 
         <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
             <StackPanel Spacing="6">

@@ -279,10 +279,17 @@ public partial class MainWindow : Window
         });
         if (file is null) return;
 
-        // Snapshot toggle state, apply the user's selections, render to a 2× DPI
-        // bitmap, then restore. Toggles bump EditVersion which AffectsRender on
-        // the editor — but RenderTargetBitmap.Render reads the visual's render
-        // logic synchronously, so we don't need to wait for layout / invalidate.
+        // Snapshot toggle state, apply the user's selections, render to a
+        // 1:1 (DIP=pixel) bitmap, then restore. Toggles bump EditVersion
+        // which AffectsRender on the editor — but RenderTargetBitmap.Render
+        // reads the visual's render logic synchronously, so we don't need
+        // to wait for layout / invalidate.
+        //
+        // Note: an earlier 2× DPI variant (PixelSize = bounds × 2 with
+        // Dpi = 192) appeared to render the visual into the top-left
+        // quadrant only on Avalonia 11.3 — DIP-to-pixel scaling on the
+        // bitmap's drawing context isn't applied uniformly to
+        // ImmediateRenderer's output. 1:1 sidesteps that.
         var prevWallBorders        = vm.ShowWallBorders;
         var prevRoomLabels         = vm.ShowRoomLabels;
         var prevAxisMarkers        = vm.ShowAxisMarkers;
@@ -307,12 +314,11 @@ public partial class MainWindow : Window
             vm.ShowDoorAngles         = dlg.DoorAngles;
             vm.ShowDoorDistances      = dlg.DoorDist;
 
-            const double scale = 2.0;
             var eb = editor.Bounds;
             var editorPx = new PixelSize(
-                Math.Max(1, (int)Math.Ceiling(eb.Width  * scale)),
-                Math.Max(1, (int)Math.Ceiling(eb.Height * scale)));
-            using var editorBmp = new RenderTargetBitmap(editorPx, new Vector(96 * scale, 96 * scale));
+                Math.Max(1, (int)Math.Ceiling(eb.Width)),
+                Math.Max(1, (int)Math.Ceiling(eb.Height)));
+            using var editorBmp = new RenderTargetBitmap(editorPx);
             editorBmp.Render(editor);
 
             bool includeLegend = dlg.Legend && legend != null
@@ -327,9 +333,9 @@ public partial class MainWindow : Window
             {
                 var lb = legend!.Bounds;
                 var legendPx = new PixelSize(
-                    Math.Max(1, (int)Math.Ceiling(lb.Width  * scale)),
-                    Math.Max(1, (int)Math.Ceiling(lb.Height * scale)));
-                using var legendBmp = new RenderTargetBitmap(legendPx, new Vector(96 * scale, 96 * scale));
+                    Math.Max(1, (int)Math.Ceiling(lb.Width)),
+                    Math.Max(1, (int)Math.Ceiling(lb.Height)));
+                using var legendBmp = new RenderTargetBitmap(legendPx);
                 legendBmp.Render(legend);
 
                 // Composite editor on top, legend below. Width is the wider of
@@ -338,9 +344,9 @@ public partial class MainWindow : Window
                 double finalW = Math.Max(eb.Width, lb.Width);
                 double finalH = eb.Height + lb.Height;
                 var finalPx = new PixelSize(
-                    Math.Max(1, (int)Math.Ceiling(finalW * scale)),
-                    Math.Max(1, (int)Math.Ceiling(finalH * scale)));
-                using var finalBmp = new RenderTargetBitmap(finalPx, new Vector(96 * scale, 96 * scale));
+                    Math.Max(1, (int)Math.Ceiling(finalW)),
+                    Math.Max(1, (int)Math.Ceiling(finalH)));
+                using var finalBmp = new RenderTargetBitmap(finalPx);
                 using (var fctx = finalBmp.CreateDrawingContext())
                 {
                     // Match the editor's solid background so the gap (if any)
@@ -349,12 +355,12 @@ public partial class MainWindow : Window
                     fctx.FillRectangle(
                         new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(232, 232, 236)),
                         new Rect(0, 0, finalW, finalH));
-                    fctx.DrawImage(editorBmp,
-                        new Rect(0, 0, editorBmp.Size.Width, editorBmp.Size.Height),
-                        new Rect(0, 0, eb.Width, eb.Height));
-                    fctx.DrawImage(legendBmp,
-                        new Rect(0, 0, legendBmp.Size.Width, legendBmp.Size.Height),
-                        new Rect(0, eb.Height, lb.Width, lb.Height));
+                    // DrawImage(image, destRect) draws the entire source
+                    // bitmap stretched to the destination — at 1:1 here, so
+                    // no resampling. Avoids depending on Bitmap.Size, which
+                    // returns DIPs and was shaky under non-default DPI.
+                    fctx.DrawImage(editorBmp, new Rect(0, 0, eb.Width, eb.Height));
+                    fctx.DrawImage(legendBmp, new Rect(0, eb.Height, lb.Width, lb.Height));
                 }
 
                 await using var stream = await file.OpenWriteAsync();
