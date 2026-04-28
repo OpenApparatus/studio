@@ -198,7 +198,11 @@
         </Style>
 
         <!-- Stepper buttons — square tap targets sized to the host height,
-             larger glyph than the old chevrons so − / + read clearly. -->
+             larger glyph than the old chevrons so − / + read clearly.
+             Focusable=False so a click doesn't transfer keyboard focus to
+             the button, which would otherwise trigger the spinner's
+             :focus-within accent border. The TextBox can still take
+             focus normally (typing → accent ring), which is the intent. -->
         <Style Selector="RepeatButton.numStep">
             <Setter Property="Padding" Value="0"/>
             <Setter Property="MinWidth" Value="32"/>
@@ -214,6 +218,8 @@
             <Setter Property="HorizontalAlignment" Value="Stretch"/>
             <Setter Property="VerticalAlignment" Value="Stretch"/>
             <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="IsTabStop" Value="False"/>
         </Style>
         <Style Selector="RepeatButton.numStep:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource SurfacePrimaryBrush}"/>
