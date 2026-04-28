@@ -842,8 +842,14 @@ public partial class RoomEditorPanel : UserControl
     Control NumericRow(string label, double value, double min, double max, double step,
         System.Action<double> onChanged)
     {
+        // Classes="compact" pulls the project-wide stepper chrome (rounded
+        // outer border with hairline-divided − / + cells) so this panel's
+        // numeric inputs match the document settings + placement-constraints
+        // panels rather than falling back to Avalonia's bulky default.
         var box = new NumericUpDown
         {
+            Classes = { "compact" },
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch,
             Value = (decimal)value,
             Minimum = (decimal)min,
             Maximum = (decimal)max,

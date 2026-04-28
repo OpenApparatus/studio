@@ -1172,7 +1172,8 @@
                                                FontSize="11" Margin="0 0 0 2"
                                                behaviors:DragScrub.Target="{Binding #gridWidthInput}"
                                                behaviors:DragScrub.Step="0.2"/>
-                                    <NumericUpDown Name="gridWidthInput"
+                                    <NumericUpDown Name="gridWidthInput" Classes="compact"
+                                                   HorizontalAlignment="Stretch"
                                                    Value="{Binding GridWidth}" Minimum="1" Maximum="64" FormatString="0"/>
                                 </StackPanel>
                                 <StackPanel Margin="0 0 0 4">
@@ -1180,7 +1181,8 @@
                                                FontSize="11" Margin="0 0 0 2"
                                                behaviors:DragScrub.Target="{Binding #gridLengthInput}"
                                                behaviors:DragScrub.Step="0.2"/>
-                                    <NumericUpDown Name="gridLengthInput"
+                                    <NumericUpDown Name="gridLengthInput" Classes="compact"
+                                                   HorizontalAlignment="Stretch"
                                                    Value="{Binding GridLength}" Minimum="1" Maximum="64" FormatString="0"/>
                                 </StackPanel>
                                 <StackPanel>
@@ -1188,7 +1190,8 @@
                                                FontSize="11" Margin="0 0 0 2"
                                                behaviors:DragScrub.Target="{Binding #tileSizeInput}"
                                                behaviors:DragScrub.Step="0.05"/>
-                                    <NumericUpDown Name="tileSizeInput"
+                                    <NumericUpDown Name="tileSizeInput" Classes="compact"
+                                                   HorizontalAlignment="Stretch"
                                                    Value="{Binding TileSize}" Minimum="0.5" Maximum="10" Increment="0.5" FormatString="0.0"/>
                                 </StackPanel>
                             </StackPanel>
@@ -1202,7 +1205,8 @@
                                                FontSize="11" Margin="0 0 0 2"
                                                behaviors:DragScrub.Target="{Binding #wallThicknessInput}"
                                                behaviors:DragScrub.Step="0.01"/>
-                                    <NumericUpDown Name="wallThicknessInput"
+                                    <NumericUpDown Name="wallThicknessInput" Classes="compact"
+                                                   HorizontalAlignment="Stretch"
                                                    Value="{Binding WallThickness}" Minimum="0.05" Maximum="2.0" Increment="0.05" FormatString="0.00"/>
                                 </StackPanel>
                                 <StackPanel>
@@ -1210,7 +1214,8 @@
                                                FontSize="11" Margin="0 0 0 2"
                                                behaviors:DragScrub.Target="{Binding #wallHeightInput}"
                                                behaviors:DragScrub.Step="0.05"/>
-                                    <NumericUpDown Name="wallHeightInput"
+                                    <NumericUpDown Name="wallHeightInput" Classes="compact"
+                                                   HorizontalAlignment="Stretch"
                                                    Value="{Binding WallHeight}" Minimum="0.5" Maximum="6.0" Increment="0.5" FormatString="0.0"/>
                                 </StackPanel>
                             </StackPanel>
@@ -1224,7 +1229,8 @@
                                                FontSize="11" Margin="0 0 0 2"
                                                behaviors:DragScrub.Target="{Binding #doorWidthInput}"
                                                behaviors:DragScrub.Step="0.02"/>
-                                    <NumericUpDown Name="doorWidthInput"
+                                    <NumericUpDown Name="doorWidthInput" Classes="compact"
+                                                   HorizontalAlignment="Stretch"
                                                    Value="{Binding DoorWidth}" Minimum="0.5" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
                                 </StackPanel>
                                 <StackPanel>
@@ -1232,7 +1238,8 @@
                                                FontSize="11" Margin="0 0 0 2"
                                                behaviors:DragScrub.Target="{Binding #doorHeightInput}"
                                                behaviors:DragScrub.Step="0.02"/>
-                                    <NumericUpDown Name="doorHeightInput"
+                                    <NumericUpDown Name="doorHeightInput" Classes="compact"
+                                                   HorizontalAlignment="Stretch"
                                                    Value="{Binding DoorHeight}" Minimum="1.5" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
                                 </StackPanel>
                             </StackPanel>
@@ -1246,7 +1253,8 @@
                                                FontSize="11" Margin="0 0 0 2"
                                                behaviors:DragScrub.Target="{Binding #winWidthInput}"
                                                behaviors:DragScrub.Step="0.02"/>
-                                    <NumericUpDown Name="winWidthInput"
+                                    <NumericUpDown Name="winWidthInput" Classes="compact"
+                                                   HorizontalAlignment="Stretch"
                                                    Value="{Binding WindowWidth}" Minimum="0.3" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
                                 </StackPanel>
                                 <StackPanel Margin="0 0 0 4">
@@ -1254,7 +1262,8 @@
                                                FontSize="11" Margin="0 0 0 2"
                                                behaviors:DragScrub.Target="{Binding #winHeightInput}"
                                                behaviors:DragScrub.Step="0.02"/>
-                                    <NumericUpDown Name="winHeightInput"
+                                    <NumericUpDown Name="winHeightInput" Classes="compact"
+                                                   HorizontalAlignment="Stretch"
                                                    Value="{Binding WindowHeight}" Minimum="1.0" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
                                 </StackPanel>
                                 <StackPanel>
@@ -1262,7 +1271,8 @@
                                                FontSize="11" Margin="0 0 0 2"
                                                behaviors:DragScrub.Target="{Binding #winSillInput}"
                                                behaviors:DragScrub.Step="0.02"/>
-                                    <NumericUpDown Name="winSillInput"
+                                    <NumericUpDown Name="winSillInput" Classes="compact"
+                                                   HorizontalAlignment="Stretch"
                                                    Value="{Binding WindowSillHeight}" Minimum="0.1" Maximum="2.5" Increment="0.1" FormatString="0.0"/>
                                 </StackPanel>
                             </StackPanel>
