@@ -126,16 +126,13 @@
             </Setter>
         </Style>
 
-        <!-- Border hover / focus moved onto the spinner because the border
-             element now lives inside ButtonSpinner.compactSpinner's
-             template. focus-within fires when the inner TextBox takes
-             focus, so the accent ring still appears when typing. -->
-        <Style Selector="ButtonSpinner.compactSpinner:pointerover /template/ Border#PART_BorderElement">
-            <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}"/>
-        </Style>
-        <Style Selector="ButtonSpinner.compactSpinner:focus-within /template/ Border#PART_BorderElement">
-            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
-        </Style>
+        <!-- Outer border stays at its resting hairline regardless of
+             interaction. Hover and focus pseudoclasses on the spinner
+             would bolden / accent the whole frame even when the user is
+             only pressing a step button — visually noisy and conflated
+             with the local button feedback the user expects. The
+             stepper buttons own their own hover / press tints; the
+             TextBox shows its own caret while typing. -->
 
         <!-- ButtonSpinner template for compact NumericUpDown — three-cell
              stepper layout. Hairline dividers between cells use the
