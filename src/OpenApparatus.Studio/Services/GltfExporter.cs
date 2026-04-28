@@ -25,6 +25,16 @@ namespace OpenApparatus.Studio.Services;
 /// tunnel jambs / lintels / sills / thresholds) belong to the lower-id room
 /// and carry a unique material per (room, part) so re-skinning one room never
 /// alters the other room's view of a shared wall.
+///
+/// Coordinate handedness: glTF is right-handed, Unity is left-handed, and
+/// Unity's glTF importers (UnityGLTF, glTFast) compensate by negating X on
+/// import. Without intervention that turns the studio's "+X = east, right on
+/// the 2D map" into "-X = left in Unity," so the imported scene reads as a
+/// left/right mirror of the editor. We pre-mirror X in the writer (positions,
+/// normals, object translations / Y-rotations, and triangle winding) so the
+/// importer's flip cancels out and Unity sees the same orientation as the 2D
+/// view. Right-handed viewers (Blender, Three.js) will see this as the actual
+/// mirror — that's the trade-off; Unity is the primary target.
 /// </summary>
 public static class GltfExporter
 {
@@ -184,9 +194,11 @@ public static class GltfExporter
 
                     objectsParent ??= roomNode.CreateNode($"room_{room.Id}_objects");
                     var inst = objectsParent.CreateNode($"slot_{obj.Slot}_{objCount}");
-                    inst = inst.WithLocalTranslation(obj.Position);
+                    // Mirror X on translation; rotation around Y becomes its
+                    // negative under the same mirror (clockwise becomes CCW).
+                    inst = inst.WithLocalTranslation(MirrorX(obj.Position));
                     if (obj.Rotation != 0f)
-                        inst = inst.WithLocalRotation(Quaternion.CreateFromAxisAngle(Vector3.UnitY, obj.Rotation));
+                        inst = inst.WithLocalRotation(Quaternion.CreateFromAxisAngle(Vector3.UnitY, -obj.Rotation));
 
                     var mb = NewMesh($"slot_{obj.Slot}_{objCount}_mesh");
                     var prim = mb.UsePrimitive(MakeMaterial(
@@ -216,9 +228,9 @@ public static class GltfExporter
 
                 outsideParent ??= rootNode.CreateNode("Outside");
                 var inst = outsideParent.CreateNode($"slot_{obj.Slot}_{outsideCount}");
-                inst = inst.WithLocalTranslation(obj.Position);
+                inst = inst.WithLocalTranslation(MirrorX(obj.Position));
                 if (obj.Rotation != 0f)
-                    inst = inst.WithLocalRotation(Quaternion.CreateFromAxisAngle(Vector3.UnitY, obj.Rotation));
+                    inst = inst.WithLocalRotation(Quaternion.CreateFromAxisAngle(Vector3.UnitY, -obj.Rotation));
 
                 var mb = NewMesh($"outside_slot_{obj.Slot}_{outsideCount}_mesh");
                 var prim = mb.UsePrimitive(MakeMaterial(
@@ -381,29 +393,38 @@ public static class GltfExporter
         return len > 1e-6f ? n / len : new Vector3(0, 1, 0);
     }
 
+    /// <summary>Mirror across the X=0 plane. Applied to every position and
+    /// normal we emit so Unity's importer-side X flip cancels back to the
+    /// authored orientation.</summary>
+    static Vector3 MirrorX(Vector3 v) => new(-v.X, v.Y, v.Z);
+
     static void AddQuad(IPrimitiveBuilder prim, Vector3 a, Vector3 b, Vector3 c, Vector3 d, Vector3 normal)
     {
+        var n = MirrorX(normal);
         var va = new VertexBuilder<VertexPositionNormal, VertexTexture1, VertexEmpty>(
-            new VertexPositionNormal(a, normal), new VertexTexture1(Vector2.Zero));
+            new VertexPositionNormal(MirrorX(a), n), new VertexTexture1(Vector2.Zero));
         var vb = new VertexBuilder<VertexPositionNormal, VertexTexture1, VertexEmpty>(
-            new VertexPositionNormal(b, normal), new VertexTexture1(Vector2.Zero));
+            new VertexPositionNormal(MirrorX(b), n), new VertexTexture1(Vector2.Zero));
         var vc = new VertexBuilder<VertexPositionNormal, VertexTexture1, VertexEmpty>(
-            new VertexPositionNormal(c, normal), new VertexTexture1(Vector2.Zero));
+            new VertexPositionNormal(MirrorX(c), n), new VertexTexture1(Vector2.Zero));
         var vd = new VertexBuilder<VertexPositionNormal, VertexTexture1, VertexEmpty>(
-            new VertexPositionNormal(d, normal), new VertexTexture1(Vector2.Zero));
-        prim.AddTriangle(va, vb, vc);
-        prim.AddTriangle(va, vc, vd);
+            new VertexPositionNormal(MirrorX(d), n), new VertexTexture1(Vector2.Zero));
+        // Mirroring across X reverses triangle orientation; swap the last two
+        // verts so winding (and therefore front-facing) stays correct.
+        prim.AddTriangle(va, vc, vb);
+        prim.AddTriangle(va, vd, vc);
     }
 
     static void AddTri(IPrimitiveBuilder prim, Vector3 a, Vector3 b, Vector3 c, Vector3 normal)
     {
+        var n = MirrorX(normal);
         var va = new VertexBuilder<VertexPositionNormal, VertexTexture1, VertexEmpty>(
-            new VertexPositionNormal(a, normal), new VertexTexture1(Vector2.Zero));
+            new VertexPositionNormal(MirrorX(a), n), new VertexTexture1(Vector2.Zero));
         var vb = new VertexBuilder<VertexPositionNormal, VertexTexture1, VertexEmpty>(
-            new VertexPositionNormal(b, normal), new VertexTexture1(Vector2.Zero));
+            new VertexPositionNormal(MirrorX(b), n), new VertexTexture1(Vector2.Zero));
         var vc = new VertexBuilder<VertexPositionNormal, VertexTexture1, VertexEmpty>(
-            new VertexPositionNormal(c, normal), new VertexTexture1(Vector2.Zero));
-        prim.AddTriangle(va, vb, vc);
+            new VertexPositionNormal(MirrorX(c), n), new VertexTexture1(Vector2.Zero));
+        prim.AddTriangle(va, vc, vb);
     }
 
     static MeshBuilder<VertexPositionNormal, VertexTexture1> NewMesh(string name)
@@ -445,13 +466,14 @@ public static class GltfExporter
         var va = MakeVertex(src, ia);
         var vb = MakeVertex(src, ib);
         var vc = MakeVertex(src, ic);
-        prim.AddTriangle(va, vb, vc);
+        // Winding reversed because MakeVertex mirrors X (see class summary).
+        prim.AddTriangle(va, vc, vb);
     }
 
     static VertexBuilder<VertexPositionNormal, VertexTexture1, VertexEmpty> MakeVertex(
         MeshData src, int idx)
     {
-        var pos = new VertexPositionNormal(src.Vertices[idx], src.Normals[idx]);
+        var pos = new VertexPositionNormal(MirrorX(src.Vertices[idx]), MirrorX(src.Normals[idx]));
         var uv = new VertexTexture1(src.Uv0[idx]);
         return new VertexBuilder<VertexPositionNormal, VertexTexture1, VertexEmpty>(pos, uv);
     }
