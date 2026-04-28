@@ -283,32 +283,14 @@ public sealed class WelcomePanel : ContentControl
             // the user can hit Enter immediately to start a new scene.
             IsDefault = primary,
         };
-        // Set the resting + pointer-over colours via direct style
-        // overrides so the global Button hover rule (which paints a
-        // light grey hover background) doesn't bleach white text on
-        // the primary action into invisibility.
-        // Primary action: brand-blue surface at rest, dark grey on hover
-        // — keeps the call-to-action obvious in the welcome scene while
-        // still giving an unmistakable hover state. White content reads
-        // on both fills.
-        Color baseFill    = primary ? Color.FromRgb(0x1F, 0x6F, 0xEB) : Color.FromRgb(0xFF, 0xFF, 0xFF);
-        Color hoverFill   = primary ? Color.FromRgb(0x23, 0x26, 0x2E) : Color.FromRgb(0xF2, 0xF4, 0xF8);
-        Color pressFill   = primary ? Color.FromRgb(0x14, 0x16, 0x1B) : Color.FromRgb(0xE6, 0xEA, 0xF2);
-        _ = pressFill; // reserved for future :pressed wiring
-        Color baseBorder  = primary ? Color.FromRgb(0x18, 0x58, 0xB8) : Color.FromRgb(0xE5, 0xE7, 0xEC);
-        Color hoverBorder = primary ? Color.FromRgb(0x14, 0x16, 0x1B) : Color.FromRgb(0xE5, 0xE7, 0xEC);
+        // Resting surface colours. Hover / pressed states are driven by
+        // class-scoped Setters in Themes/Controls.axaml — setting them on
+        // the Button here doesn't beat the Fluent default, which paints
+        // the inner ContentPresenter directly during pointerover.
+        Color baseFill   = primary ? Color.FromRgb(0x1F, 0x6F, 0xEB) : Color.FromRgb(0xFF, 0xFF, 0xFF);
+        Color baseBorder = primary ? Color.FromRgb(0x18, 0x58, 0xB8) : Color.FromRgb(0xE5, 0xE7, 0xEC);
         btn.Background  = new SolidColorBrush(baseFill);
         btn.BorderBrush = new SolidColorBrush(baseBorder);
-        btn.PointerEntered += (_, _) =>
-        {
-            btn.Background = new SolidColorBrush(hoverFill);
-            btn.BorderBrush = new SolidColorBrush(hoverBorder);
-        };
-        btn.PointerExited += (_, _) =>
-        {
-            btn.Background = new SolidColorBrush(baseFill);
-            btn.BorderBrush = new SolidColorBrush(baseBorder);
-        };
         Avalonia.Automation.AutomationProperties.SetName(btn, $"{title}: {subtitle}");
         if (primary) _primaryAction = btn;
         var sp = new StackPanel

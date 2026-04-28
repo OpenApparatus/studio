@@ -89,6 +89,29 @@
     <Style Selector="Button:pressed:not(.welcomeAction):not(.welcomeActionPrimary):not(.primary):not(.action):not(.toolIcon):not(.icon):not(.play) /template/ ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource SurfaceSecondaryBrush}"/>
     </Style>
+    <!-- Welcome primary action — brand-blue at rest (set on the Button in
+         WelcomePanel.cs), dark grey on hover, near-black on press. The
+         pointerover / pressed setters target the ContentPresenter so they
+         beat the Fluent-theme default that would otherwise paint a light
+         grey hover. -->
+    <Style Selector="Button.welcomeActionPrimary:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#23262E"/>
+        <Setter Property="BorderBrush" Value="#14161B"/>
+    </Style>
+    <Style Selector="Button.welcomeActionPrimary:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="#14161B"/>
+        <Setter Property="BorderBrush" Value="#14161B"/>
+    </Style>
+    <!-- Non-primary welcome actions — keep Fluent from painting the muted
+         hover over the white surface that the code-behind sets. -->
+    <Style Selector="Button.welcomeAction:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#F2F4F8"/>
+        <Setter Property="BorderBrush" Value="#E5E7EC"/>
+    </Style>
+    <Style Selector="Button.welcomeAction:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="#E6EAF2"/>
+        <Setter Property="BorderBrush" Value="#E5E7EC"/>
+    </Style>
     <Style Selector="Button:disabled">
         <Setter Property="Opacity" Value="0.5"/>
     </Style>
