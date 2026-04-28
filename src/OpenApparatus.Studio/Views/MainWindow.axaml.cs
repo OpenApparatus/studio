@@ -3,6 +3,8 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media.Imaging;
+using Avalonia.Platform.Storage;
 using OpenApparatus.Studio.Services;
 using OpenApparatus.Studio.Themes;
 using OpenApparatus.Studio.ViewModels;
@@ -233,6 +235,98 @@ public partial class MainWindow : Window
     {
         if (sender is MenuItem mi && mi.Tag is string path && Vm is { } vm)
             vm.OpenProjectFromPath(path);
+    }
+
+    async void OnExportPng2D(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        var vm = Vm; if (vm is null) return;
+        if (!vm.IsTopDownView)
+        {
+            vm.StatusMessage = "Switch to 2D view before exporting a PNG.";
+            return;
+        }
+        var editor = this.FindControl<GridEditorView>("GridEditor");
+        if (editor is null || editor.Bounds.Width <= 0 || editor.Bounds.Height <= 0)
+        {
+            vm.StatusMessage = "2D view is not available.";
+            return;
+        }
+
+        var dlg = new Png2DExportDialog();
+        dlg.RememberInitial(
+            vm.ShowWallBorders, vm.ShowRoomLabels,
+            vm.ShowRoomDimensions, vm.ShowFloorAreaLabels, vm.ShowOpeningSizeLabels,
+            vm.ShowObjectDistances, vm.ShowDoorAngles, vm.ShowDoorDistances);
+        dlg.Configure(
+            vm.ShowWallBorders, vm.ShowRoomLabels,
+            vm.ShowRoomDimensions, vm.ShowFloorAreaLabels, vm.ShowOpeningSizeLabels,
+            vm.ShowObjectDistances, vm.ShowDoorAngles, vm.ShowDoorDistances);
+        await dlg.ShowDialog(this);
+        if (!dlg.Confirmed) return;
+
+        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Export 2D view as PNG",
+            SuggestedFileName = "floorplan.png",
+            DefaultExtension = "png",
+            FileTypeChoices = new[]
+            {
+                new FilePickerFileType("PNG image (*.png)") { Patterns = new[] { "*.png" } },
+            },
+        });
+        if (file is null) return;
+
+        // Snapshot toggle state, apply the user's selections, render to a 2× DPI
+        // bitmap, then restore. Toggles bump EditVersion which AffectsRender on
+        // the editor — but RenderTargetBitmap.Render reads the visual's render
+        // logic synchronously, so we don't need to wait for layout / invalidate.
+        var prevWallBorders   = vm.ShowWallBorders;
+        var prevRoomLabels    = vm.ShowRoomLabels;
+        var prevRoomDims      = vm.ShowRoomDimensions;
+        var prevFloorArea     = vm.ShowFloorAreaLabels;
+        var prevOpeningSizes  = vm.ShowOpeningSizeLabels;
+        var prevObjectDist    = vm.ShowObjectDistances;
+        var prevDoorAngles    = vm.ShowDoorAngles;
+        var prevDoorDist      = vm.ShowDoorDistances;
+
+        try
+        {
+            vm.ShowWallBorders       = dlg.Ribbons;
+            vm.ShowRoomLabels        = dlg.RoomLabels;
+            vm.ShowRoomDimensions    = dlg.RoomDims;
+            vm.ShowFloorAreaLabels   = dlg.FloorArea;
+            vm.ShowOpeningSizeLabels = dlg.OpeningSizes;
+            vm.ShowObjectDistances   = dlg.ObjectDist;
+            vm.ShowDoorAngles        = dlg.DoorAngles;
+            vm.ShowDoorDistances     = dlg.DoorDist;
+
+            const double scale = 2.0;
+            var b = editor.Bounds;
+            var pixelSize = new PixelSize(
+                Math.Max(1, (int)Math.Ceiling(b.Width  * scale)),
+                Math.Max(1, (int)Math.Ceiling(b.Height * scale)));
+            using var bmp = new RenderTargetBitmap(pixelSize, new Vector(96 * scale, 96 * scale));
+            bmp.Render(editor);
+
+            await using var stream = await file.OpenWriteAsync();
+            bmp.Save(stream);
+            vm.StatusMessage = $"Exported PNG → {file.Name}";
+        }
+        catch (Exception ex)
+        {
+            vm.StatusMessage = $"PNG export failed: {ex.Message}";
+        }
+        finally
+        {
+            vm.ShowWallBorders       = prevWallBorders;
+            vm.ShowRoomLabels        = prevRoomLabels;
+            vm.ShowRoomDimensions    = prevRoomDims;
+            vm.ShowFloorAreaLabels   = prevFloorArea;
+            vm.ShowOpeningSizeLabels = prevOpeningSizes;
+            vm.ShowObjectDistances   = prevObjectDist;
+            vm.ShowDoorAngles        = prevDoorAngles;
+            vm.ShowDoorDistances     = prevDoorDist;
+        }
     }
 
     async void OnPickDefaultFloor(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
