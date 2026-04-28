@@ -1248,18 +1248,27 @@
                         <TextBlock Classes="label" Text="Defaults for new objects"/>
                         <Border Classes="section">
                             <StackPanel Spacing="8">
-                                <Grid ColumnDefinitions="Auto,*"
-                                      RowDefinitions="Auto,Auto" RowSpacing="6" ColumnSpacing="10">
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Classes="propLabel" Text="Default Y (m)"
+                                <!-- Stacked label-above-input rows so the
+                                     numeric inputs use their full width and
+                                     the up/down arrows sit at the right edge,
+                                     matching the placement-constraints
+                                     layout. -->
+                                <StackPanel Spacing="2">
+                                    <TextBlock Classes="propLabel" Text="Default Y (m)"
                                                ToolTip.Tip="Initial height above floor for newly placed objects."/>
-                                    <NumericUpDown Grid.Row="0" Grid.Column="1" Classes="compact"
+                                    <NumericUpDown Classes="compact"
+                                                   HorizontalAlignment="Stretch"
                                                    Value="{Binding DefaultObjectY}"
                                                    Minimum="0" Maximum="3.0" Increment="0.05" FormatString="0.00"/>
-                                    <TextBlock Grid.Row="1" Grid.Column="0" Classes="propLabel" Text="Sub-grid"
+                                </StackPanel>
+                                <StackPanel Spacing="2">
+                                    <TextBlock Classes="propLabel" Text="Sub-grid"
                                                ToolTip.Tip="Each tile is divided into N×N sub-cells. 1 = no subdivision."/>
-                                    <NumericUpDown Grid.Row="1" Grid.Column="1" Classes="compact"
-                                                   Value="{Binding GridSubdivision}" Minimum="1" Maximum="8" Increment="1" FormatString="0"/>
-                                </Grid>
+                                    <NumericUpDown Classes="compact"
+                                                   HorizontalAlignment="Stretch"
+                                                   Value="{Binding GridSubdivision}"
+                                                   Minimum="1" Maximum="8" Increment="1" FormatString="0"/>
+                                </StackPanel>
                                 <!-- One-line helper unpacking what "sub-grid"
                                      does. Avoids a tooltip-only explanation
                                      for a concept the user will hit straight
