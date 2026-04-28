@@ -394,6 +394,10 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] float _isoDistance = 28f;
     /// <summary>Pivot world X (the point the camera looks at).</summary>
     [ObservableProperty] float _isoPivotX;
+    /// <summary>Pivot world Y. Driven by vertical pan in 3D mode so the
+    /// user can lift/lower the camera target instead of sliding it across
+    /// the ground plane.</summary>
+    [ObservableProperty] float _isoPivotY;
     /// <summary>Pivot world Z.</summary>
     [ObservableProperty] float _isoPivotZ;
     /// <summary>Whether the iso camera has been initialised yet — flag is
@@ -1130,6 +1134,7 @@ public partial class MainWindowViewModel : ViewModelBase
             (float cx, float cz, float radius)? sel = SelectionCentre();
             if (sel is null) return;
             IsoPivotX = sel.Value.cx;
+            IsoPivotY = 0f;
             IsoPivotZ = sel.Value.cz;
             IsoDistance = System.Math.Clamp(sel.Value.radius * 3f, 4f, 200f);
             IsoCameraInitialised = true;
@@ -1742,6 +1747,7 @@ public partial class MainWindowViewModel : ViewModelBase
         IsoPitch = f.IsoPitch;
         IsoDistance = f.IsoDistance > 0 ? f.IsoDistance : 28f;
         IsoPivotX = f.IsoPivotX;
+        IsoPivotY = f.IsoPivotY;
         IsoPivotZ = f.IsoPivotZ;
         IsoCameraInitialised = true;
 

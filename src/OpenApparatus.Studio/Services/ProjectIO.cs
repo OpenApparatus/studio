@@ -110,6 +110,7 @@ public sealed class ProjectFile
     public float IsoPitch { get; set; }
     public float IsoDistance { get; set; }
     public float IsoPivotX { get; set; }
+    public float IsoPivotY { get; set; }
     public float IsoPivotZ { get; set; }
 
     // Placement constraints — straight POCO copy.
@@ -143,6 +144,7 @@ public sealed class ProjectFile
             IsoPitch = vm.IsoPitch,
             IsoDistance = vm.IsoDistance,
             IsoPivotX = vm.IsoPivotX,
+            IsoPivotY = vm.IsoPivotY,
             IsoPivotZ = vm.IsoPivotZ,
             Constraints = vm.Constraints,
         };
