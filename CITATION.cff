@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use this software in research, please cite it using the metadata below."
+title: "OpenApparatus Studio: a desktop authoring tool for reproducible behavioral-research environments"
+abstract: "Cross-platform desktop app (Avalonia, .NET 8) for authoring, previewing, and exporting OpenApparatus floor plans. A thin GUI over OpenApparatus.Core."
+type: software
+authors:
+  - family-names: Alsbury-Nealy
+    given-names: Benjamin
+license: MIT
+repository-code: "https://github.com/OpenApparatus/studio"
+url: "https://github.com/OpenApparatus"
+references:
+  - type: software
+    title: "OpenApparatus.Core"
+    repository-code: "https://github.com/OpenApparatus/core"
+    authors:
+      - family-names: Alsbury-Nealy
+        given-names: Benjamin
+keywords:
+  - behavioral-neuroscience
+  - reproducibility
+  - procedural-generation
+  - avalonia
+  - dotnet
