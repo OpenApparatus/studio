@@ -97,6 +97,9 @@ public static class JsonExporter
                 PerRoomCountsEnabled = constraints.PerRoomCountsEnabled,
                 PerRoomCountMin = constraints.PerRoomCountMin,
                 PerRoomCountMax = constraints.PerRoomCountMax,
+                HighlightViolations = constraints.HighlightViolations,
+                ShowAllConstraints = constraints.ShowAllConstraints,
+                HighlightMode = constraints.HighlightMode.ToString(),
             },
         };
 
@@ -300,6 +303,12 @@ public static class JsonExporter
         public bool PerRoomCountsEnabled { get; set; }
         public int PerRoomCountMin { get; set; }
         public int PerRoomCountMax { get; set; }
+        public bool HighlightViolations { get; set; } = true;
+        public bool ShowAllConstraints { get; set; } = true;
+        /// <summary>Stringified <see cref="ConstraintHighlightMode"/>
+        /// (Area / PlacementGrid). String rather than int so the file stays
+        /// human-readable.</summary>
+        public string HighlightMode { get; set; } = "Area";
     }
 
     public sealed class OutsideSection

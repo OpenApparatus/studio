@@ -1365,36 +1365,137 @@ public class GridEditorView : Control
         }
         double scale = tileSize / vm.TileSize;
 
-        // Door zones — green-ish fill per door, only for the rooms in scope
-        // (the same scope as measurements: every room or just the selected).
-        if (c.DoorToObjectEnabled && (c.DoorToObjectMin > 0 || c.DoorToObjectMax > 0 || c.DoorAngleBandEnabled))
+        // Whether any position-dependent constraint is active. Object↔Object
+        // bounds aren't included — they depend on existing object positions, so
+        // they don't define a static "valid region" of the floor.
+        bool anyValidRegionConstraint =
+            (c.DoorToObjectEnabled && (c.DoorToObjectMin > 0 || c.DoorToObjectMax > 0 || c.DoorAngleBandEnabled))
+            || (c.ObjectToWallEnabled && c.ObjectToWallMin > 0);
+
+        if (anyValidRegionConstraint)
         {
-            var rooms = new List<OpenApparatus.Topology.Room>(env.Rooms);
+            // ── Decide which rooms are in scope for the overlay ──
+            // Show-all: every room. Otherwise: only the room hosting the
+            // active sub-cell or selected object — the "room the user is
+            // currently editing in." Falls back to SelectedRoomId if neither
+            // a sub-cell nor an object selection points at a room.
+            int activeRoomId = -1;
+            if (vm.SelectedSubCell is { } sc)
+                activeRoomId = vm.RoomGrid[sc.TileX, sc.TileZ];
+            if (activeRoomId < 0 && vm.SelectedObjectIndex >= 0 && vm.SelectedObjectIndex < vm.Objects.Count)
+                activeRoomId = vm.Objects[vm.SelectedObjectIndex].OwningRoomId;
+            if (activeRoomId < 0) activeRoomId = vm.SelectedRoomId;
 
-            var zoneFill = new SolidColorBrush(Color.FromArgb(60, 90, 200, 130));
-            var zoneEdge = new Pen(new SolidColorBrush(Color.FromArgb(180, 60, 160, 100)), 0.8);
-
-            foreach (var room in rooms)
+            // Pre-build per-room doors + walls (mirrors what EvaluateConstraints
+            // does, kept local so the overlay survives without cross-touching the
+            // VM's hot path).
+            var doorsByRoom = new Dictionary<int, List<(System.Numerics.Vector2 Pos, System.Numerics.Vector2 Inward)>>();
+            var wallsByRoom = new Dictionary<int, List<(System.Numerics.Vector2 A, System.Numerics.Vector2 B)>>();
+            foreach (var adj in env.Adjacencies)
             {
-                foreach (var adj in env.Adjacencies)
+                void AddWall(OpenApparatus.Topology.Room? room)
                 {
-                    if (adj.RoomA != room && adj.RoomB != room) continue;
-                    if (adj.Passage is not OpenApparatus.Topology.Passage.Doorway dw) continue;
-                    bool isRoomA = adj.RoomA == room;
-                    var seg = adj.SharedSegment;
-                    var inward = isRoomA ? seg.Normal : -seg.Normal;
-                    foreach (var op in dw.Openings)
-                    {
-                        if (op.IsWindow) continue;
-                        var doorWorld = seg.Start + seg.Direction * (op.OffsetAlongEdge + op.Width * 0.5f);
-                        var doorScr = ToScreen(doorWorld);
-                        DrawDoorZone(ctx, zoneFill, zoneEdge, doorScr, inward, c, scale);
-                    }
+                    if (room is null) return;
+                    if (!wallsByRoom.TryGetValue(room.Id, out var lst))
+                        wallsByRoom[room.Id] = lst = new();
+                    lst.Add((adj.SharedSegment.Start, adj.SharedSegment.End));
                 }
+                AddWall(adj.RoomA);
+                AddWall(adj.RoomB);
+
+                if (adj.Passage is OpenApparatus.Topology.Passage.Doorway dw)
+                {
+                    void AddDoors(OpenApparatus.Topology.Room? room, bool isA)
+                    {
+                        if (room is null) return;
+                        if (!doorsByRoom.TryGetValue(room.Id, out var lst))
+                            doorsByRoom[room.Id] = lst = new();
+                        var seg = adj.SharedSegment;
+                        var inward = isA ? seg.Normal : -seg.Normal;
+                        foreach (var op in dw.Openings)
+                        {
+                            if (op.IsWindow) continue;
+                            var p = seg.Start + seg.Direction * (op.OffsetAlongEdge + op.Width * 0.5f);
+                            lst.Add((p, inward));
+                        }
+                    }
+                    AddDoors(adj.RoomA, true);
+                    AddDoors(adj.RoomB, false);
+                }
+            }
+
+            // For each in-scope room, paint a translucent green tint on every
+            // sub-cell whose centre satisfies all active position-dependent
+            // constraints. In PlacementGrid mode, partial sub-cells (corner in
+            // / centre out) get a yellow tint so the user sees the boundary at
+            // sub-cell resolution. Invalid sub-cells are left untouched.
+            //
+            // When show-all is on, the green / yellow tints blend with the
+            // room's wall colour so adjacent rooms read as distinct overlays
+            // rather than one continuous wash.
+            int n = System.Math.Max(1, vm.GridSubdivision);
+            float subSize = vm.SubCellSize;
+            double subPx = tileSize / n;
+            bool placementGrid = c.HighlightMode == ConstraintHighlightMode.PlacementGrid;
+            foreach (var room in env.Rooms)
+            {
+                if (!c.ShowAllConstraints && room.Id != activeRoomId) continue;
+                if (room.Id < 0) continue;
+
+                var greenFill = ValidRegionBrushForRoom(vm, room, c.ShowAllConstraints, partial: false);
+                var yellowFill = placementGrid
+                    ? ValidRegionBrushForRoom(vm, room, c.ShowAllConstraints, partial: true)
+                    : null;
+                doorsByRoom.TryGetValue(room.Id, out var roomDoors);
+                wallsByRoom.TryGetValue(room.Id, out var roomWalls);
+
+                for (int x = 0; x < vm.GridWidth; x++)
+                    for (int z = 0; z < vm.GridLength; z++)
+                    {
+                        if (vm.RoomGrid[x, z] != room.Id) continue;
+                        var tileRect = TileRect(origin, tileSize, x, z, vm.GridLength);
+                        for (int fz = 0; fz < n; fz++)
+                            for (int fx = 0; fx < n; fx++)
+                            {
+                                float x0 = x * vm.TileSize + fx * subSize;
+                                float z0 = z * vm.TileSize + fz * subSize;
+                                var centre = new System.Numerics.Vector2(x0 + subSize * 0.5f, z0 + subSize * 0.5f);
+                                bool centreOk = IsPositionConstraintValid(centre, c, roomDoors, roomWalls);
+                                bool partialOk = false;
+                                if (!centreOk && placementGrid)
+                                {
+                                    // Probe the four corners. If any corner falls
+                                    // inside the valid region while the centre is
+                                    // out, the sub-cell straddles the boundary —
+                                    // mark it yellow.
+                                    var c00 = new System.Numerics.Vector2(x0, z0);
+                                    var c10 = new System.Numerics.Vector2(x0 + subSize, z0);
+                                    var c01 = new System.Numerics.Vector2(x0, z0 + subSize);
+                                    var c11 = new System.Numerics.Vector2(x0 + subSize, z0 + subSize);
+                                    partialOk =
+                                        IsPositionConstraintValid(c00, c, roomDoors, roomWalls)
+                                        || IsPositionConstraintValid(c10, c, roomDoors, roomWalls)
+                                        || IsPositionConstraintValid(c01, c, roomDoors, roomWalls)
+                                        || IsPositionConstraintValid(c11, c, roomDoors, roomWalls);
+                                }
+                                if (!centreOk && !partialOk) continue;
+
+                                double left = tileRect.X + fx * subPx;
+                                // World z grows up, screen y grows down; sub-cell
+                                // with FineZ=0 sits at the bottom of the tile rect.
+                                double bottom = tileRect.Y + tileSize - fz * subPx;
+                                double top = bottom - subPx;
+                                ctx.FillRectangle(centreOk ? greenFill : yellowFill!,
+                                    new Rect(left, top, subPx, subPx));
+                            }
+                    }
             }
         }
 
-        // Object exclusion radius around the currently-selected object.
+        // Object exclusion radius around the currently-selected object —
+        // surfaces the object↔object MIN spacing requirement, which the
+        // sub-cell overlay above can't depict (it depends on neighbour
+        // positions, not absolute floor coords).
         if (c.ObjectToObjectEnabled && c.ObjectToObjectMin > 0
             && vm.SelectedObjectIndex >= 0 && vm.SelectedObjectIndex < vm.Objects.Count)
         {
@@ -1431,110 +1532,101 @@ public class GridEditorView : Control
         }
     }
 
-    /// <summary>
-    /// Draws the green annular wedge for one door's compliance zone — the
-    /// region where an object satisfies the active door-to-object min/max
-    /// distance and (optionally) the angle band. Sampled as a triangle fan
-    /// in screen space.
-    /// </summary>
-    static void DrawDoorZone(
-        DrawingContext ctx, IBrush fill, Pen edge,
-        Point doorScr, System.Numerics.Vector2 inwardWorld,
-        PlacementConstraints c, double scale)
+    /// <summary>True iff a hypothetical object placed at <paramref name="p"/>
+    /// (world XZ, metres) inside the given room would satisfy the active
+    /// position-dependent constraints — door distance bounds, door angle band
+    /// (against every / any door per the constraint flag), and minimum wall
+    /// clearance. Object↔object bounds are excluded since they depend on
+    /// other objects, not on absolute floor position.</summary>
+    static bool IsPositionConstraintValid(
+        System.Numerics.Vector2 p, PlacementConstraints c,
+        List<(System.Numerics.Vector2 Pos, System.Numerics.Vector2 Inward)>? doors,
+        List<(System.Numerics.Vector2 A, System.Numerics.Vector2 B)>? walls)
     {
-        var inwardScr = new Point(inwardWorld.X * scale, -inwardWorld.Y * scale);
-        double iLen = System.Math.Sqrt(inwardScr.X * inwardScr.X + inwardScr.Y * inwardScr.Y);
-        if (iLen < 1e-3) return;
-        var inU = new Point(inwardScr.X / iLen, inwardScr.Y / iLen);
-        var perpU = new Point(inU.Y, -inU.X);
-
-        // Distance bounds in screen pixels. 0 means unset.
-        double minR = c.DoorToObjectMin > 0 ? c.DoorToObjectMin * scale : 0;
-        // If max is unset, fall back to a generous swathe (10 m or one
-        // viewport's worth — whichever is smaller).
-        double maxR = c.DoorToObjectMax > 0 ? c.DoorToObjectMax * scale : (10.0 * scale);
-
-        // Angle band: half-spread on each side of the 0° axis. When the band
-        // is disabled we sweep the full 180° forward arc (everything in
-        // front of the door).
-        double minDeg = c.DoorAngleBandEnabled ? System.Math.Max(0, c.DoorAngleMinDeg) : 0;
-        double maxDeg = c.DoorAngleBandEnabled ? System.Math.Min(180, c.DoorAngleMaxDeg) : 180;
-        if (maxDeg <= minDeg) return;
-        double minRad = minDeg * System.Math.PI / 180.0;
-        double maxRad = maxDeg * System.Math.PI / 180.0;
-
-        // Build the polygon path: outer arc on the +side then -side, then
-        // inner arc back. Use StreamGeometry to support fill + stroke.
-        const int Steps = 24;
-        var geo = new StreamGeometry();
-        using (var g = geo.Open())
+        // Door distance + angle. Mirrors the EvaluateConstraints logic so the
+        // overlay is guaranteed to agree with the violation check.
+        if (c.DoorToObjectEnabled && doors is { Count: > 0 }
+            && (c.DoorToObjectMin > 0 || c.DoorToObjectMax > 0 || c.DoorAngleBandEnabled))
         {
-            // Start at outer arc, +side, near edge of band.
-            var p0 = ZonePoint(doorScr, inU, perpU, +1, minRad, maxR);
-            g.BeginFigure(p0, isFilled: true);
-            for (int i = 1; i <= Steps; i++)
+            int satisfying = 0;
+            for (int d = 0; d < doors.Count; d++)
             {
-                double t = i / (double)Steps;
-                double a = minRad + (maxRad - minRad) * t;
-                g.LineTo(ZonePoint(doorScr, inU, perpU, +1, a, maxR));
-            }
-            // Drop down to inner arc (still on +side).
-            for (int i = Steps; i >= 0; i--)
-            {
-                double t = i / (double)Steps;
-                double a = minRad + (maxRad - minRad) * t;
-                g.LineTo(ZonePoint(doorScr, inU, perpU, +1, a, minR));
-            }
-            // Mirror onto -side (skipped if minRad == 0 to avoid a stray
-            // line through the centre).
-            if (minRad < 1e-3)
-            {
-                // Continue from the -side outer at maxRad and sweep back.
-                for (int i = 0; i <= Steps; i++)
+                var (dp, inw) = doors[d];
+                var v = p - dp;
+                float dist = v.Length();
+                bool ok = true;
+                if (c.DoorToObjectMin > 0 && dist < c.DoorToObjectMin) ok = false;
+                if (ok && c.DoorToObjectMax > 0 && dist > c.DoorToObjectMax) ok = false;
+                if (ok && c.DoorAngleBandEnabled)
                 {
-                    double t = i / (double)Steps;
-                    double a = minRad + (maxRad - minRad) * (1 - t);
-                    g.LineTo(ZonePoint(doorScr, inU, perpU, -1, a, minR));
+                    double forward = v.X * inw.X + v.Y * inw.Y;
+                    double perp = v.X * inw.Y - v.Y * inw.X;
+                    double abs = System.Math.Abs(System.Math.Atan2(perp, forward) * 180.0 / System.Math.PI);
+                    if (abs < c.DoorAngleMinDeg || abs > c.DoorAngleMaxDeg) ok = false;
                 }
-                for (int i = 0; i <= Steps; i++)
-                {
-                    double t = i / (double)Steps;
-                    double a = minRad + (maxRad - minRad) * t;
-                    g.LineTo(ZonePoint(doorScr, inU, perpU, -1, a, maxR));
-                }
+                if (ok) satisfying++;
             }
-            else
-            {
-                // The +side ribbon is closed off; draw the -side as a
-                // separate ribbon by closing this figure first.
-                g.EndFigure(true);
-                var s0 = ZonePoint(doorScr, inU, perpU, -1, minRad, maxR);
-                g.BeginFigure(s0, isFilled: true);
-                for (int i = 1; i <= Steps; i++)
-                {
-                    double t = i / (double)Steps;
-                    double a = minRad + (maxRad - minRad) * t;
-                    g.LineTo(ZonePoint(doorScr, inU, perpU, -1, a, maxR));
-                }
-                for (int i = Steps; i >= 0; i--)
-                {
-                    double t = i / (double)Steps;
-                    double a = minRad + (maxRad - minRad) * t;
-                    g.LineTo(ZonePoint(doorScr, inU, perpU, -1, a, minR));
-                }
-            }
-            g.EndFigure(true);
+            bool passes = c.DoorAppliesToEveryDoor ? satisfying == doors.Count : satisfying > 0;
+            if (!passes) return false;
         }
-        ctx.DrawGeometry(fill, edge, geo);
+
+        // Wall clearance.
+        if (c.ObjectToWallEnabled && c.ObjectToWallMin > 0 && walls is { Count: > 0 })
+        {
+            float minD = float.PositiveInfinity;
+            foreach (var (a, b) in walls)
+            {
+                var ab = b - a;
+                var ap = p - a;
+                float abLenSq = ab.LengthSquared();
+                float t = abLenSq < 1e-6f ? 0f : System.Math.Clamp(System.Numerics.Vector2.Dot(ap, ab) / abLenSq, 0f, 1f);
+                var closest = a + ab * t;
+                float d = (p - closest).Length();
+                if (d < minD) minD = d;
+            }
+            if (minD < c.ObjectToWallMin) return false;
+        }
+
+        return true;
     }
 
-    static Point ZonePoint(Point centre, Point inU, Point perpU, int sign, double angleRad, double radius)
+    /// <summary>Translucent fill used for sub-cells in the valid-region
+    /// overlay. <paramref name="partial"/> selects the yellow "boundary" tint
+    /// (Placement Grid mode) over the green "fully valid" tint. When
+    /// <paramref name="blendWithWallColour"/> is true the base hue is mixed
+    /// with the room's wall colour so adjacent rooms read as distinct.</summary>
+    static IBrush ValidRegionBrushForRoom(
+        MainWindowViewModel vm, OpenApparatus.Topology.Room room,
+        bool blendWithWallColour, bool partial)
     {
-        double cs = System.Math.Cos(angleRad);
-        double sn = System.Math.Sin(angleRad) * sign;
-        return new Point(
-            centre.X + (inU.X * cs + perpU.X * sn) * radius,
-            centre.Y + (inU.Y * cs + perpU.Y * sn) * radius);
+        // Base palette. Alpha kept low so wall outlines and sub-grid lines
+        // below remain readable through the tint.
+        byte baseR, baseG, baseB;
+        if (partial) { baseR = 235; baseG = 200; baseB = 60;  } // amber
+        else         { baseR = 90;  baseG = 200; baseB = 130; } // green
+        const byte alpha = 80;
+        if (!blendWithWallColour)
+            return new SolidColorBrush(Color.FromArgb(alpha, baseR, baseG, baseB));
+
+        // Find any adjacency belonging to this room so we can ask the VM for
+        // its effective wall colour. Falls back to the unblended palette if
+        // the room has no adjacencies (degenerate case).
+        OpenApparatus.Topology.Adjacency? sample = null;
+        if (vm.CurrentEnvironment is { } env)
+        {
+            foreach (var adj in env.Adjacencies)
+                if (adj.RoomA == room || adj.RoomB == room) { sample = adj; break; }
+        }
+        if (sample is null)
+            return new SolidColorBrush(Color.FromArgb(alpha, baseR, baseG, baseB));
+
+        var wc = vm.EffectiveWallColor(room.Id, sample);
+        // 70 % wall colour / 30 % palette so the room identity wins visually
+        // but the valid / partial signal still reads.
+        byte Mix(double wallChannel, byte paletteChannel)
+            => (byte)System.Math.Clamp(System.Math.Round(wallChannel * 255 * 0.7 + paletteChannel * 0.3), 0, 255);
+        return new SolidColorBrush(Color.FromArgb(alpha,
+            Mix(wc.X, baseR), Mix(wc.Y, baseG), Mix(wc.Z, baseB)));
     }
 
     /// <summary>

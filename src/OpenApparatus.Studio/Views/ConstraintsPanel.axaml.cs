@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
@@ -80,12 +81,30 @@ public partial class ConstraintsPanel : UserControl
 
         Body.Children.Add(new TextBlock
         {
-            Text = "Validation only — placements are never blocked. Violators get a red dashed ring; door zones (green) and exclusion radius (red) show the compliant region in the editor.",
+            Text = "Validation only — placements are never blocked. Sub-cells where every active constraint is satisfied are tinted; violators get a red dashed ring.",
             TextWrapping = TextWrapping.Wrap,
             Foreground = new SolidColorBrush(Color.FromRgb(120, 120, 130)),
             FontSize = 10,
             Margin = new Thickness(0, 0, 0, 8),
         });
+
+        // Scope toggle — when on, the valid-region overlay is drawn for every
+        // room (each tinted with its wall colour). When off, the overlay is
+        // scoped to the room of the currently-selected sub-cell or object so
+        // it stays out of the way until the user is actively placing.
+        Body.Children.Add(BoolRow("Show all constraints", c.ShowAllConstraints,
+            v => { c.ShowAllConstraints = v; _vm.OnConstraintsChanged(); },
+            "On: valid-placement overlays render for every room, tinted with each room's wall colour. Off: only the room of the selected sub-cell / object shows its overlay."));
+
+        // Highlight-mode selector — Area (centre-only green tint) vs.
+        // Placement Grid (also yellow for sub-cells whose corners straddle the
+        // valid region's boundary).
+        Body.Children.Add(EnumRow(
+            "Highlight mode",
+            new[] { ("Area", ConstraintHighlightMode.Area), ("Placement Grid", ConstraintHighlightMode.PlacementGrid) },
+            c.HighlightMode,
+            v => { c.HighlightMode = v; _vm.OnConstraintsChanged(); },
+            "Area: tint sub-cells whose centre is in the valid region (green). Placement Grid: also tint partial sub-cells in yellow when any corner falls in the valid region but the centre doesn't."));
 
         // ─── Object ↔ Object ───
         var oo = ConstraintGroup("Object ↔ Object", c.ObjectToObjectEnabled,
@@ -252,6 +271,34 @@ public partial class ConstraintsPanel : UserControl
         var stack = new StackPanel { Margin = new Thickness(0, 0, 0, 4) };
         stack.Children.Add(new TextBlock { Text = label, FontSize = 11, Margin = new Thickness(0, 0, 0, 2) });
         stack.Children.Add(box);
+        return stack;
+    }
+
+    Control EnumRow<T>(string label, (string Display, T Value)[] options, T current,
+        Action<T> onChanged, string? tip = null) where T : struct, Enum
+    {
+        var combo = new ComboBox
+        {
+            Margin = new Thickness(0, 0, 0, 4),
+            FontSize = 11,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+        };
+        int selected = 0;
+        for (int i = 0; i < options.Length; i++)
+        {
+            combo.Items.Add(options[i].Display);
+            if (EqualityComparer<T>.Default.Equals(options[i].Value, current)) selected = i;
+        }
+        combo.SelectedIndex = selected;
+        combo.SelectionChanged += (_, _) =>
+        {
+            int idx = combo.SelectedIndex;
+            if (idx >= 0 && idx < options.Length) onChanged(options[idx].Value);
+        };
+        if (tip != null) ToolTip.SetTip(combo, tip);
+        var stack = new StackPanel { Margin = new Thickness(0, 0, 0, 6) };
+        stack.Children.Add(new TextBlock { Text = label, FontSize = 11, Margin = new Thickness(0, 0, 0, 2) });
+        stack.Children.Add(combo);
         return stack;
     }
 
