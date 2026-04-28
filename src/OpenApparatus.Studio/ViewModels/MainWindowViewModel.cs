@@ -1768,14 +1768,16 @@ public partial class MainWindowViewModel : ViewModelBase
         // VM's own POCO instance (its identity matters for binding).
         if (f.Constraints is not null) Constraints.CopyFrom(f.Constraints);
 
-        // Rebuild adjacencies from the room grid before applying passage
-        // overrides — overrides need real Adjacency objects to attach to.
-        Rebuild();
-
-        // Passage overrides — match by Start coordinates against newly-
-        // built adjacencies.
+        // Passage overrides — populate the dictionary keyed by
+        // segment midpoint (the same key Rebuild uses) so the upcoming
+        // Rebuild applies them via PassageKey lookup. Matching by Start
+        // alone is ambiguous at corners where two segments share a
+        // vertex, and breaks entirely if the rebuilt segment's direction
+        // flipped (newSeg.Start == saved End). The midpoint is unique
+        // per segment and direction-invariant; Rebuild's existing flip
+        // detection re-orients openings using the stored Start.
         _passageOverrides.Clear();
-        if (f.PassageOverrides is not null && CurrentEnvironment is { } env)
+        if (f.PassageOverrides is not null)
         {
             foreach (var po in f.PassageOverrides)
             {
@@ -1794,18 +1796,10 @@ public partial class MainWindowViewModel : ViewModelBase
                         .ToList()),
                     _ => Passage.Closed.Instance,
                 };
-                // Find adjacency whose segment Start matches (within 1 mm).
-                foreach (var adj in env.Adjacencies)
-                {
-                    var s = adj.SharedSegment.Start;
-                    if (System.MathF.Abs(s.X - po.StartX) < 0.001f &&
-                        System.MathF.Abs(s.Y - po.StartZ) < 0.001f)
-                    {
-                        adj.Passage = p;
-                        _passageOverrides[PassageKey(adj)] = (p, adj.SharedSegment.Start);
-                        break;
-                    }
-                }
+                int midXmm = (int)System.Math.Round(((po.StartX + po.EndX) / 2f) * 1000);
+                int midZmm = (int)System.Math.Round(((po.StartZ + po.EndZ) / 2f) * 1000);
+                _passageOverrides[(midXmm, midZmm)] =
+                    (p, new System.Numerics.Vector2(po.StartX, po.StartZ));
             }
         }
 
