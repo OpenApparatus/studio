@@ -575,7 +575,12 @@ public class GridEditorView : Control
             double dx = pos.X - _isoDragStart.X;
             double dy = pos.Y - _isoDragStart.Y;
             // 0.005 rad/px feels close to standard 3D viewers.
-            vm.IsoYaw   = _isoStartYaw   - (float)(dx * 0.005);
+            // Sign convention: drag-right turns the camera right (the scene
+            // visibly swings left), like an FPS / scene-view camera, rather
+            // than "grab and rotate the scene" where the scene tracks the
+            // cursor. The latter felt like the world was spinning instead
+            // of the viewpoint moving.
+            vm.IsoYaw   = _isoStartYaw   + (float)(dx * 0.005);
             vm.IsoPitch = (float)System.Math.Clamp(
                 _isoStartPitch + (float)(dy * 0.005), 0.05f, (float)(System.Math.PI / 2 - 0.05));
             vm.RaiseEditVersion();
