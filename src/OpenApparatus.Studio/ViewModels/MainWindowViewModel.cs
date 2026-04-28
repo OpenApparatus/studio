@@ -1059,6 +1059,19 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(ShowOpacitySlider));
     }
 
+    /// <summary>Ruler ticks + numeric grid-coordinate labels along the
+    /// bottom and left edges of the editor. Default on; a PNG export can
+    /// momentarily flip it off to produce a chrome-free image.</summary>
+    [ObservableProperty] bool _showAxisMarkers = true;
+    partial void OnShowAxisMarkersChanged(bool value) => EditVersion++;
+
+    /// <summary>Constraint-derived placement overlays — valid-region
+    /// shading, door annular wedges, exclusion discs. Default on so the
+    /// editor behaves as before; PNG export gates this so the highlights
+    /// don't bleed into a printed floorplan.</summary>
+    [ObservableProperty] bool _showConstraintOverlays = true;
+    partial void OnShowConstraintOverlaysChanged(bool value) => EditVersion++;
+
     /// <summary>0..1 multiplier on the saturation of room tile fills. 1 =
     /// full colour, 0 = greyscale. Useful in Object mode so the room hues
     /// don't compete with object icons.</summary>

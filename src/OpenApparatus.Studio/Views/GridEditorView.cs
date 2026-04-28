@@ -717,7 +717,8 @@ public class GridEditorView : Control
                 ctx.DrawRectangle(null, gridStroke, rect);
             }
 
-        DrawAxisMarkers(ctx, origin, tileSize, vm.GridWidth, vm.GridLength);
+        if (vm.ShowAxisMarkers)
+            DrawAxisMarkers(ctx, origin, tileSize, vm.GridWidth, vm.GridLength);
 
         // Objects-mode overlays: subdivision grid + selected-subcell highlight.
         // Drawn here (after tiles, before walls) so walls always render on top
@@ -1113,7 +1114,8 @@ public class GridEditorView : Control
         // Constraint zones (door annular wedges, object exclusion discs) and
         // violator rings — drawn before the measurement labels so the labels
         // remain on top, but after objects so the zones land on the floor.
-        DrawConstraintOverlays(ctx, vm, origin, tileSize);
+        if (vm.ShowConstraintOverlays)
+            DrawConstraintOverlays(ctx, vm, origin, tileSize);
 
         // Measurement overlay — door→object lines with distance + angle, plus
         // inter-object distance lines. Drawn last so labels stay legible.

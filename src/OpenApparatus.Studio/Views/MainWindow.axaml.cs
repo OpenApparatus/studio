@@ -251,14 +251,17 @@ public partial class MainWindow : Window
             vm.StatusMessage = "2D view is not available.";
             return;
         }
+        var legend = this.FindControl<LegendBar>("LegendBar");
 
         var dlg = new Png2DExportDialog();
         dlg.RememberInitial(
             vm.ShowWallBorders, vm.ShowRoomLabels,
+            vm.ShowAxisMarkers, vm.ShowConstraintOverlays, legend?.IsVisible == true,
             vm.ShowRoomDimensions, vm.ShowFloorAreaLabels, vm.ShowOpeningSizeLabels,
             vm.ShowObjectDistances, vm.ShowDoorAngles, vm.ShowDoorDistances);
         dlg.Configure(
             vm.ShowWallBorders, vm.ShowRoomLabels,
+            vm.ShowAxisMarkers, vm.ShowConstraintOverlays, legend?.IsVisible == true,
             vm.ShowRoomDimensions, vm.ShowFloorAreaLabels, vm.ShowOpeningSizeLabels,
             vm.ShowObjectDistances, vm.ShowDoorAngles, vm.ShowDoorDistances);
         await dlg.ShowDialog(this);
@@ -280,36 +283,83 @@ public partial class MainWindow : Window
         // bitmap, then restore. Toggles bump EditVersion which AffectsRender on
         // the editor — but RenderTargetBitmap.Render reads the visual's render
         // logic synchronously, so we don't need to wait for layout / invalidate.
-        var prevWallBorders   = vm.ShowWallBorders;
-        var prevRoomLabels    = vm.ShowRoomLabels;
-        var prevRoomDims      = vm.ShowRoomDimensions;
-        var prevFloorArea     = vm.ShowFloorAreaLabels;
-        var prevOpeningSizes  = vm.ShowOpeningSizeLabels;
-        var prevObjectDist    = vm.ShowObjectDistances;
-        var prevDoorAngles    = vm.ShowDoorAngles;
-        var prevDoorDist      = vm.ShowDoorDistances;
+        var prevWallBorders        = vm.ShowWallBorders;
+        var prevRoomLabels         = vm.ShowRoomLabels;
+        var prevAxisMarkers        = vm.ShowAxisMarkers;
+        var prevConstraintOverlays = vm.ShowConstraintOverlays;
+        var prevRoomDims           = vm.ShowRoomDimensions;
+        var prevFloorArea          = vm.ShowFloorAreaLabels;
+        var prevOpeningSizes       = vm.ShowOpeningSizeLabels;
+        var prevObjectDist         = vm.ShowObjectDistances;
+        var prevDoorAngles         = vm.ShowDoorAngles;
+        var prevDoorDist           = vm.ShowDoorDistances;
 
         try
         {
-            vm.ShowWallBorders       = dlg.Ribbons;
-            vm.ShowRoomLabels        = dlg.RoomLabels;
-            vm.ShowRoomDimensions    = dlg.RoomDims;
-            vm.ShowFloorAreaLabels   = dlg.FloorArea;
-            vm.ShowOpeningSizeLabels = dlg.OpeningSizes;
-            vm.ShowObjectDistances   = dlg.ObjectDist;
-            vm.ShowDoorAngles        = dlg.DoorAngles;
-            vm.ShowDoorDistances     = dlg.DoorDist;
+            vm.ShowWallBorders        = dlg.Ribbons;
+            vm.ShowRoomLabels         = dlg.RoomLabels;
+            vm.ShowAxisMarkers        = dlg.AxisMarkers;
+            vm.ShowConstraintOverlays = dlg.Placement;
+            vm.ShowRoomDimensions     = dlg.RoomDims;
+            vm.ShowFloorAreaLabels    = dlg.FloorArea;
+            vm.ShowOpeningSizeLabels  = dlg.OpeningSizes;
+            vm.ShowObjectDistances    = dlg.ObjectDist;
+            vm.ShowDoorAngles         = dlg.DoorAngles;
+            vm.ShowDoorDistances      = dlg.DoorDist;
 
             const double scale = 2.0;
-            var b = editor.Bounds;
-            var pixelSize = new PixelSize(
-                Math.Max(1, (int)Math.Ceiling(b.Width  * scale)),
-                Math.Max(1, (int)Math.Ceiling(b.Height * scale)));
-            using var bmp = new RenderTargetBitmap(pixelSize, new Vector(96 * scale, 96 * scale));
-            bmp.Render(editor);
+            var eb = editor.Bounds;
+            var editorPx = new PixelSize(
+                Math.Max(1, (int)Math.Ceiling(eb.Width  * scale)),
+                Math.Max(1, (int)Math.Ceiling(eb.Height * scale)));
+            using var editorBmp = new RenderTargetBitmap(editorPx, new Vector(96 * scale, 96 * scale));
+            editorBmp.Render(editor);
 
-            await using var stream = await file.OpenWriteAsync();
-            bmp.Save(stream);
+            bool includeLegend = dlg.Legend && legend != null
+                && legend.Bounds.Width > 0 && legend.Bounds.Height > 0;
+
+            if (!includeLegend)
+            {
+                await using var stream = await file.OpenWriteAsync();
+                editorBmp.Save(stream);
+            }
+            else
+            {
+                var lb = legend!.Bounds;
+                var legendPx = new PixelSize(
+                    Math.Max(1, (int)Math.Ceiling(lb.Width  * scale)),
+                    Math.Max(1, (int)Math.Ceiling(lb.Height * scale)));
+                using var legendBmp = new RenderTargetBitmap(legendPx, new Vector(96 * scale, 96 * scale));
+                legendBmp.Render(legend);
+
+                // Composite editor on top, legend below. Width is the wider of
+                // the two so neither gets clipped; the editor background fills
+                // any gap to the right of the editor when the legend is wider.
+                double finalW = Math.Max(eb.Width, lb.Width);
+                double finalH = eb.Height + lb.Height;
+                var finalPx = new PixelSize(
+                    Math.Max(1, (int)Math.Ceiling(finalW * scale)),
+                    Math.Max(1, (int)Math.Ceiling(finalH * scale)));
+                using var finalBmp = new RenderTargetBitmap(finalPx, new Vector(96 * scale, 96 * scale));
+                using (var fctx = finalBmp.CreateDrawingContext())
+                {
+                    // Match the editor's solid background so the gap (if any)
+                    // and any sub-pixel seams between the two regions stay
+                    // visually continuous with the rest of the floorplan.
+                    fctx.FillRectangle(
+                        new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(232, 232, 236)),
+                        new Rect(0, 0, finalW, finalH));
+                    fctx.DrawImage(editorBmp,
+                        new Rect(0, 0, editorBmp.Size.Width, editorBmp.Size.Height),
+                        new Rect(0, 0, eb.Width, eb.Height));
+                    fctx.DrawImage(legendBmp,
+                        new Rect(0, 0, legendBmp.Size.Width, legendBmp.Size.Height),
+                        new Rect(0, eb.Height, lb.Width, lb.Height));
+                }
+
+                await using var stream = await file.OpenWriteAsync();
+                finalBmp.Save(stream);
+            }
             vm.StatusMessage = $"Exported PNG → {file.Name}";
         }
         catch (Exception ex)
@@ -318,14 +368,16 @@ public partial class MainWindow : Window
         }
         finally
         {
-            vm.ShowWallBorders       = prevWallBorders;
-            vm.ShowRoomLabels        = prevRoomLabels;
-            vm.ShowRoomDimensions    = prevRoomDims;
-            vm.ShowFloorAreaLabels   = prevFloorArea;
-            vm.ShowOpeningSizeLabels = prevOpeningSizes;
-            vm.ShowObjectDistances   = prevObjectDist;
-            vm.ShowDoorAngles        = prevDoorAngles;
-            vm.ShowDoorDistances     = prevDoorDist;
+            vm.ShowWallBorders        = prevWallBorders;
+            vm.ShowRoomLabels         = prevRoomLabels;
+            vm.ShowAxisMarkers        = prevAxisMarkers;
+            vm.ShowConstraintOverlays = prevConstraintOverlays;
+            vm.ShowRoomDimensions     = prevRoomDims;
+            vm.ShowFloorAreaLabels    = prevFloorArea;
+            vm.ShowOpeningSizeLabels  = prevOpeningSizes;
+            vm.ShowObjectDistances    = prevObjectDist;
+            vm.ShowDoorAngles         = prevDoorAngles;
+            vm.ShowDoorDistances      = prevDoorDist;
         }
     }
 
