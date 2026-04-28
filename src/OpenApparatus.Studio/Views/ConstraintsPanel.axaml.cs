@@ -256,8 +256,14 @@ public partial class ConstraintsPanel : UserControl
     Control NumericRow(string label, double value, double min, double max, double step,
         Action<double> onChanged)
     {
+        // Classes="compact" + HorizontalAlignment=Stretch matches the
+        // numeric inputs used in "Defaults for new objects" so the two
+        // panels share the same chrome (28-px rounded box, slim 16-px
+        // chevron column on the right).
         var box = new NumericUpDown
         {
+            Classes = { "compact" },
+            HorizontalAlignment = HorizontalAlignment.Stretch,
             Value = (decimal)value,
             Minimum = (decimal)min,
             Maximum = (decimal)max,
