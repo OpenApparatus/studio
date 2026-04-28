@@ -27,6 +27,9 @@
                            Margin="0 4 0 2"/>
                 <CheckBox x:Name="ChkRibbons"     Content="Walls (coloured borders)"/>
                 <CheckBox x:Name="ChkRoomLabels"  Content="Room labels (id + name)"/>
+                <CheckBox x:Name="ChkAxisMarkers" Content="Grid dimensions (axis ticks)"/>
+                <CheckBox x:Name="ChkPlacement"   Content="Valid placement highlights"/>
+                <CheckBox x:Name="ChkLegend"      Content="Legend bar"/>
 
                 <TextBlock Classes="sectionLabel" Text="ROOM MEASUREMENTS"
                            Foreground="{DynamicResource TextSecondaryBrush}"

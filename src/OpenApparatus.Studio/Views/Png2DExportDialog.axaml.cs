@@ -9,6 +9,9 @@ public partial class Png2DExportDialog : Window
 
     public bool Ribbons       { get; private set; }
     public bool RoomLabels    { get; private set; }
+    public bool AxisMarkers   { get; private set; }
+    public bool Placement     { get; private set; }
+    public bool Legend        { get; private set; }
     public bool RoomDims      { get; private set; }
     public bool FloorArea     { get; private set; }
     public bool OpeningSizes  { get; private set; }
@@ -24,18 +27,21 @@ public partial class Png2DExportDialog : Window
     void InitializeComponent() => AvaloniaXamlLoader.Load(this);
 
     public void Configure(
-        bool ribbons, bool roomLabels,
+        bool ribbons, bool roomLabels, bool axisMarkers, bool placement, bool legend,
         bool roomDims, bool floorArea, bool openingSizes,
         bool objectDist, bool doorAngles, bool doorDist)
     {
-        Set("ChkRibbons",    ribbons);
-        Set("ChkRoomLabels", roomLabels);
-        Set("ChkRoomDims",   roomDims);
-        Set("ChkFloorArea",  floorArea);
-        Set("ChkOpenings",   openingSizes);
-        Set("ChkObjectDist", objectDist);
-        Set("ChkDoorAngles", doorAngles);
-        Set("ChkDoorDist",   doorDist);
+        Set("ChkRibbons",     ribbons);
+        Set("ChkRoomLabels",  roomLabels);
+        Set("ChkAxisMarkers", axisMarkers);
+        Set("ChkPlacement",   placement);
+        Set("ChkLegend",      legend);
+        Set("ChkRoomDims",    roomDims);
+        Set("ChkFloorArea",   floorArea);
+        Set("ChkOpenings",    openingSizes);
+        Set("ChkObjectDist",  objectDist);
+        Set("ChkDoorAngles",  doorAngles);
+        Set("ChkDoorDist",    doorDist);
     }
 
     void Set(string name, bool v)
@@ -49,7 +55,8 @@ public partial class Png2DExportDialog : Window
     void SetAll(bool v)
     {
         foreach (var n in new[] {
-            "ChkRibbons", "ChkRoomLabels", "ChkRoomDims", "ChkFloorArea",
+            "ChkRibbons", "ChkRoomLabels", "ChkAxisMarkers", "ChkPlacement", "ChkLegend",
+            "ChkRoomDims", "ChkFloorArea",
             "ChkOpenings", "ChkObjectDist", "ChkDoorAngles", "ChkDoorDist" })
             Set(n, v);
     }
@@ -62,30 +69,36 @@ public partial class Png2DExportDialog : Window
         // Re-applies whatever Configure was called with — held in InitialState
         // so the user can revert after toggling things in the dialog.
         if (_initial is { } s)
-            Configure(s.Ribbons, s.RoomLabels, s.RoomDims, s.FloorArea,
-                      s.OpeningSizes, s.ObjectDist, s.DoorAngles, s.DoorDist);
+            Configure(s.Ribbons, s.RoomLabels, s.AxisMarkers, s.Placement, s.Legend,
+                      s.RoomDims, s.FloorArea, s.OpeningSizes,
+                      s.ObjectDist, s.DoorAngles, s.DoorDist);
     }
 
     record InitialState(
-        bool Ribbons, bool RoomLabels, bool RoomDims, bool FloorArea,
-        bool OpeningSizes, bool ObjectDist, bool DoorAngles, bool DoorDist);
+        bool Ribbons, bool RoomLabels, bool AxisMarkers, bool Placement, bool Legend,
+        bool RoomDims, bool FloorArea, bool OpeningSizes,
+        bool ObjectDist, bool DoorAngles, bool DoorDist);
 
     InitialState? _initial;
 
     public void RememberInitial(
-        bool ribbons, bool roomLabels,
+        bool ribbons, bool roomLabels, bool axisMarkers, bool placement, bool legend,
         bool roomDims, bool floorArea, bool openingSizes,
         bool objectDist, bool doorAngles, bool doorDist)
     {
         _initial = new InitialState(
-            ribbons, roomLabels, roomDims, floorArea,
-            openingSizes, objectDist, doorAngles, doorDist);
+            ribbons, roomLabels, axisMarkers, placement, legend,
+            roomDims, floorArea, openingSizes,
+            objectDist, doorAngles, doorDist);
     }
 
     void OnExport(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         Ribbons      = Get("ChkRibbons");
         RoomLabels   = Get("ChkRoomLabels");
+        AxisMarkers  = Get("ChkAxisMarkers");
+        Placement    = Get("ChkPlacement");
+        Legend       = Get("ChkLegend");
         RoomDims     = Get("ChkRoomDims");
         FloorArea    = Get("ChkFloorArea");
         OpeningSizes = Get("ChkOpenings");

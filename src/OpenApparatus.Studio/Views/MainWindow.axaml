@@ -1498,7 +1498,7 @@
                 <!-- Legend bar — irrelevant in 3D where the meshes carry
                      their own visual vocabulary. Hidden when CameraView
                      is Iso. -->
-                <views:LegendBar Grid.Row="1" IsVisible="{Binding IsTopDownView}"/>
+                <views:LegendBar x:Name="LegendBar" Grid.Row="1" IsVisible="{Binding IsTopDownView}"/>
             </Grid>
 
             <views:RoomEditorPanel Grid.Column="2"/>
