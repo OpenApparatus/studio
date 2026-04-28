@@ -2,7 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="OpenApparatus.Studio.Views.ObjectTypePickerDialog"
         Width="380" Height="430"
-        Title="Edit object type"
+        Title="Edit type"
         WindowStartupLocation="CenterOwner"
         CanResize="False">
     <StackPanel Margin="14" Spacing="10">
@@ -13,7 +13,7 @@
         <UniformGrid x:Name="Swatches" Columns="6" Rows="3"/>
 
         <StackPanel Orientation="Horizontal" Spacing="8" Margin="0 4 0 0">
-            <TextBlock Text="Hex:" VerticalAlignment="Center"/>
+            <TextBlock Text="Hex" VerticalAlignment="Center"/>
             <TextBox x:Name="HexInput" Width="120" Watermark="#RRGGBB"/>
             <Border x:Name="Preview" Width="36" Height="24" BorderBrush="#888" BorderThickness="1" Background="#ccc"/>
         </StackPanel>

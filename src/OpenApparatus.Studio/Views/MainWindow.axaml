@@ -646,7 +646,7 @@
               BorderThickness="0 0 0 1"
               Padding="6 2">
             <MenuItem Header="_File">
-                <MenuItem Header="_New scene"
+                <MenuItem Header="_New"
                           InputGesture="Ctrl+N"
                           Command="{Binding NewProjectCommand}"/>
                 <MenuItem Header="_Open…"
@@ -674,10 +674,10 @@
                           CommandParameter="{Binding $parent[Window]}"/>
                 <Separator/>
                 <MenuItem Header="_Export">
-                    <MenuItem Header="Export _glTF…"
+                    <MenuItem Header="_glTF…"
                               Command="{Binding ExportGltfCommand}"
                               CommandParameter="{Binding $parent[Window]}"/>
-                    <MenuItem Header="Export _JSON…"
+                    <MenuItem Header="_Spec (JSON)…"
                               Command="{Binding ExportJsonCommand}"
                               CommandParameter="{Binding $parent[Window]}"/>
                 </MenuItem>
@@ -701,7 +701,7 @@
                           Command="{Binding DeleteRoomCommand}"
                           IsEnabled="{Binding HasSelectedRoom, FallbackValue=False}"/>
                 <Separator/>
-                <MenuItem Header="_Reset scene…"
+                <MenuItem Header="_Empty project…"
                           Command="{Binding ResetAllCommand}"/>
             </MenuItem>
             <MenuItem Header="_View">
@@ -710,7 +710,7 @@
                 <MenuItem Header="_3D"
                           Command="{Binding Set3DViewCommand, FallbackValue=null}"/>
                 <Separator/>
-                <MenuItem Header="_Reset zoom"
+                <MenuItem Header="_Fit"
                           Command="{Binding ResetViewCommand}"/>
                 <MenuItem Header="_Frame selection"
                           InputGesture="F"
@@ -724,14 +724,14 @@
                 </MenuItem>
             </MenuItem>
             <MenuItem Header="_Help">
-                <MenuItem Header="_Keyboard shortcuts"
+                <MenuItem Header="_Shortcuts"
                           InputGesture="F1"
                           Command="{Binding ToggleShortcutOverlayCommand}"/>
                 <MenuItem Header="_Command palette"
                           InputGesture="Ctrl+K"
                           Command="{Binding OpenCommandPaletteCommand}"/>
                 <Separator/>
-                <MenuItem Header="_About OpenApparatus Studio…"
+                <MenuItem Header="_About…"
                           Click="OnShowAbout"/>
             </MenuItem>
         </Menu>
@@ -790,10 +790,10 @@
                         <views:Icon Symbol="Redo"/>
                     </Button>
                     <Border Classes="vsep" Margin="6 4"/>
-                    <Button Content="Random Fill" Command="{Binding RandomFillCommand}"
+                    <Button Content="Auto-layout" Command="{Binding RandomFillCommand}"
                             IsVisible="{Binding IsLayoutMode}"
                             Padding="10 5"
-                            ToolTip.Tip="Generate a random room layout"/>
+                            ToolTip.Tip="Generate a random room layout."/>
                     <!-- The single-item ⋯ overflow used to live here.
                          Reset All is in the Edit menu instead, so the
                          ghost-affordance dot is gone. -->
@@ -809,10 +809,10 @@
                         </StackPanel>
                         <Button.Flyout>
                             <MenuFlyout>
-                                <MenuItem Header="Export glTF…"
+                                <MenuItem Header="glTF…"
                                           Command="{Binding ExportGltfCommand}"
                                           CommandParameter="{Binding $parent[Window]}"/>
-                                <MenuItem Header="Export JSON…"
+                                <MenuItem Header="Spec (JSON)…"
                                           Command="{Binding ExportJsonCommand}"
                                           CommandParameter="{Binding $parent[Window]}"/>
                             </MenuFlyout>
@@ -837,7 +837,7 @@
                     <TextBlock Classes="sectionLabel" Text="VIEW"/>
                     <RadioButton GroupName="CameraView"
                                  Classes="pill"
-                                 Content="Top"
+                                 Content="2D"
                                  IsChecked="{Binding CameraView, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=TopDown}"
                                  ToolTip.Tip="Top-down editing view."/>
                     <RadioButton GroupName="CameraView"
@@ -847,9 +847,9 @@
                                  IsChecked="{Binding CameraView, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=Iso}"
                                  ToolTip.Tip="Real-mesh 3D viewer (orbit / pan / zoom, read-only)."/>
 
-                    <!-- ── SURFACE (top-down only) — surface kind toggle +
-                         per-room visual layers. Hidden in 3D where these
-                         have no meaning (3D paints the actual mesh). -->
+                    <!-- ── SURFACE (top-down only) — which surface tints
+                         show, plus tile saturation. Hidden in 3D where the
+                         mesh paints these directly. -->
                     <Border Classes="vsep" IsVisible="{Binding IsTopDownView}"/>
                     <TextBlock Classes="sectionLabel" Text="SURFACE"
                                IsVisible="{Binding IsTopDownView}"/>
@@ -866,27 +866,6 @@
                                  IsVisible="{Binding ShowFloorCeilingTabs}"
                                  IsChecked="{Binding ViewMode, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=Ceiling}"
                                  ToolTip.Tip="Show ceiling tile colours."/>
-                    <ToggleButton Classes="pill" Content="Borders"
-                                  IsVisible="{Binding IsTopDownView}"
-                                  IsChecked="{Binding ShowWallBorders}"
-                                  ToolTip.Tip="14-px coloured ribbons inside each wall."/>
-                    <ToggleButton Classes="pill" Content="Labels"
-                                  IsVisible="{Binding IsTopDownView}"
-                                  IsChecked="{Binding ShowRoomLabels}"
-                                  ToolTip.Tip="Room id + name at room centre."/>
-                    <!-- Opacity only meaningful when Borders is on AND
-                         we're in top-down. Saturation only matters in
-                         top-down (3D doesn't tint tiles). -->
-                    <StackPanel Orientation="Horizontal" Spacing="0" VerticalAlignment="Center"
-                                IsVisible="{Binding ShowOpacitySlider}">
-                        <TextBlock Classes="sliderLabel" Text="Opacity"/>
-                        <Slider Width="76" Minimum="0" Maximum="1"
-                                Value="{Binding WallBorderOpacity, Mode=TwoWay}"
-                                VerticalAlignment="Center"
-                                ToolTip.Tip="Wall border opacity."/>
-                        <TextBlock Classes="sliderValue"
-                                   Text="{Binding WallBorderOpacity, StringFormat={}{0:0.00}}"/>
-                    </StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="0" VerticalAlignment="Center"
                                 IsVisible="{Binding IsTopDownView}">
                         <TextBlock Classes="sliderLabel" Text="Saturation"/>
@@ -896,6 +875,31 @@
                                 ToolTip.Tip="Tile colour saturation."/>
                         <TextBlock Classes="sliderValue"
                                    Text="{Binding TileSaturation, StringFormat={}{0:0.00}}"/>
+                    </StackPanel>
+
+                    <!-- ── OVERLAY (top-down only) — wall ribbons + room
+                         labels drawn on top of the surface. -->
+                    <Border Classes="vsep" IsVisible="{Binding IsTopDownView}"/>
+                    <TextBlock Classes="sectionLabel" Text="OVERLAY"
+                               IsVisible="{Binding IsTopDownView}"/>
+                    <ToggleButton Classes="pill" Content="Ribbons"
+                                  IsVisible="{Binding IsTopDownView}"
+                                  IsChecked="{Binding ShowWallBorders}"
+                                  ToolTip.Tip="14-px coloured ribbons inside each wall."/>
+                    <ToggleButton Classes="pill" Content="Rooms"
+                                  IsVisible="{Binding IsTopDownView}"
+                                  IsChecked="{Binding ShowRoomLabels}"
+                                  ToolTip.Tip="Room id + name at room centre."/>
+                    <!-- Opacity only meaningful when Ribbons is on. -->
+                    <StackPanel Orientation="Horizontal" Spacing="0" VerticalAlignment="Center"
+                                IsVisible="{Binding ShowOpacitySlider}">
+                        <TextBlock Classes="sliderLabel" Text="Opacity"/>
+                        <Slider Width="76" Minimum="0" Maximum="1"
+                                Value="{Binding WallBorderOpacity, Mode=TwoWay}"
+                                VerticalAlignment="Center"
+                                ToolTip.Tip="Wall ribbon opacity."/>
+                        <TextBlock Classes="sliderValue"
+                                   Text="{Binding WallBorderOpacity, StringFormat={}{0:0.00}}"/>
                     </StackPanel>
 
                     <Border Classes="vsep" IsVisible="{Binding ShowLayoutMeasurements}"/>
@@ -911,19 +915,19 @@
                                   IsVisible="{Binding ShowLayoutMeasurements}"
                                   IsChecked="{Binding ShowFloorAreaLabels}"
                                   ToolTip.Tip="m² label per room."/>
-                    <ToggleButton Classes="pill" Content="Openings"
+                    <ToggleButton Classes="pill" Content="Door/window"
                                   IsVisible="{Binding ShowLayoutMeasurements}"
                                   IsChecked="{Binding ShowOpeningSizeLabels}"
                                   ToolTip.Tip="Width × height per door / window."/>
 
                     <Border Classes="vsep" IsVisible="{Binding ShowObjectMeasurements}"/>
 
-                    <!-- ── OBJECT measurements (top-down only). Renamed
-                         "Distances" → "Object distances" to disambiguate
-                         from the door-related entries beside it. -->
-                    <TextBlock Classes="sectionLabel" Text="MEASURE"
+                    <!-- ── OBJECT measurements (top-down only). Section
+                         is OBJECT so the "Distances" pill doesn't need
+                         to repeat the word. -->
+                    <TextBlock Classes="sectionLabel" Text="OBJECT"
                                IsVisible="{Binding ShowObjectMeasurements}"/>
-                    <ToggleButton Classes="pill" Content="Object distances"
+                    <ToggleButton Classes="pill" Content="Distances"
                                   IsVisible="{Binding ShowObjectMeasurements}"
                                   IsChecked="{Binding ShowObjectDistances}"
                                   ToolTip.Tip="Inter-object distance line + label."/>
@@ -941,7 +945,7 @@
                     <!-- ── PATHS (top-down only) ── -->
                     <TextBlock Classes="sectionLabel" Text="PATHS"
                                IsVisible="{Binding ShowPathsSection}"/>
-                    <ToggleButton Classes="pill" Content="Show"
+                    <ToggleButton Classes="pill" Content="Path"
                                   IsVisible="{Binding ShowPathsSection}"
                                   IsChecked="{Binding ShowPaths}"
                                   ToolTip.Tip="Polyline through every traversable wall (open / doorway)."/>
@@ -1059,7 +1063,7 @@
 
                     <!-- ─── LAYOUT MODE LEFT PANEL ─── -->
                     <StackPanel IsVisible="{Binding IsLayoutMode}" Spacing="0">
-                        <TextBlock Classes="label" Text="Actions"/>
+                        <TextBlock Classes="label" Text="Selection"/>
                         <Border Classes="section">
                             <StackPanel Spacing="6">
                                 <!-- Create Room: disabled when no tiles are
@@ -1091,9 +1095,9 @@
                                 <Button Classes="action"
                                         IsEnabled="{Binding HasSelectedTiles}"
                                         Command="{Binding ClearSelectionCommand}"
-                                        ToolTip.Tip="Drop the highlighted tiles without creating a room.">
+                                        ToolTip.Tip="Discard the selection.">
                                     <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
-                                        <TextBlock Text="Clear tile selection"/>
+                                        <TextBlock Text="Clear selection"/>
                                         <Border BorderBrush="{DynamicResource BorderHairlineBrush}" BorderThickness="1" CornerRadius="3" Padding="4 1">
                                             <TextBlock Text="Esc" FontSize="10"/>
                                         </Border>
@@ -1102,7 +1106,7 @@
                             </StackPanel>
                         </Border>
 
-                        <TextBlock Classes="label" Text="Defaults for new rooms"/>
+                        <TextBlock Classes="label" Text="New room defaults"/>
                         <Border Classes="section">
                             <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="8" ColumnSpacing="10">
                                 <!-- Each default is now a row: caption +
@@ -1148,7 +1152,7 @@
                                             ToolTip.Tip="Click to change the fixed colour. The rainbow appears when Random is on; new rooms then get a fresh hue each."/>
                                     <ToggleButton Grid.Column="1"
                                                   Classes="pill"
-                                                  Content="Random"
+                                                  Content="Per room"
                                                   Padding="8 2"
                                                   Margin="0"
                                                   IsChecked="{Binding UseRandomDefaultWallColor, Mode=TwoWay}"
@@ -1162,7 +1166,7 @@
                              a small label above a stock NumericUpDown so
                              both panels read as one system. DragScrub is
                              still wired through the labels. -->
-                        <TextBlock Classes="label" Text="Document settings"/>
+                        <TextBlock Classes="label" Text="Project"/>
 
                         <Border Classes="section">
                             <StackPanel Spacing="6">
@@ -1177,7 +1181,7 @@
                                                    Value="{Binding GridWidth}" Minimum="1" Maximum="64" FormatString="0"/>
                                 </StackPanel>
                                 <StackPanel Margin="0 0 0 4">
-                                    <TextBlock Classes="propLabel" Text="Length (tiles)"
+                                    <TextBlock Classes="propLabel" Text="Depth (tiles)"
                                                FontSize="11" Margin="0 0 0 2"
                                                behaviors:DragScrub.Target="{Binding #gridLengthInput}"
                                                behaviors:DragScrub.Step="0.2"/>
@@ -1223,7 +1227,7 @@
 
                         <Border Classes="section">
                             <StackPanel Spacing="6">
-                                <TextBlock Text="Doorways" FontWeight="SemiBold" Margin="0 0 0 2"/>
+                                <TextBlock Text="Doors" FontWeight="SemiBold" Margin="0 0 0 2"/>
                                 <StackPanel Margin="0 0 0 4">
                                     <TextBlock Classes="propLabel" Text="Width (m)"
                                                FontSize="11" Margin="0 0 0 2"
@@ -1258,19 +1262,21 @@
                                                    Value="{Binding WindowWidth}" Minimum="0.3" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
                                 </StackPanel>
                                 <StackPanel Margin="0 0 0 4">
-                                    <TextBlock Classes="propLabel" Text="Head height (m)"
+                                    <TextBlock Classes="propLabel" Text="Top (m)"
                                                FontSize="11" Margin="0 0 0 2"
                                                behaviors:DragScrub.Target="{Binding #winHeightInput}"
-                                               behaviors:DragScrub.Step="0.02"/>
+                                               behaviors:DragScrub.Step="0.02"
+                                               ToolTip.Tip="Top of the window above floor (head height)."/>
                                     <NumericUpDown Name="winHeightInput" Classes="compact"
                                                    HorizontalAlignment="Stretch"
                                                    Value="{Binding WindowHeight}" Minimum="1.0" Maximum="4.0" Increment="0.1" FormatString="0.0"/>
                                 </StackPanel>
                                 <StackPanel>
-                                    <TextBlock Classes="propLabel" Text="Sill height (m)"
+                                    <TextBlock Classes="propLabel" Text="Bottom (m)"
                                                FontSize="11" Margin="0 0 0 2"
                                                behaviors:DragScrub.Target="{Binding #winSillInput}"
-                                               behaviors:DragScrub.Step="0.02"/>
+                                               behaviors:DragScrub.Step="0.02"
+                                               ToolTip.Tip="Bottom of the window above floor (sill height)."/>
                                     <NumericUpDown Name="winSillInput" Classes="compact"
                                                    HorizontalAlignment="Stretch"
                                                    Value="{Binding WindowSillHeight}" Minimum="0.1" Maximum="2.5" Increment="0.1" FormatString="0.0"/>
@@ -1325,7 +1331,7 @@
 
                     <!-- ─── OBJECT MODE LEFT PANEL ─── -->
                     <StackPanel IsVisible="{Binding IsObjectsMode}" Spacing="0">
-                        <TextBlock Classes="label" Text="Defaults for new objects"/>
+                        <TextBlock Classes="label" Text="New object defaults"/>
                         <Border Classes="section">
                             <StackPanel Spacing="8">
                                 <!-- Stacked label-above-input rows so the
@@ -1334,7 +1340,7 @@
                                      matching the placement-constraints
                                      layout. -->
                                 <StackPanel Spacing="2">
-                                    <TextBlock Classes="propLabel" Text="Default Y (m)"
+                                    <TextBlock Classes="propLabel" Text="Height (m)"
                                                ToolTip.Tip="Initial height above floor for newly placed objects."/>
                                     <NumericUpDown Classes="compact"
                                                    HorizontalAlignment="Stretch"
@@ -1342,7 +1348,7 @@
                                                    Minimum="0" Maximum="3.0" Increment="0.05" FormatString="0.00"/>
                                 </StackPanel>
                                 <StackPanel Spacing="2">
-                                    <TextBlock Classes="propLabel" Text="Sub-grid"
+                                    <TextBlock Classes="propLabel" Text="Sub-cells"
                                                ToolTip.Tip="Each tile is divided into N×N sub-cells. 1 = no subdivision."/>
                                     <NumericUpDown Classes="compact"
                                                    HorizontalAlignment="Stretch"
@@ -1357,7 +1363,7 @@
                                            Foreground="{DynamicResource TextMutedBrush}"
                                            FontSize="{StaticResource FontCaption}"
                                            Text="Each tile splits into N × N placement cells. 1 = whole tile."/>
-                                <Button Content="Snap objects to grid" Classes="action"
+                                <Button Content="Snap to grid" Classes="action"
                                         Command="{Binding SnapObjectsToGridCommand}"
                                         ToolTip.Tip="Round every object's X/Z to the nearest sub-cell centre. Y is preserved."/>
                             </StackPanel>
@@ -1383,21 +1389,21 @@
                             <views:GridEditorView EditVersion="{Binding EditVersion}" Margin="8">
                                 <views:GridEditorView.ContextMenu>
                                     <ContextMenu>
-                                        <MenuItem Header="Frame selection (F)"
+                                        <MenuItem Header="Frame (F)"
                                                   Command="{Binding FrameSelectionCommand}"/>
-                                        <MenuItem Header="Reset view"
+                                        <MenuItem Header="Fit"
                                                   Command="{Binding ResetViewCommand}"/>
                                         <Separator/>
                                         <MenuItem Header="Clear selection"
                                                   Command="{Binding ClearSelectionCommand}"/>
-                                        <MenuItem Header="Random fill"
+                                        <MenuItem Header="Auto-layout"
                                                   IsVisible="{Binding IsLayoutMode}"
                                                   Command="{Binding RandomFillCommand}"/>
                                         <Separator/>
-                                        <MenuItem Header="Switch to Top view"
+                                        <MenuItem Header="2D"
                                                   IsVisible="{Binding IsIsoView}"
                                                   Command="{Binding SetTopViewCommand}"/>
-                                        <MenuItem Header="Switch to 3D view"
+                                        <MenuItem Header="3D"
                                                   IsVisible="{Binding IsTopDownView}"
                                                   Command="{Binding Set3DViewCommand}"/>
                                     </ContextMenu>
@@ -1435,10 +1441,10 @@
                                     <RadioButton GroupName="EditMode"
                                                  Classes="modePill modePillRight"
                                                  IsChecked="{Binding EditMode, Converter={x:Static converters:EnumToBoolConverter.Instance}, ConverterParameter=Object}"
-                                                 ToolTip.Tip="Object mode — place, move, edit objects">
+                                                 ToolTip.Tip="Objects mode — place, move, edit objects">
                                         <StackPanel Orientation="Horizontal" Spacing="7">
                                             <views:Icon Symbol="Cube" Size="14"/>
-                                            <TextBlock Text="Object" VerticalAlignment="Center"/>
+                                            <TextBlock Text="Objects" VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </RadioButton>
                                 </StackPanel>
@@ -1462,18 +1468,18 @@
                                        FontSize="{StaticResource FontCaption}"
                                        Margin="0 0 0 4"
                                        Text="{Binding ZoomFactor, StringFormat={}{0:0.0}×}"/>
-                            <!-- Fit + Reset stacked at the bottom. Fit
+                            <!-- Fit + 100% stacked at the bottom. Fit
                                  shrinks the view to encompass the entire
-                                 grid; Reset returns to the default 1× view. -->
-                            <Button DockPanel.Dock="Bottom" Content="Reset" FontSize="10" Padding="4 2"
+                                 grid; 100% returns to actual size. -->
+                            <Button DockPanel.Dock="Bottom" Content="100%" FontSize="10" Padding="4 2"
                                     HorizontalAlignment="Stretch"
                                     Margin="0 4 0 0"
-                                    Command="{Binding ResetViewCommand}"
-                                    ToolTip.Tip="Reset zoom and pan to fit-to-view."/>
+                                    Command="{Binding ZoomActualSizeCommand}"
+                                    ToolTip.Tip="Zoom to actual size (Ctrl+0)."/>
                             <Button DockPanel.Dock="Bottom" Content="Fit" FontSize="10" Padding="4 2"
                                     HorizontalAlignment="Stretch"
                                     Command="{Binding ResetViewCommand}"
-                                    ToolTip.Tip="Fit the entire grid in the viewport."/>
+                                    ToolTip.Tip="Fit the entire grid in the viewport (Ctrl+1)."/>
                             <Slider Orientation="Vertical"
                                     Minimum="0.5" Maximum="8.0"
                                     Value="{Binding ZoomFactor, Mode=TwoWay}"
@@ -1535,7 +1541,7 @@
                 Padding="22 18">
             <StackPanel Spacing="12">
                 <Grid ColumnDefinitions="*,Auto">
-                    <TextBlock Grid.Column="0" Text="Keyboard shortcuts"
+                    <TextBlock Grid.Column="0" Text="Shortcuts"
                                FontWeight="SemiBold" FontSize="{StaticResource FontTitle}"
                                Foreground="{DynamicResource TextPrimaryBrush}"
                                VerticalAlignment="Center"/>
@@ -1600,11 +1606,11 @@
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
                             <Border Grid.Row="0" Grid.Column="0" Classes="kbd"><TextBlock Text="Mouse wheel"/></Border>
-                            <TextBlock Grid.Row="0" Grid.Column="1" Classes="kbdDesc" Text="Zoom (top-down) / dolly (3D)"/>
+                            <TextBlock Grid.Row="0" Grid.Column="1" Classes="kbdDesc" Text="Zoom / dolly"/>
                             <Border Grid.Row="1" Grid.Column="0" Classes="kbd"><TextBlock Text="Right / middle drag"/></Border>
-                            <TextBlock Grid.Row="1" Grid.Column="1" Classes="kbdDesc" Text="Pan the canvas / 3D camera pivot"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1" Classes="kbdDesc" Text="Pan"/>
                             <Border Grid.Row="2" Grid.Column="0" Classes="kbd"><TextBlock Text="Left drag (3D)"/></Border>
-                            <TextBlock Grid.Row="2" Grid.Column="1" Classes="kbdDesc" Text="Orbit the 3D camera"/>
+                            <TextBlock Grid.Row="2" Grid.Column="1" Classes="kbdDesc" Text="Orbit"/>
                         </Grid>
                     </StackPanel>
 
@@ -1618,7 +1624,7 @@
                     </StackPanel>
                 </StackPanel>
 
-                <TextBlock Text="Tip: drag a property label horizontally to scrub its value (Shift = fine, Ctrl = coarse)."
+                <TextBlock Text="Drag a label to scrub. Shift = fine, Ctrl = coarse."
                            Foreground="{DynamicResource TextMutedBrush}"
                            FontSize="{StaticResource FontBody}"
                            TextWrapping="Wrap"/>

@@ -30,6 +30,7 @@ public partial class WallColorDialog : Window
 
     public void Configure(string roomLabel, System.Numerics.Vector3? current)
     {
+        Title = $"Pick colour — {roomLabel}";
         var header = this.FindControl<TextBlock>("HeaderText")
             ?? throw new System.InvalidOperationException("HeaderText control missing.");
         header.Text = $"Colour for {roomLabel}";

@@ -76,7 +76,7 @@ public partial class ObjectTypesPanel : UserControl
 
         var addBtn = new Button
         {
-            Content = "+ Add object type",
+            Content = "+ Add type",
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Center,
             Margin = new Thickness(0, 6, 0, 0),

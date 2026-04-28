@@ -66,7 +66,7 @@ public partial class ConstraintsPanel : UserControl
 
         Body.Children.Add(new TextBlock
         {
-            Text = "Placement constraints",
+            Text = "Constraints",
             FontWeight = FontWeight.SemiBold,
             Margin = new Thickness(0, 8, 0, 4),
         });
@@ -92,26 +92,26 @@ public partial class ConstraintsPanel : UserControl
         // room (each tinted with its wall colour). When off, the overlay is
         // scoped to the room of the currently-selected sub-cell or object so
         // it stays out of the way until the user is actively placing.
-        Body.Children.Add(BoolRow("Show all constraints", c.ShowAllConstraints,
+        Body.Children.Add(BoolRow("Overlay all rooms", c.ShowAllConstraints,
             v => { c.ShowAllConstraints = v; _vm.OnConstraintsChanged(); },
             "On: valid-placement overlays render for every room, tinted with each room's wall colour. Off: only the room of the selected sub-cell / object shows its overlay."));
 
-        // Highlight-mode selector — Area (centre-only green tint) vs.
-        // Placement Grid (also yellow for sub-cells whose corners straddle the
+        // Tint mode — Centres (centre-only green tint) vs.
+        // Cells (also yellow for sub-cells whose corners straddle the
         // valid region's boundary).
         Body.Children.Add(EnumRow(
-            "Highlight mode",
-            new[] { ("Area", ConstraintHighlightMode.Area), ("Placement Grid", ConstraintHighlightMode.PlacementGrid) },
+            "Tint",
+            new[] { ("Centres", ConstraintHighlightMode.Area), ("Cells", ConstraintHighlightMode.PlacementGrid) },
             c.HighlightMode,
             v => { c.HighlightMode = v; _vm.OnConstraintsChanged(); },
-            "Area: tint sub-cells whose centre is in the valid region (green). Placement Grid: also tint partial sub-cells in yellow when any corner falls in the valid region but the centre doesn't."));
+            "Centres: tint sub-cells whose centre is in the valid region (green). Cells: also tint partial sub-cells in yellow when any corner falls in the valid region but the centre doesn't."));
 
         // ─── Object ↔ Object ───
         var oo = ConstraintGroup("Object ↔ Object", c.ObjectToObjectEnabled,
             v => { c.ObjectToObjectEnabled = v; _vm.OnConstraintsChanged(); });
-        oo.Children.Add(MetreField("Min distance (m)", c.ObjectToObjectMin,
+        oo.Children.Add(MetreField("Min (m)", c.ObjectToObjectMin,
             v => { c.ObjectToObjectMin = (float)v; _vm.OnConstraintsChanged(); }));
-        oo.Children.Add(MetreField("Max distance (m)", c.ObjectToObjectMax,
+        oo.Children.Add(MetreField("Max (m)", c.ObjectToObjectMax,
             v => { c.ObjectToObjectMax = (float)v; _vm.OnConstraintsChanged(); }));
         oo.Children.Add(BoolRow("Across connected rooms", c.ObjectToObjectAcrossConnectedRooms,
             v => { c.ObjectToObjectAcrossConnectedRooms = v; _vm.OnConstraintsChanged(); },
@@ -121,35 +121,35 @@ public partial class ConstraintsPanel : UserControl
         // ─── Door → Object ───
         var dop = ConstraintGroup("Door → Object", c.DoorToObjectEnabled,
             v => { c.DoorToObjectEnabled = v; _vm.OnConstraintsChanged(); });
-        dop.Children.Add(MetreField("Min distance (m)", c.DoorToObjectMin,
+        dop.Children.Add(MetreField("Min (m)", c.DoorToObjectMin,
             v => { c.DoorToObjectMin = (float)v; _vm.OnConstraintsChanged(); }));
-        dop.Children.Add(MetreField("Max distance (m)", c.DoorToObjectMax,
+        dop.Children.Add(MetreField("Max (m)", c.DoorToObjectMax,
             v => { c.DoorToObjectMax = (float)v; _vm.OnConstraintsChanged(); }));
-        dop.Children.Add(BoolRow("Apply to every door", c.DoorAppliesToEveryDoor,
+        dop.Children.Add(BoolRow("All doors must pass", c.DoorAppliesToEveryDoor,
             v => { c.DoorAppliesToEveryDoor = v; _vm.OnConstraintsChanged(); },
             "On (default): every door of the room must satisfy the band. Off: any door is enough."));
-        dop.Children.Add(BoolRow("Within angle band", c.DoorAngleBandEnabled,
+        dop.Children.Add(BoolRow("Limit door angle", c.DoorAngleBandEnabled,
             v => { c.DoorAngleBandEnabled = v; _vm.OnConstraintsChanged(); },
             "Constrain |angle| from the door's straight-into-room axis."));
-        dop.Children.Add(NumericRow("Min |angle| (°)", c.DoorAngleMinDeg, 0, 180, 1,
+        dop.Children.Add(NumericRow("Min angle (°)", c.DoorAngleMinDeg, 0, 180, 1,
             v => { c.DoorAngleMinDeg = (float)v; _vm.OnConstraintsChanged(); }));
-        dop.Children.Add(NumericRow("Max |angle| (°)", c.DoorAngleMaxDeg, 0, 180, 1,
+        dop.Children.Add(NumericRow("Max angle (°)", c.DoorAngleMaxDeg, 0, 180, 1,
             v => { c.DoorAngleMaxDeg = (float)v; _vm.OnConstraintsChanged(); }));
         Body.Children.Add((Control)dop.Tag!);
 
         // ─── Object → Wall ───
         var ow = ConstraintGroup("Object → Wall", c.ObjectToWallEnabled,
             v => { c.ObjectToWallEnabled = v; _vm.OnConstraintsChanged(); });
-        ow.Children.Add(MetreField("Min distance (m)", c.ObjectToWallMin,
+        ow.Children.Add(MetreField("Min (m)", c.ObjectToWallMin,
             v => { c.ObjectToWallMin = (float)v; _vm.OnConstraintsChanged(); }));
         Body.Children.Add((Control)ow.Tag!);
 
-        // ─── Per-room counts ───
-        var pc = ConstraintGroup("Per-room counts", c.PerRoomCountsEnabled,
+        // ─── Count per room ───
+        var pc = ConstraintGroup("Count per room", c.PerRoomCountsEnabled,
             v => { c.PerRoomCountsEnabled = v; _vm.OnConstraintsChanged(); });
-        pc.Children.Add(NumericRow("Min per room", c.PerRoomCountMin, 0, 99, 1,
+        pc.Children.Add(NumericRow("Min", c.PerRoomCountMin, 0, 99, 1,
             v => { c.PerRoomCountMin = (int)v; _vm.OnConstraintsChanged(); }));
-        pc.Children.Add(NumericRow("Max per room", c.PerRoomCountMax, 0, 99, 1,
+        pc.Children.Add(NumericRow("Max", c.PerRoomCountMax, 0, 99, 1,
             v => { c.PerRoomCountMax = (int)v; _vm.OnConstraintsChanged(); }));
         Body.Children.Add((Control)pc.Tag!);
 

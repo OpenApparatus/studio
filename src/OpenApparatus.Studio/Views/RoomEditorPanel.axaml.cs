@@ -192,7 +192,7 @@ public partial class RoomEditorPanel : UserControl
         {
             if (idx < 0 || idx >= _vm.Objects.Count) continue;
             var t = _vm.GetObjectType(_vm.Objects[idx].Slot);
-            string name = t?.Name ?? $"Slot {_vm.Objects[idx].Slot}";
+            string name = t?.Name ?? $"Type {_vm.Objects[idx].Slot}";
             byType[name] = byType.TryGetValue(name, out var c) ? c + 1 : 1;
         }
         var summary = new StackPanel { Spacing = 4 };
@@ -242,7 +242,7 @@ public partial class RoomEditorPanel : UserControl
         var t = _vm.GetObjectType(sel.Slot);
         AddInspectorHeaderWithObjectPreview(
             t?.Name ?? "Selected object",
-            $"slot {sel.Slot}  ·  room {(sel.OwningRoomId < 0 ? "outside" : sel.OwningRoomId.ToString())}",
+            sel.OwningRoomId < 0 ? "outside" : $"Room {sel.OwningRoomId}",
             t);
         BuildObjectEditorRows(idx);
     }
@@ -445,12 +445,12 @@ public partial class RoomEditorPanel : UserControl
             if (_vm.Objects[i].OwningRoomId == roomId) indices.Add(i);
 
         AddInspectorHeader(
-            $"Room {roomId} objects",
+            $"Room {roomId} · objects",
             indices.Count == 1 ? "1 object" : $"{indices.Count} objects");
 
         if (indices.Count == 0)
         {
-            AddPlaceholderBody("No objects in this room yet. Switch to a sub-cell and press 1–9 to place one.");
+            AddPlaceholderBody("Click a sub-cell, then 1–9.");
             return;
         }
 
@@ -475,7 +475,7 @@ public partial class RoomEditorPanel : UserControl
         var t = _vm!.GetObjectType(_vm.Objects[idx].Slot);
         sp.Children.Add(new TextBlock
         {
-            Text = t is null ? $"Slot {_vm.Objects[idx].Slot}" : $"{t.Name} (slot {_vm.Objects[idx].Slot})",
+            Text = t is null ? $"Type {_vm.Objects[idx].Slot}" : t.Name,
             FontWeight = FontWeight.SemiBold,
             Margin = new Thickness(0, 0, 0, 4),
         });
@@ -514,7 +514,7 @@ public partial class RoomEditorPanel : UserControl
 
         host.Children.Add(new TextBlock
         {
-            Text = $"Owning room: {(sel.OwningRoomId < 0 ? "outside" : sel.OwningRoomId.ToString())}",
+            Text = $"Room: {(sel.OwningRoomId < 0 ? "outside" : sel.OwningRoomId.ToString())}",
             Foreground = new SolidColorBrush(Color.FromRgb(110, 110, 120)),
             FontSize = 11,
             Margin = new Thickness(0, 0, 0, 6),
@@ -542,7 +542,7 @@ public partial class RoomEditorPanel : UserControl
         // recognises this isn't a routine action.
         var deleteBtn = new Button
         {
-            Content = "Delete object",
+            Content = "Delete",
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Center,
             Margin = new Thickness(0, 12, 0, 0),
@@ -693,7 +693,7 @@ public partial class RoomEditorPanel : UserControl
         {
             var markBtn = new Button
             {
-                Content = "Mark as start room",
+                Content = "Set as start",
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 HorizontalContentAlignment = HorizontalAlignment.Center,
                 Padding = new Thickness(8, 6),
@@ -725,7 +725,7 @@ public partial class RoomEditorPanel : UserControl
         // Floor section.
         BodyPanel.Children.Add(SectionHeader("Floor", topMargin: 14));
         BodyPanel.Children.Add(ColorRow(
-            label: "Floor color",
+            label: "Floor colour",
             current: _vm.RoomFloorColors.TryGetValue(roomId, out var fc) ? (System.Numerics.Vector3?)fc : null,
             setter: c => _vm.SetRoomFloorColor(roomId, c),
             clearer: () => _vm.ClearRoomFloorColor(roomId)));
@@ -733,7 +733,7 @@ public partial class RoomEditorPanel : UserControl
         // Ceiling section.
         BodyPanel.Children.Add(SectionHeader("Ceiling", topMargin: 14));
         BodyPanel.Children.Add(ColorRow(
-            label: "Ceiling color",
+            label: "Ceiling colour",
             current: _vm.RoomCeilingColors.TryGetValue(roomId, out var cc) ? (System.Numerics.Vector3?)cc : null,
             setter: c => _vm.SetRoomCeilingColor(roomId, c),
             clearer: () => _vm.ClearRoomCeilingColor(roomId)));
@@ -744,7 +744,7 @@ public partial class RoomEditorPanel : UserControl
         bool multi = _vm.IsRoomMultiColor(roomId);
         var multiToggle = new CheckBox
         {
-            Content = "Multi-color walls",
+            Content = "Per-wall colours",
             IsChecked = multi,
             Margin = new Thickness(0, 0, 0, 6),
         };
@@ -758,7 +758,7 @@ public partial class RoomEditorPanel : UserControl
         if (!multi)
         {
             BodyPanel.Children.Add(ColorRow(
-                label: "Wall color",
+                label: "Wall colour",
                 current: _vm.RoomSingleWallColors.TryGetValue(roomId, out var wc) ? (System.Numerics.Vector3?)wc : null,
                 setter: c => _vm.SetRoomSingleWallColor(roomId, c),
                 clearer: () => _vm.ClearRoomSingleWallColor(roomId)));
@@ -796,23 +796,23 @@ public partial class RoomEditorPanel : UserControl
         bool isWindow = op.IsWindow;
         string label = isWindow ? "Window" : "Door";
 
-        AddInspectorHeader(label,
-            isWindow ? "in selected wall" : "in selected wall");
+        AddInspectorHeader(label);
 
         // Width
         BodyPanel.Children.Add(NumericRow(
             "Width (m)", op.Width, 0.3, 6.0, 0.1,
             v => _vm.UpdateSelectedOpening(o => o.With(width: (float)v))));
 
-        // Head height
+        // Top of opening (head height).
         BodyPanel.Children.Add(NumericRow(
-            "Head height (m)", op.Height, isWindow ? 0.5 : 1.5, 4.0, 0.1,
+            "Top (m)", op.Height, isWindow ? 0.5 : 1.5, 4.0, 0.1,
             v => _vm.UpdateSelectedOpening(o => o.With(height: (float)v))));
 
         if (isWindow)
         {
+            // Bottom of opening (sill height).
             BodyPanel.Children.Add(NumericRow(
-                "Sill height (m)", op.SillHeight, 0.05, 2.5, 0.05,
+                "Bottom (m)", op.SillHeight, 0.05, 2.5, 0.05,
                 v => _vm.UpdateSelectedOpening(o => o.With(sillHeight: (float)v))));
         }
         else
@@ -820,15 +820,15 @@ public partial class RoomEditorPanel : UserControl
             // Door swing controls.
             BodyPanel.Children.Add(SectionHeader("Hinge", topMargin: 12));
             BodyPanel.Children.Add(ToggleRow(
-                "At end of opening",
+                "Hinge right",
                 op.HingeAtEnd,
                 v => _vm.UpdateSelectedOpening(o => o.With(hingeAtEnd: v))));
 
             BodyPanel.Children.Add(SectionHeader("Swing", topMargin: 12));
             BodyPanel.Children.Add(ToggleRow(
                 _vm.SelectedAdjacency?.IsInternal == true
-                    ? $"Into Room {_vm.SelectedAdjacency.RoomA.Id} (flip swing)"
-                    : "Reverse swing",
+                    ? $"Swing into Room {_vm.SelectedAdjacency.RoomA.Id}"
+                    : "Swing outward",
                 op.SwingNegative != (_vm.SelectedAdjacency?.IsInternal == true),
                 v =>
                 {

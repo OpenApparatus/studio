@@ -108,7 +108,7 @@ public sealed class WelcomePanel : ContentControl
         };
         var subtitle = new TextBlock
         {
-            Text = "Author multi-room navigation environments — rooms, walls, openings, objects.",
+            Text = "Author multi-room nav environments.",
             FontSize = 13,
             Foreground = new SolidColorBrush(Color.FromRgb(0x7A, 0x80, 0x8C)),
             HorizontalAlignment = HorizontalAlignment.Center,
@@ -125,11 +125,11 @@ public sealed class WelcomePanel : ContentControl
             HorizontalAlignment = HorizontalAlignment.Center,
             Margin = new Thickness(0, 0, 0, 28),
         };
-        actionRow.Children.Add(MakeAction("New scene", "Start blank — drag tiles, press R.",
+        actionRow.Children.Add(MakeAction("New", "Start blank — drag tiles, press R.",
             "Plus", () => _vm.NewProjectCommand.Execute(null), primary: true));
-        actionRow.Children.Add(MakeAction("Open scene", "Load an .oapp project file.",
+        actionRow.Children.Add(MakeAction("Open", "Load an .oapp project file.",
             "Folder", () => _vm.OpenProjectCommand.Execute(GetWindow())));
-        actionRow.Children.Add(MakeAction("Keyboard help", "Browse every shortcut (F1).",
+        actionRow.Children.Add(MakeAction("Shortcuts", "Browse every shortcut (F1).",
             "Help", () => _vm.ToggleShortcutOverlayCommand.Execute(null)));
 
         // Recent files list.
@@ -138,7 +138,7 @@ public sealed class WelcomePanel : ContentControl
         {
             recents.Children.Add(new TextBlock
             {
-                Text = "No recent scenes yet — your saved projects will appear here.",
+                Text = "No recent projects yet.",
                 Foreground = new SolidColorBrush(Color.FromRgb(0x7A, 0x80, 0x8C)),
                 FontSize = 12,
                 HorizontalAlignment = HorizontalAlignment.Center,
@@ -235,7 +235,7 @@ public sealed class WelcomePanel : ContentControl
                     recents,
                     new TextBlock
                     {
-                        Text = "Press F1 anytime · Ctrl+K opens the command palette",
+                        Text = "F1 shortcuts · Ctrl+K palette",
                         FontSize = 11,
                         Foreground = new SolidColorBrush(Color.FromRgb(0xA8, 0xAE, 0xBB)),
                         HorizontalAlignment = HorizontalAlignment.Center,
@@ -337,7 +337,7 @@ public sealed class WelcomePanel : ContentControl
     {
         var btn = new Button
         {
-            Content = "Skip — open the empty editor",
+            Content = "Skip",
             Background = Brushes.Transparent,
             BorderBrush = Brushes.Transparent,
             Foreground = new SolidColorBrush(Color.FromRgb(0x1F, 0x6F, 0xEB)),
