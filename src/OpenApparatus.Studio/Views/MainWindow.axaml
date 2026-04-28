@@ -680,6 +680,10 @@
                     <MenuItem Header="_Spec (JSON)…"
                               Command="{Binding ExportJsonCommand}"
                               CommandParameter="{Binding $parent[Window]}"/>
+                    <MenuItem Header="_Image (PNG, 2D view)…"
+                              Click="OnExportPng2D"
+                              IsEnabled="{Binding IsTopDownView}"
+                              ToolTip.Tip="Export the current 2D viewport as a PNG. Switch to 2D view to enable."/>
                 </MenuItem>
                 <Separator/>
                 <MenuItem Header="E_xit" Click="OnExitClick"/>
@@ -815,6 +819,9 @@
                                 <MenuItem Header="Spec (JSON)…"
                                           Command="{Binding ExportJsonCommand}"
                                           CommandParameter="{Binding $parent[Window]}"/>
+                                <MenuItem Header="Image (PNG, 2D view)…"
+                                          Click="OnExportPng2D"
+                                          IsEnabled="{Binding IsTopDownView}"/>
                             </MenuFlyout>
                         </Button.Flyout>
                     </Button>
@@ -882,7 +889,7 @@
                     <Border Classes="vsep" IsVisible="{Binding IsTopDownView}"/>
                     <TextBlock Classes="sectionLabel" Text="OVERLAY"
                                IsVisible="{Binding IsTopDownView}"/>
-                    <ToggleButton Classes="pill" Content="Ribbons"
+                    <ToggleButton Classes="pill" Content="Walls"
                                   IsVisible="{Binding IsTopDownView}"
                                   IsChecked="{Binding ShowWallBorders}"
                                   ToolTip.Tip="14-px coloured ribbons inside each wall."/>
@@ -1386,7 +1393,7 @@
                 <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
                     <Border Grid.Column="0" Background="{DynamicResource EditorBgBrush}">
                         <Grid>
-                            <views:GridEditorView EditVersion="{Binding EditVersion}" Margin="8">
+                            <views:GridEditorView x:Name="GridEditor" EditVersion="{Binding EditVersion}" Margin="8">
                                 <views:GridEditorView.ContextMenu>
                                     <ContextMenu>
                                         <MenuItem Header="Frame (F)"
