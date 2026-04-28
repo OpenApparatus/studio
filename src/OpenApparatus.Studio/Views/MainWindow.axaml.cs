@@ -236,28 +236,28 @@ public partial class MainWindow : Window
     async void OnPickDefaultFloor(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         var vm = Vm; if (vm is null) return;
-        var picked = await PickColor("Default floor color", vm.DefaultFloorColor);
+        var picked = await PickColor("Default floor colour", vm.DefaultFloorColor);
         if (picked.HasValue) vm.DefaultFloorColor = picked.Value;
     }
 
     async void OnPickDefaultCeiling(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         var vm = Vm; if (vm is null) return;
-        var picked = await PickColor("Default ceiling color", vm.DefaultCeilingColor);
+        var picked = await PickColor("Default ceiling colour", vm.DefaultCeilingColor);
         if (picked.HasValue) vm.DefaultCeilingColor = picked.Value;
     }
 
     async void OnPickDefaultWall(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         var vm = Vm; if (vm is null) return;
-        var picked = await PickColor("Default wall color", vm.DefaultWallColor);
+        var picked = await PickColor("Default wall colour", vm.DefaultWallColor);
         if (picked.HasValue) vm.DefaultWallColor = picked.Value;
     }
 
     async void OnPickPathColor(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         var vm = Vm; if (vm is null) return;
-        var picked = await PickColor("Path color", vm.PathColor);
+        var picked = await PickColor("Path colour", vm.PathColor);
         if (picked.HasValue) vm.PathColor = picked.Value;
     }
 

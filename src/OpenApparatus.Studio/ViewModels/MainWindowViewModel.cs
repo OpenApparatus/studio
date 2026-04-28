@@ -536,7 +536,7 @@ public partial class MainWindowViewModel : ViewModelBase
         if (index < 0 || index >= _objectTypes.Count) return;
         if (_objectTypes.Count <= 1)
         {
-            StatusMessage = "Need at least one object type.";
+            StatusMessage = "Keep at least one type.";
             return;
         }
         PushUndo();
@@ -610,7 +610,7 @@ public partial class MainWindowViewModel : ViewModelBase
             if (System.Math.Abs(o.Position.X - center2.X) < EPS &&
                 System.Math.Abs(o.Position.Z - center2.Y) < EPS)
             {
-                StatusMessage = "Sub-cell already has an object — delete it first.";
+                StatusMessage = "Sub-cell occupied.";
                 return;
             }
         }
@@ -1421,9 +1421,9 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             int rooms = CurrentEnvironment?.Rooms.Count ?? 0;
             int objs = Objects.Count;
-            string mode = IsLayoutMode ? "Layout" : "Object";
-            string view = IsTopDownView ? "Top" : "3D";
-            return $"{rooms} room{(rooms == 1 ? "" : "s")}  ·  {objs} object{(objs == 1 ? "" : "s")}  ·  {mode} / {view}";
+            string mode = IsLayoutMode ? "Layout" : "Objects";
+            string view = IsTopDownView ? "2D" : "3D";
+            return $"{rooms} room{(rooms == 1 ? "" : "s")}  ·  {objs} object{(objs == 1 ? "" : "s")}  ·  {mode} · {view}";
         }
     }
 
@@ -2061,7 +2061,7 @@ public partial class MainWindowViewModel : ViewModelBase
         int bbox = (xMax - xMin + 1) * (zMax - zMin + 1);
         if (SelectedTiles.Count != bbox)
         {
-            StatusMessage = "Selection must be a filled rectangle (v1 limitation). Adjust and try again.";
+            StatusMessage = "Selection must be a solid rectangle.";
             return;
         }
 
@@ -2111,7 +2111,7 @@ public partial class MainWindowViewModel : ViewModelBase
         if (CurrentEnvironment is null) return;
         if (SelectedRoomId == 0)
         {
-            StatusMessage = "Room 0 is already the start room.";
+            StatusMessage = "Room 0 is already start.";
             return;
         }
         PushUndo();
@@ -2260,7 +2260,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         else
         {
-            StatusMessage = "All doors already swing toward the higher-numbered room.";
+            StatusMessage = "All swings already point outward.";
         }
     }
 
@@ -2577,7 +2577,7 @@ public partial class MainWindowViewModel : ViewModelBase
         SelectedAdjacency.Passage = Passage.Open.Instance;
         RememberPassage(SelectedAdjacency);
         EditVersion++;
-        StatusMessage = "Wall → Open (no wall).";
+        StatusMessage = "Wall opened.";
     }
 
     /// <summary>Set the selected wall's passage to Closed (solid wall, no doors) — C hotkey.</summary>
@@ -2593,7 +2593,7 @@ public partial class MainWindowViewModel : ViewModelBase
         SelectedAdjacency.Passage = Passage.Closed.Instance;
         RememberPassage(SelectedAdjacency);
         EditVersion++;
-        StatusMessage = "Wall → Closed.";
+        StatusMessage = "Wall closed.";
     }
 
     /// <summary>

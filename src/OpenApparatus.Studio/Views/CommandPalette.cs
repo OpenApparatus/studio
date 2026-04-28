@@ -168,33 +168,33 @@ public sealed class CommandPalette : ContentControl
             => _registry.Add(new CommandEntry(title, category, hotkey, run, canRun));
 
         // File
-        Add("New scene",        "File", "Ctrl+N", () => _vm.NewProjectCommand.Execute(null));
-        Add("Open scene…",      "File", "Ctrl+O", () => _vm.OpenProjectCommand.Execute(GetWindow()));
+        Add("New",              "File", "Ctrl+N", () => _vm.NewProjectCommand.Execute(null));
+        Add("Open…",            "File", "Ctrl+O", () => _vm.OpenProjectCommand.Execute(GetWindow()));
         Add("Save",             "File", "Ctrl+S", () => _vm.SaveProjectCommand.Execute(GetWindow()));
         Add("Save As…",         "File", "Ctrl+Shift+S", () => _vm.SaveProjectAsCommand.Execute(GetWindow()));
         Add("Export glTF…",     "File", null,     () => _vm.ExportGltfCommand.Execute(GetWindow()));
-        Add("Export JSON…",     "File", null,     () => _vm.ExportJsonCommand.Execute(GetWindow()));
+        Add("Export Spec (JSON)…", "File", null,  () => _vm.ExportJsonCommand.Execute(GetWindow()));
 
         // Edit
         Add("Undo",             "Edit", "Ctrl+Z", () => _vm.UndoCommand.Execute(null), () => _vm.CanUndo);
         Add("Redo",             "Edit", "Ctrl+Y", () => _vm.RedoCommand.Execute(null), () => _vm.CanRedo);
         Add("Clear selection",  "Edit", "Esc",    () => _vm.ClearSelectionCommand.Execute(null));
-        Add("Reset scene",      "Edit", null,     () => _vm.ResetAllCommand.Execute(null));
-        Add("Random fill",      "Edit", null,     () => _vm.RandomFillCommand.Execute(null), () => _vm.IsLayoutMode);
+        Add("Empty project",    "Edit", null,     () => _vm.ResetAllCommand.Execute(null));
+        Add("Auto-layout",      "Edit", null,     () => _vm.RandomFillCommand.Execute(null), () => _vm.IsLayoutMode);
 
         // View
-        Add("Switch to Top view","View", null,    () => _vm.SetTopViewCommand.Execute(null));
-        Add("Switch to 3D view", "View", null,    () => _vm.Set3DViewCommand.Execute(null));
+        Add("Switch to 2D",     "View", null,     () => _vm.SetTopViewCommand.Execute(null));
+        Add("Switch to 3D",     "View", null,     () => _vm.Set3DViewCommand.Execute(null));
         Add("Frame selection",  "View", "F",      () => _vm.FrameSelectionCommand.Execute(null));
-        Add("Reset zoom",       "View", "Ctrl+1", () => _vm.ResetViewCommand.Execute(null));
+        Add("Fit",              "View", "Ctrl+1", () => _vm.ResetViewCommand.Execute(null));
         Add("Zoom 100%",        "View", "Ctrl+0", () => _vm.ZoomActualSizeCommand.Execute(null));
 
         // Mode
         Add("Layout mode",      "Mode", null,     () => _vm.EditMode = MainWindowViewModel.EditModeKind.Layout);
-        Add("Object mode",      "Mode", null,     () => _vm.EditMode = MainWindowViewModel.EditModeKind.Object);
+        Add("Objects mode",     "Mode", null,     () => _vm.EditMode = MainWindowViewModel.EditModeKind.Object);
 
         // Help
-        Add("Keyboard shortcuts","Help", "F1",    () => _vm.ToggleShortcutOverlayCommand.Execute(null));
+        Add("Shortcuts",        "Help", "F1",     () => _vm.ToggleShortcutOverlayCommand.Execute(null));
     }
 
     Window? GetWindow() => Avalonia.VisualTree.VisualExtensions.FindAncestorOfType<Window>(this);
