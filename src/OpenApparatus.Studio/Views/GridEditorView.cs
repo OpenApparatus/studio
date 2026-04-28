@@ -70,6 +70,13 @@ public class GridEditorView : Control
     bool _isoPanning;      // middle/right drag → pan pivot
     Point _isoDragStart;
     float _isoStartYaw, _isoStartPitch, _isoStartPivotX, _isoStartPivotY, _isoStartPivotZ;
+    // World-space camera position snapshot at orbit-start. During orbit
+    // we keep the camera at this point and recompute the pivot to lie
+    // along the new gaze direction — so rotation is "look around from
+    // here" (pitch + yaw of the head) rather than "swing the camera in
+    // an arc around a faraway pivot" (which made the whole scene appear
+    // to rotate / roll across the screen).
+    float _isoStartCamX, _isoStartCamY, _isoStartCamZ;
 
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
@@ -90,6 +97,13 @@ public class GridEditorView : Control
             _isoStartPivotX  = vm.IsoPivotX;
             _isoStartPivotY  = vm.IsoPivotY;
             _isoStartPivotZ  = vm.IsoPivotZ;
+            // Snapshot world camera position so orbit rotates in place.
+            float _cosP = System.MathF.Cos(vm.IsoPitch);
+            float _sinP = System.MathF.Sin(vm.IsoPitch);
+            float _pivWorldY = vm.WallHeight * 0.5f + vm.IsoPivotY;
+            _isoStartCamX = vm.IsoPivotX + System.MathF.Sin(vm.IsoYaw) * _cosP * vm.IsoDistance;
+            _isoStartCamY = _pivWorldY  + _sinP                                * vm.IsoDistance;
+            _isoStartCamZ = vm.IsoPivotZ + System.MathF.Cos(vm.IsoYaw) * _cosP * vm.IsoDistance;
             if (props.IsMiddleButtonPressed || props.IsRightButtonPressed)
                 _isoPanning = true;
             else if (props.IsLeftButtonPressed)
@@ -572,17 +586,37 @@ public class GridEditorView : Control
         // ── 3D camera dragging ──
         if (_isoOrbiting)
         {
+            // Look-around (FPS-style head turn): the camera position is
+            // pinned to where it was when the drag started; only its yaw
+            // and pitch change. We achieve that by recomputing the pivot
+            // each frame so it sits along the new gaze direction at the
+            // same distance, leaving the camera position unchanged.
+            //
+            // Up vector stays world-Y in the renderer, so this is pure
+            // pitch + yaw — no roll. With the camera fixed in place the
+            // scene no longer swings in an arc, which was the "z-axis
+            // rotation" / "whole environment is spinning" feeling.
+            //
+            // 0.005 rad/px feels close to standard 3D viewers.
             double dx = pos.X - _isoDragStart.X;
             double dy = pos.Y - _isoDragStart.Y;
-            // 0.005 rad/px feels close to standard 3D viewers.
-            // Sign convention: drag-right turns the camera right (the scene
-            // visibly swings left), like an FPS / scene-view camera, rather
-            // than "grab and rotate the scene" where the scene tracks the
-            // cursor. The latter felt like the world was spinning instead
-            // of the viewpoint moving.
-            vm.IsoYaw   = _isoStartYaw   + (float)(dx * 0.005);
+            vm.IsoYaw   = _isoStartYaw   - (float)(dx * 0.005);
             vm.IsoPitch = (float)System.Math.Clamp(
                 _isoStartPitch + (float)(dy * 0.005), 0.05f, (float)(System.Math.PI / 2 - 0.05));
+
+            float cosP = System.MathF.Cos(vm.IsoPitch);
+            float sinP = System.MathF.Sin(vm.IsoPitch);
+            float dirX = System.MathF.Sin(vm.IsoYaw) * cosP;
+            float dirY = sinP;
+            float dirZ = System.MathF.Cos(vm.IsoYaw) * cosP;
+            // pivot = camPos − dir·distance (so that camPos = pivot + dir·distance
+            // continues to hold and the camera stays at the snapshot point).
+            float newPivotX = _isoStartCamX - dirX * vm.IsoDistance;
+            float newPivotY = _isoStartCamY - dirY * vm.IsoDistance;
+            float newPivotZ = _isoStartCamZ - dirZ * vm.IsoDistance;
+            vm.IsoPivotX = newPivotX;
+            vm.IsoPivotY = newPivotY - vm.WallHeight * 0.5f;  // renderer adds WallHeight*0.5 back
+            vm.IsoPivotZ = newPivotZ;
             vm.RaiseEditVersion();
             return;
         }
