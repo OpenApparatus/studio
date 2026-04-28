@@ -77,17 +77,18 @@
             <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
             <Setter Property="TextDecorations" Value="Underline"/>
         </Style>
-        <!-- Compact NumericUpDown — full ControlTemplate replacement.
-             Avalonia's Fluent default ButtonSpinner is bulky and resists
-             clean override; we draw our own chrome here: a 28-px rounded
-             box with the inline TextBox on the left and a slim 16-px
-             chevron column on the right. The chevrons are RepeatButtons
-             named PART_IncreaseButton / PART_DecreaseButton so the
-             control's spinner logic still drives them. -->
+        <!-- Compact NumericUpDown — horizontal stepper layout: number cell
+             on the left, then a − cell, then a + cell, all under one
+             rounded outer border with hairline vertical dividers between
+             them. The clicks work because we wrap the TextBox in a real
+             ButtonSpinner — NumericUpDown finds it as PART_Spinner and
+             listens to its Spin events; the spinner's own template owns
+             the PART_IncreaseButton / PART_DecreaseButton parts so its
+             internal click → Spin wiring stays intact. -->
         <Style Selector="NumericUpDown.compact">
             <Setter Property="MinHeight" Value="0"/>
-            <Setter Property="Height" Value="28"/>
-            <Setter Property="HorizontalContentAlignment" Value="Right"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
             <Setter Property="FontSize" Value="{StaticResource FontBody}"/>
             <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
             <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBrush}"/>
@@ -97,63 +98,129 @@
             <Setter Property="behaviors:NumericExpression.Enabled" Value="True"/>
             <Setter Property="Template">
                 <ControlTemplate TargetType="NumericUpDown">
+                    <ButtonSpinner Name="PART_Spinner"
+                                   Classes="compactSpinner"
+                                   Background="{TemplateBinding Background}"
+                                   BorderBrush="{TemplateBinding BorderBrush}"
+                                   BorderThickness="{TemplateBinding BorderThickness}"
+                                   CornerRadius="{TemplateBinding CornerRadius}"
+                                   ShowButtonSpinner="{TemplateBinding ShowButtonSpinner}"
+                                   ButtonSpinnerLocation="Right"
+                                   HorizontalContentAlignment="Stretch"
+                                   VerticalContentAlignment="Stretch"
+                                   Padding="0">
+                        <TextBox Name="PART_TextBox"
+                                 Classes="compactInner"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 Foreground="{TemplateBinding Foreground}"
+                                 FontSize="{TemplateBinding FontSize}"
+                                 Padding="10,4"
+                                 MinHeight="0"
+                                 VerticalContentAlignment="Center"
+                                 HorizontalContentAlignment="Left"
+                                 Text="{TemplateBinding Text, Mode=TwoWay}"
+                                 Watermark="{TemplateBinding Watermark}"/>
+                    </ButtonSpinner>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+
+        <!-- Border hover / focus moved onto the spinner because the border
+             element now lives inside ButtonSpinner.compactSpinner's
+             template. focus-within fires when the inner TextBox takes
+             focus, so the accent ring still appears when typing. -->
+        <Style Selector="ButtonSpinner.compactSpinner:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}"/>
+        </Style>
+        <Style Selector="ButtonSpinner.compactSpinner:focus-within /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+        </Style>
+
+        <!-- ButtonSpinner template for compact NumericUpDown — three-cell
+             stepper layout. Hairline dividers between cells use the
+             hairline brush directly so they don't darken when the outer
+             border bolds on hover. -->
+        <Style Selector="ButtonSpinner.compactSpinner">
+            <Setter Property="Template">
+                <ControlTemplate TargetType="ButtonSpinner">
                     <Border Name="PART_BorderElement"
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="{TemplateBinding CornerRadius}">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <TextBox Grid.Column="0" Name="PART_TextBox"
-                                     Background="Transparent"
-                                     BorderThickness="0"
-                                     Foreground="{TemplateBinding Foreground}"
-                                     FontSize="{TemplateBinding FontSize}"
-                                     Padding="8,4,4,4"
-                                     MinHeight="0"
-                                     VerticalContentAlignment="Center"
-                                     HorizontalContentAlignment="Right"
-                                     Text="{TemplateBinding Text, Mode=TwoWay}"
-                                     Watermark="{TemplateBinding Watermark}"/>
-                            <StackPanel Grid.Column="1" Orientation="Vertical"
-                                        Width="16" VerticalAlignment="Stretch"
-                                        IsVisible="{TemplateBinding ShowButtonSpinner}">
-                                <RepeatButton Name="PART_IncreaseButton"
-                                              Classes="numStep"
-                                              Content="▲"/>
+                            CornerRadius="{TemplateBinding CornerRadius}"
+                            ClipToBounds="True">
+                        <Grid ColumnDefinitions="*,Auto,Auto">
+                            <ContentPresenter Grid.Column="0"
+                                              Name="PART_ContentPresenter"
+                                              Content="{TemplateBinding Content}"
+                                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                                              HorizontalContentAlignment="Stretch"
+                                              VerticalContentAlignment="Stretch"
+                                              Padding="0"/>
+                            <Border Grid.Column="1"
+                                    BorderBrush="{DynamicResource BorderHairlineBrush}"
+                                    BorderThickness="1,0,1,0"
+                                    IsVisible="{TemplateBinding ShowButtonSpinner}">
                                 <RepeatButton Name="PART_DecreaseButton"
                                               Classes="numStep"
-                                              Content="▼"/>
-                            </StackPanel>
+                                              Content="−"/>
+                            </Border>
+                            <RepeatButton Grid.Column="2"
+                                          Name="PART_IncreaseButton"
+                                          Classes="numStep"
+                                          Content="+"
+                                          IsVisible="{TemplateBinding ShowButtonSpinner}"/>
                         </Grid>
                     </Border>
                 </ControlTemplate>
             </Setter>
         </Style>
-        <Style Selector="NumericUpDown.compact:pointerover /template/ Border#PART_BorderElement">
-            <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}"/>
+
+        <!-- Inner TextBox of the compact NumericUpDown — borderless and
+             transparent in every state so the only visible chrome is the
+             outer ButtonSpinner border. Without these :pointerover /
+             :focus overrides, Fluent's default TextBox styles paint a
+             second border / fill over the spinner's. -->
+        <Style Selector="TextBox.compactInner /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
         </Style>
-        <Style Selector="NumericUpDown.compact:focus-within /template/ Border#PART_BorderElement">
-            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+        <Style Selector="TextBox.compactInner:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
         </Style>
-        <!-- Chevron-step buttons. Half-height each so the pair fits the
-             28-px host; transparent body + accent hover state. -->
+        <Style Selector="TextBox.compactInner:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <!-- Stepper buttons — square tap targets sized to the host height,
+             larger glyph than the old chevrons so − / + read clearly. -->
         <Style Selector="RepeatButton.numStep">
             <Setter Property="Padding" Value="0"/>
-            <Setter Property="MinWidth" Value="0"/>
+            <Setter Property="MinWidth" Value="32"/>
             <Setter Property="MinHeight" Value="0"/>
-            <Setter Property="Height" Value="13"/>
+            <Setter Property="Width" Value="32"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="CornerRadius" Value="0"/>
-            <Setter Property="FontSize" Value="7.5"/>
+            <Setter Property="FontSize" Value="14"/>
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
-            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="VerticalAlignment" Value="Stretch"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
         </Style>
         <Style Selector="RepeatButton.numStep:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource SurfacePrimaryBrush}"/>
             <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        </Style>
+        <Style Selector="RepeatButton.numStep:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource SurfaceSecondaryBrush}"/>
         </Style>
         <Style Selector="Button.primary">
             <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
