@@ -7,6 +7,7 @@ using Avalonia.Controls.Shapes;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
+using OpenApparatus.Studio.Themes;
 using OpenApparatus.Studio.ViewModels;
 
 namespace OpenApparatus.Studio.Views;
@@ -83,7 +84,7 @@ public partial class ConstraintsPanel : UserControl
         {
             Text = "Validation only — placements are never blocked. Sub-cells where every active constraint is satisfied are tinted; violators get a red dashed ring.",
             TextWrapping = TextWrapping.Wrap,
-            Foreground = new SolidColorBrush(Color.FromRgb(120, 120, 130)),
+            Foreground = Tokens.TextMuted,
             FontSize = 10,
             Margin = new Thickness(0, 0, 0, 8),
         });
@@ -193,7 +194,7 @@ public partial class ConstraintsPanel : UserControl
                     Text = "• " + v.Message,
                     TextWrapping = TextWrapping.Wrap,
                     FontSize = 11,
-                    Foreground = new SolidColorBrush(Color.FromRgb(0x5A, 0x62, 0x70)),
+                    Foreground = Tokens.TextSecondary,
                 });
             }
             Body.Children.Add(new Border
@@ -234,7 +235,7 @@ public partial class ConstraintsPanel : UserControl
         var card = new Border
         {
             Background = new SolidColorBrush(Colors.White),
-            BorderBrush = new SolidColorBrush(Color.FromRgb(0xD3, 0xD7, 0xDF)),
+            BorderBrush = Tokens.SurfacePressed,
             BorderThickness = new Thickness(1),
             CornerRadius = new Avalonia.CornerRadius(8),
             Padding = new Thickness(12),

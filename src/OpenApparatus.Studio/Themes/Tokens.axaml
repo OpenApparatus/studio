@@ -13,67 +13,105 @@
 
     <ResourceDictionary.ThemeDictionaries>
 
-        <!-- ── Light (default) ───────────────────────────────────── -->
+        <!-- ── Light (default) — AR HUD ─────────────────────────── -->
         <ResourceDictionary x:Key="Light">
-            <!-- Surfaces -->
-            <SolidColorBrush x:Key="SurfacePrimaryBrush"   Color="#F7F8FA"/>
-            <SolidColorBrush x:Key="SurfaceSecondaryBrush" Color="#ECEEF3"/>
+            <!-- Surfaces — clinical mint canvas, white raised cards.
+                 SurfaceRaised is held opaque white; the spec's 70%
+                 translucency belongs on the future GlassPanel style,
+                 not on the base brush (interior controls would bleed
+                 through otherwise). -->
+            <SolidColorBrush x:Key="SurfacePrimaryBrush"   Color="#ECFDF5"/>
+            <SolidColorBrush x:Key="SurfaceSecondaryBrush" Color="#D1FAE5"/>
             <SolidColorBrush x:Key="SurfaceRaisedBrush"    Color="#FFFFFF"/>
-            <!-- Editor / dark canvases -->
-            <SolidColorBrush x:Key="EditorBgBrush"  Color="#1A1A1F"/>
-            <SolidColorBrush x:Key="StatusBgBrush"  Color="#23232A"/>
-            <!-- Borders -->
-            <SolidColorBrush x:Key="BorderHairlineBrush" Color="#D3D7DF"/>
-            <SolidColorBrush x:Key="BorderStrongBrush"   Color="#A8AEBB"/>
-            <!-- Accent -->
-            <SolidColorBrush x:Key="AccentBrush"      Color="#1F6FEB"/>
-            <SolidColorBrush x:Key="AccentHoverBrush" Color="#1C5FC7"/>
-            <SolidColorBrush x:Key="AccentPressBrush" Color="#1850B0"/>
-            <!-- Text -->
-            <SolidColorBrush x:Key="TextPrimaryBrush"   Color="#23262E"/>
-            <SolidColorBrush x:Key="TextSecondaryBrush" Color="#5A6270"/>
-            <SolidColorBrush x:Key="TextMutedBrush"     Color="#7A808C"/>
+            <!-- Interaction surfaces — washes that sit on top of a
+                 raised card (or canvas) when a control is hovered or
+                 pressed. SurfaceInk is the deepest emerald, used for
+                 popovers/toasts and the welcome primary button when
+                 it's pressed "into" the page. -->
+            <SolidColorBrush x:Key="SurfaceHoverBrush"   Color="#D1FAE5"/>
+            <SolidColorBrush x:Key="SurfacePressedBrush" Color="#A7F3D0"/>
+            <SolidColorBrush x:Key="SurfaceInkBrush"     Color="#022C22"/>
+            <!-- Editor / dark canvases — kept dark (deep emerald-950)
+                 so 3D geometry and isometric room renders still read
+                 with high contrast on the AR HUD canvas. -->
+            <SolidColorBrush x:Key="EditorBgBrush"  Color="#022C22"/>
+            <SolidColorBrush x:Key="StatusBgBrush"  Color="#064E3B"/>
+            <!-- Borders — emerald-400 at 40% for hairlines, solid
+                 emerald-500 for emphasis (targeting bracket weight). -->
+            <SolidColorBrush x:Key="BorderHairlineBrush" Color="#6634D399"/>
+            <SolidColorBrush x:Key="BorderStrongBrush"   Color="#10B981"/>
+            <!-- Accent — AccentColor is the brand emerald exposed as a
+                 raw Color so scene-drawing code can construct alpha
+                 variants from it. AccentEmphasisBrush wraps it for
+                 emphasis text and decorative chrome. The AccentBrush
+                 / Hover / Press triplet is the button-state ladder
+                 (rest = emerald-600, hover = -500, press = -700). -->
+            <Color x:Key="AccentColor">#10B981</Color>
+            <SolidColorBrush x:Key="AccentEmphasisBrush" Color="{StaticResource AccentColor}"/>
+            <SolidColorBrush x:Key="AccentBrush"      Color="#059669"/>
+            <SolidColorBrush x:Key="AccentHoverBrush" Color="#10B981"/>
+            <SolidColorBrush x:Key="AccentPressBrush" Color="#047857"/>
+            <!-- Text — emerald-950 ink, emerald-800 @ 80% for body,
+                 emerald-700 for muted/metadata. -->
+            <SolidColorBrush x:Key="TextPrimaryBrush"   Color="#022C22"/>
+            <SolidColorBrush x:Key="TextSecondaryBrush" Color="#CC065F46"/>
+            <SolidColorBrush x:Key="TextMutedBrush"     Color="#047857"/>
             <SolidColorBrush x:Key="TextOnDarkBrush"    Color="#FFFFFF"/>
-            <!-- Validity -->
-            <SolidColorBrush x:Key="ValidBrush"   Color="#28A05A"/>
-            <SolidColorBrush x:Key="InvalidBrush" Color="#C82828"/>
-            <!-- Elevation -->
-            <BoxShadows x:Key="Elevation1">0 1 2 0 #14000000</BoxShadows>
-            <BoxShadows x:Key="Elevation2">0 4 14 0 #33000000</BoxShadows>
+            <!-- Validity — kept distinct from accent so a "valid"
+                 indicator doesn't read as the same emerald hierarchy
+                 as a button. Lime-leaning green vs muted brick red. -->
+            <SolidColorBrush x:Key="ValidBrush"   Color="#65A30D"/>
+            <SolidColorBrush x:Key="InvalidBrush" Color="#B91C1C"/>
+            <!-- Elevation — Elevation2 matches the spec's glass-panel
+                 shadow (rgba(4,120,87,0.05) = #0D047857). -->
+            <BoxShadows x:Key="Elevation1">0 1 2 0 #14022C22</BoxShadows>
+            <BoxShadows x:Key="Elevation2">0 8 32 0 #0D047857</BoxShadows>
         </ResourceDictionary>
 
-        <!-- ── Dark ─────────────────────────────────────────────── -->
+        <!-- ── Dark — AR HUD (night ops) ────────────────────────── -->
         <ResourceDictionary x:Key="Dark">
-            <!-- Surfaces — dark greys, not pitch black, so layered cards
-                 still read as "raised" against the background. -->
-            <SolidColorBrush x:Key="SurfacePrimaryBrush"   Color="#1A1B20"/>
-            <SolidColorBrush x:Key="SurfaceSecondaryBrush" Color="#15161B"/>
-            <SolidColorBrush x:Key="SurfaceRaisedBrush"    Color="#23252C"/>
-            <!-- Editor canvas + status bar — slightly distinct from
-                 SurfacePrimary so the canvas reads as a focus area. -->
-            <SolidColorBrush x:Key="EditorBgBrush"  Color="#0F1014"/>
-            <SolidColorBrush x:Key="StatusBgBrush"  Color="#0B0C10"/>
-            <!-- Borders -->
-            <SolidColorBrush x:Key="BorderHairlineBrush" Color="#2C2F37"/>
-            <SolidColorBrush x:Key="BorderStrongBrush"   Color="#454853"/>
-            <!-- Accent — a touch lighter / more saturated for dark bg
-                 contrast, still recognisably the brand blue. -->
-            <SolidColorBrush x:Key="AccentBrush"      Color="#3B86F2"/>
-            <SolidColorBrush x:Key="AccentHoverBrush" Color="#5A9BFA"/>
-            <SolidColorBrush x:Key="AccentPressBrush" Color="#1F6FEB"/>
-            <!-- Text — inverted scale. -->
-            <SolidColorBrush x:Key="TextPrimaryBrush"   Color="#E5E7EC"/>
-            <SolidColorBrush x:Key="TextSecondaryBrush" Color="#A8AEBB"/>
-            <SolidColorBrush x:Key="TextMutedBrush"     Color="#7A808C"/>
+            <!-- Surfaces — emerald-950 canvas, emerald-900 raised. The
+                 spec only describes a Light AR HUD; this is a sensible
+                 inversion (deep emerald background, brighter accents). -->
+            <SolidColorBrush x:Key="SurfacePrimaryBrush"   Color="#022C22"/>
+            <SolidColorBrush x:Key="SurfaceSecondaryBrush" Color="#011A14"/>
+            <SolidColorBrush x:Key="SurfaceRaisedBrush"    Color="#064E3B"/>
+            <!-- Interaction surfaces — Light's mint washes don't carry
+                 over; instead we lift one step toward the accent for
+                 hover, two steps for pressed. SurfaceInk stays the
+                 deepest near-black emerald for popovers/toasts. -->
+            <SolidColorBrush x:Key="SurfaceHoverBrush"   Color="#064E3B"/>
+            <SolidColorBrush x:Key="SurfacePressedBrush" Color="#047857"/>
+            <SolidColorBrush x:Key="SurfaceInkBrush"     Color="#010F0C"/>
+            <!-- Editor canvas — even deeper than the surface so 3D
+                 geometry has somewhere darker to live. -->
+            <SolidColorBrush x:Key="EditorBgBrush"  Color="#010F0C"/>
+            <SolidColorBrush x:Key="StatusBgBrush"  Color="#011A14"/>
+            <!-- Borders — emerald-500 hairline at low alpha, emerald-400
+                 for emphasis. -->
+            <SolidColorBrush x:Key="BorderHairlineBrush" Color="#6610B981"/>
+            <SolidColorBrush x:Key="BorderStrongBrush"   Color="#34D399"/>
+            <!-- Accent — shifted one step lighter so it pops against
+                 the dark emerald canvas. AccentColor is the same Color
+                 used for selection-overlay alpha variants. -->
+            <Color x:Key="AccentColor">#34D399</Color>
+            <SolidColorBrush x:Key="AccentEmphasisBrush" Color="{StaticResource AccentColor}"/>
+            <SolidColorBrush x:Key="AccentBrush"      Color="#34D399"/>
+            <SolidColorBrush x:Key="AccentHoverBrush" Color="#6EE7B7"/>
+            <SolidColorBrush x:Key="AccentPressBrush" Color="#10B981"/>
+            <!-- Text — inverted scale up the emerald ramp. -->
+            <SolidColorBrush x:Key="TextPrimaryBrush"   Color="#ECFDF5"/>
+            <SolidColorBrush x:Key="TextSecondaryBrush" Color="#A7F3D0"/>
+            <SolidColorBrush x:Key="TextMutedBrush"     Color="#34D399"/>
             <SolidColorBrush x:Key="TextOnDarkBrush"    Color="#FFFFFF"/>
-            <!-- Validity tuned for dark surfaces. -->
-            <SolidColorBrush x:Key="ValidBrush"   Color="#3DD17A"/>
-            <SolidColorBrush x:Key="InvalidBrush" Color="#F26060"/>
-            <!-- Elevation — dark shadows on dark are subtle, so we lean
-                 on a thin highlight at the top. Same key, different
-                 values; rendered the same way. -->
-            <BoxShadows x:Key="Elevation1">0 1 2 0 #44000000</BoxShadows>
-            <BoxShadows x:Key="Elevation2">0 6 18 0 #66000000</BoxShadows>
+            <!-- Validity tuned for dark surfaces, kept distinct from
+                 accent (lime vs emerald). -->
+            <SolidColorBrush x:Key="ValidBrush"   Color="#A3E635"/>
+            <SolidColorBrush x:Key="InvalidBrush" Color="#F87171"/>
+            <!-- Elevation — dark on dark needs more alpha to register.
+                 Tinted slightly emerald to stay on-theme. -->
+            <BoxShadows x:Key="Elevation1">0 1 2 0 #66010F0C</BoxShadows>
+            <BoxShadows x:Key="Elevation2">0 8 32 0 #80022C22</BoxShadows>
         </ResourceDictionary>
 
     </ResourceDictionary.ThemeDictionaries>

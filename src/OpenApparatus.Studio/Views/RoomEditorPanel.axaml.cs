@@ -6,6 +6,7 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
+using OpenApparatus.Studio.Themes;
 using OpenApparatus.Studio.ViewModels;
 using OpenApparatus.Topology;
 
@@ -105,25 +106,15 @@ public partial class RoomEditorPanel : UserControl
         BuildRoomEditor();
     }
 
-    // Inspector design tokens — pulled from Application.Resources at
-    // access time so the inspector's code-built rows respect the active
-    // theme variant. Falls back to the Light values if a key is missing
-    // (e.g. during DataContext initialisation before App resources are
-    // wired up).
-    static IBrush LookupBrush(string key, Color fallback)
-    {
-        var app = Avalonia.Application.Current;
-        if (app is not null
-            && app.Resources.TryGetResource(key, app.ActualThemeVariant, out var v)
-            && v is IBrush b)
-            return b;
-        return new SolidColorBrush(fallback);
-    }
-    static IBrush TextPrimary   => LookupBrush("TextPrimaryBrush",   Color.FromRgb(0x23, 0x26, 0x2E));
-    static IBrush TextSecondary => LookupBrush("TextSecondaryBrush", Color.FromRgb(0x5A, 0x62, 0x70));
-    static IBrush TextMuted     => LookupBrush("TextMutedBrush",     Color.FromRgb(0x7A, 0x80, 0x8C));
-    static IBrush BorderHair    => LookupBrush("BorderHairlineBrush", Color.FromRgb(0xD3, 0xD7, 0xDF));
-    static IBrush SurfaceRaised => LookupBrush("SurfaceRaisedBrush", Colors.White);
+    // Inspector design tokens — short aliases for the shared Tokens
+    // accessor so the inline call sites stay readable. Tokens itself
+    // resolves against the active theme variant at access time, so the
+    // inspector tracks Light/Dark when rebuilt.
+    static IBrush TextPrimary   => Tokens.TextPrimary;
+    static IBrush TextSecondary => Tokens.TextSecondary;
+    static IBrush TextMuted     => Tokens.TextMuted;
+    static IBrush BorderHair    => Tokens.BorderHairline;
+    static IBrush SurfaceRaised => Tokens.SurfaceRaised;
 
     /// <summary>Inspector header — title + optional subtitle, separated from
     /// the body by a hairline rule. Used by every Build* state so the
@@ -382,8 +373,8 @@ public partial class RoomEditorPanel : UserControl
                 Height = 28,
                 Padding = new Thickness(6, 4),
                 FontSize = 12,
-                Background = new SolidColorBrush(Color.FromRgb(0xF7, 0xF8, 0xFA)),
-                BorderBrush = new SolidColorBrush(Color.FromRgb(0xD3, 0xD7, 0xDF)),
+                Background = Tokens.SurfacePrimary,
+                BorderBrush = Tokens.SurfacePressed,
                 BorderThickness = new Thickness(0, 1, 1, 1),
                 CornerRadius = new Avalonia.CornerRadius(0, 3, 3, 0),
             };
@@ -401,7 +392,7 @@ public partial class RoomEditorPanel : UserControl
         }
 
         // Standard axis colour conventions — red/green/blue at slightly
-        // muted saturation so they don't shout next to the brand blue.
+        // muted saturation so they don't shout next to the AR HUD emerald.
         grid.Children.Add(AxisCell(0, "X", Color.FromRgb(0xD0, 0x46, 0x46),
             x, xRange, v => { curX = v; }));
         grid.Children.Add(AxisCell(1, "Y", Color.FromRgb(0x4D, 0xA8, 0x55),
@@ -515,7 +506,7 @@ public partial class RoomEditorPanel : UserControl
         host.Children.Add(new TextBlock
         {
             Text = $"Room: {(sel.OwningRoomId < 0 ? "outside" : sel.OwningRoomId.ToString())}",
-            Foreground = new SolidColorBrush(Color.FromRgb(110, 110, 120)),
+            Foreground = TextMuted,
             FontSize = 11,
             Margin = new Thickness(0, 0, 0, 6),
         });

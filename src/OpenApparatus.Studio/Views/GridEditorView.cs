@@ -5,6 +5,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
+using OpenApparatus.Studio.Themes;
 using OpenApparatus.Studio.ViewModels;
 
 namespace OpenApparatus.Studio.Views;
@@ -682,9 +683,9 @@ public class GridEditorView : Control
         if (tileSize <= 0) return;
 
         var emptyFill = new SolidColorBrush(Color.FromRgb(248, 248, 250));
-        // Brand-blue tinted fill — matches the selection treatment used on
+        // Emerald accent tinted fill — matches the selection treatment used on
         // walls + objects elsewhere in the editor.
-        var selectedFill = new SolidColorBrush(Color.FromArgb(110, 31, 111, 235));
+        var selectedFill = new SolidColorBrush(Tokens.AccentArgb(110));
         var gridStroke = new Pen(new SolidColorBrush(Color.FromRgb(190, 190, 198)), 1.5);
 
         // Tiles. Floor view uses each room's floor color, Ceiling view uses its
@@ -793,9 +794,9 @@ public class GridEditorView : Control
                     origin.X + xTile * tileSize,
                     origin.Y + (vm.GridLength - zTile) * tileSize);
             }
-            // Selected-wall highlight: brand-blue glow drawn first so the
+            // Selected-wall highlight: emerald accent glow drawn first so the
             // wall pen renders on top of it. Matches selection elsewhere.
-            var selectedHighlightPen = new Pen(new SolidColorBrush(Color.FromArgb(150, 31, 111, 235)), 9.0)
+            var selectedHighlightPen = new Pen(new SolidColorBrush(Tokens.AccentArgb(150)), 9.0)
             {
                 LineCap = PenLineCap.Round,
             };
@@ -1126,7 +1127,7 @@ public class GridEditorView : Control
 
         // Hover + selected room outlines. Drawn after walls so the
         // outline sits on top of every interior tile of the room. Hover
-        // is muted brand-blue; selected is full brand-blue.
+        // is muted emerald accent; selected is full emerald accent.
         if (!vm.IsIsoView)
             DrawRoomAffordances(ctx, vm, origin, tileSize, _hoveredRoomId);
 
@@ -1145,7 +1146,7 @@ public class GridEditorView : Control
     /// Wording differs slightly per mode.</summary>
     public static void DrawEmptyStatePublic(DrawingContext ctx, Size size, Typeface typeface, bool isObjectsMode)
         => DrawEmptyState(ctx, size, typeface, isObjectsMode);
-    /// <summary>Outlines hovered + selected rooms with brand-blue strokes
+    /// <summary>Outlines hovered + selected rooms with emerald accent strokes
     /// so the user gets feedback that rooms are interactive surfaces.
     /// Walks each tile of the room and strokes the outer perimeter
     /// (only edges that don't share a neighbour belonging to the same
@@ -1158,15 +1159,15 @@ public class GridEditorView : Control
         if (hoveredRoomId >= 0 && hoveredRoomId != vm.SelectedRoomId)
         {
             DrawRoomOutline(ctx, vm, origin, tileSize, hoveredRoomId,
-                fill: new SolidColorBrush(Color.FromArgb(30, 31, 111, 235)),
-                stroke: new Pen(new SolidColorBrush(Color.FromArgb(160, 31, 111, 235)), 1.5));
+                fill: new SolidColorBrush(Tokens.AccentArgb(30)),
+                stroke: new Pen(new SolidColorBrush(Tokens.AccentArgb(160)), 1.5));
         }
-        // Selected room — full brand-blue 2.5-px outline + slight tint.
+        // Selected room — full emerald accent 2.5-px outline + slight tint.
         if (vm.SelectedRoomId >= 0)
         {
             DrawRoomOutline(ctx, vm, origin, tileSize, vm.SelectedRoomId,
-                fill: new SolidColorBrush(Color.FromArgb(45, 31, 111, 235)),
-                stroke: new Pen(new SolidColorBrush(Color.FromRgb(31, 111, 235)), 2.5));
+                fill: new SolidColorBrush(Tokens.AccentArgb(45)),
+                stroke: new Pen(new SolidColorBrush(Tokens.AccentColor), 2.5));
         }
     }
 
@@ -1212,14 +1213,14 @@ public class GridEditorView : Control
     /// origin.</summary>
     static void DrawOriginMarker(DrawingContext ctx, Point origin, Typeface typeface)
     {
-        var pen = new Pen(new SolidColorBrush(Color.FromArgb(170, 31, 111, 235)), 1.0);
+        var pen = new Pen(new SolidColorBrush(Tokens.AccentArgb(170)), 1.0);
         const double r = 5;
         ctx.DrawLine(pen, new Point(origin.X - r, origin.Y), new Point(origin.X + r, origin.Y));
         ctx.DrawLine(pen, new Point(origin.X, origin.Y - r), new Point(origin.X, origin.Y + r));
         var fmt = new FormattedText("0, 0",
             System.Globalization.CultureInfo.InvariantCulture,
             FlowDirection.LeftToRight, typeface, 9.5,
-            new SolidColorBrush(Color.FromArgb(180, 31, 111, 235)));
+            new SolidColorBrush(Tokens.AccentArgb(180)));
         ctx.DrawText(fmt, new Point(origin.X + r + 2, origin.Y + 2));
     }
 
@@ -1233,12 +1234,12 @@ public class GridEditorView : Control
         // the title text so the composition reads as one stack.
         double cx = size.Width * 0.5;
         double topY = size.Height * 0.5 - 110;
-        var heroPen = new Pen(new SolidColorBrush(Color.FromArgb(120, 31, 111, 235)), 1.6);
+        var heroPen = new Pen(new SolidColorBrush(Tokens.AccentArgb(120)), 1.6);
         for (int i = 0; i < 3; i++)
         {
             double s = 80 - i * 20;
             ctx.DrawRectangle(
-                i == 0 ? new SolidColorBrush(Color.FromArgb(20, 31, 111, 235)) : null,
+                i == 0 ? new SolidColorBrush(Tokens.AccentArgb(20)) : null,
                 heroPen,
                 new Rect(cx - s * 0.5, topY - s * 0.5, s, s),
                 6, 6);
@@ -1981,9 +1982,9 @@ public class GridEditorView : Control
             DrawObjectIcon(ctx, type.Shape, screen, iconR, fill, border);
             if (selected)
             {
-                // Brand-blue 2-px ring; same treatment as wall + tile selection.
+                // Emerald accent 2-px ring; same treatment as wall + tile selection.
                 ctx.DrawEllipse(null,
-                    new Pen(new SolidColorBrush(Color.FromRgb(31, 111, 235)), 2.0)
+                    new Pen(new SolidColorBrush(Tokens.AccentColor), 2.0)
                     {
                         DashStyle = new DashStyle(new[] { 2.5, 1.5 }, 0),
                     },
