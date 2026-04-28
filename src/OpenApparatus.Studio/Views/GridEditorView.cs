@@ -69,7 +69,7 @@ public class GridEditorView : Control
     bool _isoOrbiting;     // left drag → orbit
     bool _isoPanning;      // middle/right drag → pan pivot
     Point _isoDragStart;
-    float _isoStartYaw, _isoStartPitch, _isoStartPivotX, _isoStartPivotZ;
+    float _isoStartYaw, _isoStartPitch, _isoStartPivotX, _isoStartPivotY, _isoStartPivotZ;
 
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
@@ -88,6 +88,7 @@ public class GridEditorView : Control
             _isoStartYaw     = vm.IsoYaw;
             _isoStartPitch   = vm.IsoPitch;
             _isoStartPivotX  = vm.IsoPivotX;
+            _isoStartPivotY  = vm.IsoPivotY;
             _isoStartPivotZ  = vm.IsoPivotZ;
             if (props.IsMiddleButtonPressed || props.IsRightButtonPressed)
                 _isoPanning = true;
@@ -582,23 +583,27 @@ public class GridEditorView : Control
         }
         if (_isoPanning)
         {
-            // Convert pixel delta to world-space pan, oriented to camera yaw.
-            // Right is +X in screen; up is +Z. Apply yaw to map screen axes
-            // to world XZ. Sensitivity scales with distance so closer views
+            // Pan is split: horizontal drag pans across the ground plane
+            // (XZ, oriented to camera yaw); vertical drag lifts/lowers the
+            // pivot along world Y. This way the user can move the camera
+            // target up/down in world space rather than sliding it along
+            // the ground. Sensitivity scales with distance so closer views
             // pan in finer increments.
             double dx = pos.X - _isoDragStart.X;
             double dy = pos.Y - _isoDragStart.Y;
             float worldPerPx = vm.IsoDistance * 0.0015f;
             float cosY = System.MathF.Cos(vm.IsoYaw);
             float sinY = System.MathF.Sin(vm.IsoYaw);
-            // Screen right vector in world: (cosY, 0, -sinY)
-            // Screen up vector projected into XZ: (sinY, 0, cosY)
-            vm.IsoPivotX = _isoStartPivotX
-                - (float)dx * worldPerPx * cosY
-                + (float)dy * worldPerPx * sinY;
-            vm.IsoPivotZ = _isoStartPivotZ
-                + (float)dx * worldPerPx * sinY
-                + (float)dy * worldPerPx * cosY;
+            // Screen right vector in world XZ: (cosY, 0, -sinY) (with the
+            // sign convention that drag-right moves the scene right, i.e.
+            // the pivot moves left).
+            vm.IsoPivotX = _isoStartPivotX - (float)dx * worldPerPx * cosY;
+            vm.IsoPivotZ = _isoStartPivotZ + (float)dx * worldPerPx * sinY;
+            // Drag-down (dy > 0) raises the pivot, which makes the camera
+            // look at a higher point so the scene visibly shifts down with
+            // the cursor — same "world follows cursor" convention as the
+            // horizontal axis.
+            vm.IsoPivotY = _isoStartPivotY + (float)dy * worldPerPx;
             vm.RaiseEditVersion();
             return;
         }

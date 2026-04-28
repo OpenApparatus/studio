@@ -44,7 +44,12 @@ internal static class Iso3DRenderer
 
     const int LayerFloor  = 0;
     const int LayerWall   = 1;
-    const int LayerObject = 2;
+    // Objects share the wall layer so depth-sort decides per-triangle
+    // ordering between them — otherwise a wall in front of an object would
+    // never occlude it. Floors stay on their own (lower) layer because
+    // their large tris vs small wall tris hit the average-depth artifact
+    // that pure depth sort can't resolve.
+    const int LayerObject = LayerWall;
 
     /// <summary>Public entry point — renders the 3D scene to the
     /// supplied DrawingContext at the requested size. We render 2× the
@@ -131,7 +136,9 @@ internal static class Iso3DRenderer
         }
 
         // ── Camera matrices ────────────────────────────────────────
-        Vector3 pivot = new(vm.IsoPivotX, vm.WallHeight * 0.5f, vm.IsoPivotZ);
+        // Pivot Y starts at mid-wall and is offset by IsoPivotY (driven by
+        // vertical pan), so dragging up/down lifts/lowers the look-at point.
+        Vector3 pivot = new(vm.IsoPivotX, vm.WallHeight * 0.5f + vm.IsoPivotY, vm.IsoPivotZ);
         Vector3 camPos = ComputeCamPos(vm, pivot);
         Matrix4x4 view = Matrix4x4.CreateLookAt(camPos, pivot, Vector3.UnitY);
         float aspect = (float)System.Math.Max(0.0001, size.Width / System.Math.Max(0.0001, size.Height));
@@ -296,6 +303,7 @@ internal static class Iso3DRenderer
         float cx = vm.GridWidth  * vm.TileSize * 0.5f;
         float cz = vm.GridLength * vm.TileSize * 0.5f;
         vm.IsoPivotX = cx;
+        vm.IsoPivotY = 0f;
         vm.IsoPivotZ = cz;
         // Distance: pick something that fits the longest grid extent at
         // 45° fov with a bit of headroom.
