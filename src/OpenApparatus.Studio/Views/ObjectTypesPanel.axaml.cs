@@ -144,14 +144,26 @@ public partial class ObjectTypesPanel : UserControl
             VerticalAlignment = VerticalAlignment.Center,
             MinWidth = 100,
         };
+        // Commit on LostFocus / Enter only. Committing on every TextChanged
+        // bumps EditVersion, which rebuilds the panel and steals focus from
+        // the TextBox after every keystroke.
         string lastCommitted = type.Name;
-        nameBox.TextChanged += (_, _) =>
+        void CommitName()
         {
             var t = (nameBox.Text ?? string.Empty).Trim();
             if (t == lastCommitted) return;
             lastCommitted = t;
             type.Name = t.Length > 0 ? t : $"Object {index + 1}";
             _vm!.OnEditedObjectType();
+        }
+        nameBox.LostFocus += (_, _) => CommitName();
+        nameBox.KeyDown += (_, e) =>
+        {
+            if (e.Key == Avalonia.Input.Key.Enter)
+            {
+                CommitName();
+                e.Handled = true;
+            }
         };
 
         var delBtn = new Button
