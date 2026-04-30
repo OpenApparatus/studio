@@ -1,6 +1,8 @@
 # .NET build outputs
 bin/
 **/obj/
+publish/
+releases/
 
 # IDE / editor
 *.user
