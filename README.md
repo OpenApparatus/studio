@@ -11,9 +11,19 @@ Cross-platform desktop app for authoring, previewing, and exporting OpenApparatu
 - **Save / Load** of `.floorplan.json` files (parameter spec; the floor plan itself is regenerated deterministically from the seed).
 - **Export OBJ** of the assembled 3D geometry, one OBJ object per room, with named groups for floor / walls / ceiling.
 
-## Building and running
+## Install
 
-Requires .NET 8 SDK or newer.
+Pre-built installers are published on the [Releases page](https://github.com/OpenApparatus/studio/releases):
+
+- **Windows** — `OpenApparatusStudio-win-Setup.exe`
+- **macOS (Apple Silicon)** — `OpenApparatusStudio-osx-arm64-Setup.pkg`
+- **macOS (Intel)** — `OpenApparatusStudio-osx-x64-Setup.pkg`
+
+The installer bundles the .NET 8 runtime, so no other prerequisites are required. Updates are delivered automatically via [Velopack](https://velopack.io).
+
+## Building from source
+
+For contributors. Requires the .NET 8 SDK or newer.
 
 ```bash
 # clone alongside openapparatus-core (sibling directory)
@@ -30,6 +40,27 @@ dotnet build -p:OpenApparatusCoreRepo=/path/to/openapparatus-core/
 ```
 
 When `OpenApparatus.Core` ships on NuGet, the local clone requirement goes away.
+
+## Building an installer
+
+CI builds installers for all platforms automatically when a `v*.*.*` tag is pushed (see [.github/workflows/release.yml](.github/workflows/release.yml)). To cut a release:
+
+```bash
+git tag v0.1.0
+git push --tags
+```
+
+To build an installer locally:
+
+```bash
+# Windows
+./scripts/build-installer.ps1 -Version 0.1.0
+
+# macOS / Linux
+./scripts/build-installer.sh 0.1.0
+```
+
+Output lands in `./releases/`.
 
 ## Architecture
 
