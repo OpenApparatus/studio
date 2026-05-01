@@ -4,6 +4,12 @@
 
 Cross-platform desktop app for authoring, previewing, and exporting OpenApparatus floor plans. Built with [Avalonia 11](https://avaloniaui.net/) on .NET 8.
 
+> ## ⚠ Maintenance freeze
+>
+> A browser-based replacement for this app is in active development at [`OpenApparatus/openapparatus-studio-web`](https://github.com/OpenApparatus/openapparatus-studio-web), and will become the primary client once feature parity is reached. From that point this desktop app will be archived.
+>
+> **In the meantime:** only critical bug fixes are being merged. Please do not open PRs for new features or non-trivial UI changes — they would have to be re-ported to the web app and that's a tax we're avoiding by freezing here. Feature ideas should land as issues against the web port instead.
+
 ## What it does (v0.1)
 
 - **Live 2D top-down preview** of a generated floor plan, redrawing on every parameter change.

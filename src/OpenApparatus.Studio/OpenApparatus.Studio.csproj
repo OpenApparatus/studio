@@ -43,5 +43,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="$(OpenApparatusCoreRepo)src\OpenApparatus.Core\OpenApparatus.Core.csproj" />
+    <ProjectReference Include="$(OpenApparatusCoreRepo)src\OpenApparatus.IO\OpenApparatus.IO.csproj" />
   </ItemGroup>
 </Project>

@@ -1752,7 +1752,7 @@ public class GridEditorView : Control
             }
 
             // Objects belonging to this room.
-            var objs = new List<OpenApparatus.Studio.ViewModels.RoomObject>();
+            var objs = new List<RoomObject>();
             foreach (var o in vm.Objects)
                 if (o.OwningRoomId == room.Id) objs.Add(o);
 
