@@ -241,7 +241,7 @@ public partial class RoomEditorPanel : UserControl
     /// <summary>Same chrome as AddInspectorHeader, but with a 26-px swatch
     /// preview on the left showing the object type's colour + a glyph
     /// for its shape. Only used for object selections.</summary>
-    void AddInspectorHeaderWithObjectPreview(string title, string? subtitle, OpenApparatus.Studio.ViewModels.ObjectType? type)
+    void AddInspectorHeaderWithObjectPreview(string title, string? subtitle, ObjectType? type)
     {
         var headerStack = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, Margin = new Thickness(0, 0, 0, subtitle is null ? 8 : 2) };
         if (type is not null)
@@ -417,15 +417,15 @@ public partial class RoomEditorPanel : UserControl
         return n.Y > 0 ? "south" : "north";
     }
 
-    static string ShapeGlyph(OpenApparatus.Studio.ViewModels.ObjectShape shape) => shape switch
+    static string ShapeGlyph(ObjectShape shape) => shape switch
     {
-        OpenApparatus.Studio.ViewModels.ObjectShape.Cube          => "■",
-        OpenApparatus.Studio.ViewModels.ObjectShape.Sphere        => "●",
-        OpenApparatus.Studio.ViewModels.ObjectShape.Cylinder      => "▮",
-        OpenApparatus.Studio.ViewModels.ObjectShape.SquatCylinder => "▬",
-        OpenApparatus.Studio.ViewModels.ObjectShape.Cone          => "▲",
-        OpenApparatus.Studio.ViewModels.ObjectShape.Capsule       => "⬭",
-        OpenApparatus.Studio.ViewModels.ObjectShape.Pyramid       => "◆",
+        ObjectShape.Cube          => "■",
+        ObjectShape.Sphere        => "●",
+        ObjectShape.Cylinder      => "▮",
+        ObjectShape.SquatCylinder => "▬",
+        ObjectShape.Cone          => "▲",
+        ObjectShape.Capsule       => "⬭",
+        ObjectShape.Pyramid       => "◆",
         _ => "?",
     };
 
@@ -560,7 +560,7 @@ public partial class RoomEditorPanel : UserControl
 
     /// <summary>Apply a side-effecting change to the selected object's mutable
     /// fields, then bump EditVersion so the editor view repaints.</summary>
-    void MutateSelectedObject(System.Action<OpenApparatus.Studio.ViewModels.RoomObject> change)
+    void MutateSelectedObject(System.Action<RoomObject> change)
     {
         var sel = _vm?.SelectedObject;
         if (sel is null) return;
@@ -568,7 +568,7 @@ public partial class RoomEditorPanel : UserControl
         _vm!.OnEditedSelectedObject();
     }
 
-    Control TypeRow(int index, OpenApparatus.Studio.ViewModels.ObjectType type)
+    Control TypeRow(int index, ObjectType type)
     {
         // 30×30 swatch button — clicking opens the shape/color picker.
         var swatchBtn = new Button
@@ -763,7 +763,7 @@ public partial class RoomEditorPanel : UserControl
             foreach (var adj in _vm.SelectedRoomAdjacencies)
             {
                 int wallNum = idx++;
-                var key = OpenApparatus.Studio.Services.GltfExporter.WallColorKey(roomId, adj);
+                var key = GltfExporter.WallColorKey(roomId, adj);
                 System.Numerics.Vector3? cur = _vm.WallColors.TryGetValue(key, out var v) ? v : null;
                 var capturedAdj = adj;
                 string dir = WallCompassDirection(adj);

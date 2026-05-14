@@ -1597,9 +1597,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
     /// <summary>Snapshots passage overrides into a flat list of entries
     /// keyed by world-mm Start coordinates. Used by ProjectIO.Save.</summary>
-    public List<OpenApparatus.Studio.Services.PassageOverrideEntry> SerializePassageOverrides()
+    public List<PassageOverrideEntry> SerializePassageOverrides()
     {
-        var list = new List<OpenApparatus.Studio.Services.PassageOverrideEntry>();
+        var list = new List<PassageOverrideEntry>();
         foreach (var kv in _passageOverrides)
         {
             var (passage, start) = kv.Value;
@@ -1616,7 +1616,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 Passage.Doorway => "Doorway",
                 _ => "Closed",
             };
-            var entry = new OpenApparatus.Studio.Services.PassageOverrideEntry
+            var entry = new PassageOverrideEntry
             {
                 StartX = start.X, StartZ = start.Y,
                 EndX = endX, EndZ = endZ,
@@ -1625,7 +1625,7 @@ public partial class MainWindowViewModel : ViewModelBase
             if (passage is Passage.Doorway d)
             {
                 entry.Openings = d.Openings.Select(o =>
-                    new OpenApparatus.Studio.Services.OpeningEntry
+                    new OpeningEntry
                     {
                         Offset = o.OffsetAlongEdge,
                         Width = o.Width,
@@ -1640,9 +1640,85 @@ public partial class MainWindowViewModel : ViewModelBase
         return list;
     }
 
+    /// <summary>Snapshots the entire VM state into a serializable
+    /// <see cref="ProjectFile"/>. Hand the result to <see cref="ProjectIO.Save"/>
+    /// (or <see cref="ProjectIO.Stringify"/>) to persist; the round-trip
+    /// reconstructs the canvas exactly via <see cref="RestoreFromProjectFile"/>.</summary>
+    public ProjectFile ToProjectFile()
+    {
+        var f = new ProjectFile
+        {
+            Title = ProjectTitle,
+            GridWidth = GridWidth,
+            GridLength = GridLength,
+            TileSize = TileSize,
+            WallThickness = WallThickness,
+            WallHeight = WallHeight,
+            DoorWidth = DoorWidth,
+            DoorHeight = DoorHeight,
+            WindowWidth = WindowWidth,
+            WindowHeight = WindowHeight,
+            WindowSillHeight = WindowSillHeight,
+            GridSubdivision = GridSubdivision,
+            DefaultObjectY = DefaultObjectY,
+            DefaultFloorColor = ColorToArr(DefaultFloorColor),
+            DefaultCeilingColor = ColorToArr(DefaultCeilingColor),
+            CameraView = CameraView.ToString(),
+            ZoomFactor = ZoomFactor,
+            PanOffsetX = PanOffsetX,
+            PanOffsetY = PanOffsetY,
+            IsoYaw = IsoYaw,
+            IsoPitch = IsoPitch,
+            IsoDistance = IsoDistance,
+            IsoPivotX = IsoPivotX,
+            IsoPivotY = IsoPivotY,
+            IsoPivotZ = IsoPivotZ,
+            Constraints = Constraints,
+        };
+
+        // Flatten RoomGrid.
+        var grid = new int[GridWidth * GridLength];
+        for (int x = 0; x < GridWidth; x++)
+            for (int z = 0; z < GridLength; z++)
+                grid[x * GridLength + z] = RoomGrid[x, z];
+        f.RoomGrid = grid;
+
+        f.RoomFloorColors      = RoomFloorColors.ToDictionary(kv => kv.Key, kv => ColorToArr(kv.Value));
+        f.RoomCeilingColors    = RoomCeilingColors.ToDictionary(kv => kv.Key, kv => ColorToArr(kv.Value));
+        f.RoomSingleWallColors = RoomSingleWallColors.ToDictionary(kv => kv.Key, kv => ColorToArr(kv.Value));
+        f.RoomNames            = RoomNames.ToDictionary(kv => kv.Key, kv => kv.Value);
+        f.MultiColorRoomIds    = MultiColorRoomIds.ToList();
+
+        f.WallColors = WallColors.ToDictionary(
+            kv => $"{kv.Key.RoomId}_{kv.Key.MidX}_{kv.Key.MidZ}",
+            kv => ColorToArr(kv.Value));
+
+        f.PassageOverrides = SerializePassageOverrides();
+
+        f.ObjectTypes = ObjectTypes
+            .Select(t => new ObjectTypeEntry
+            {
+                Name = t.Name,
+                Shape = t.Shape.ToString(),
+                Color = ColorToArr(t.Color),
+                Size = t.Size,
+            }).ToList();
+        f.Objects = Objects
+            .Select(o => new ObjectInstanceEntry
+            {
+                Slot = o.Slot,
+                OwningRoomId = o.OwningRoomId,
+                X = o.Position.X, Y = o.Position.Y, Z = o.Position.Z,
+                Rotation = o.Rotation,
+            }).ToList();
+        return f;
+
+        static float[] ColorToArr(System.Numerics.Vector3 v) => new[] { v.X, v.Y, v.Z };
+    }
+
     /// <summary>Replaces the entire VM state with the contents of a
     /// project file. Used by ProjectIO.Load.</summary>
-    public void RestoreFromProjectFile(OpenApparatus.Studio.Services.ProjectFile f)
+    public void RestoreFromProjectFile(ProjectFile f)
     {
         // Push undo so the user can step back to whatever was open.
         PushUndo();
@@ -1785,7 +1861,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 {
                     "Open" => Passage.Open.Instance,
                     "Doorway" => new Passage.Doorway(
-                        (po.Openings ?? new List<OpenApparatus.Studio.Services.OpeningEntry>())
+                        (po.Openings ?? new List<OpeningEntry>())
                         .Select(o => new Opening(
                             offsetAlongEdge: o.Offset,
                             width: o.Width,
@@ -2731,7 +2807,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         try
         {
-            OpenApparatus.Studio.Services.ProjectIO.Save(ProjectFilePath, this);
+            ProjectIO.Save(ProjectFilePath, ToProjectFile());
             HasUnsavedChanges = false;
             OpenApparatus.Studio.Services.Toasts.Default.ShowSuccess(
                 $"Saved → {System.IO.Path.GetFileName(ProjectFilePath)}");
@@ -2750,7 +2826,7 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             Title = "Save scene",
             SuggestedFileName = string.IsNullOrEmpty(ProjectTitle) ? "scene" : ProjectTitle,
-            DefaultExtension = OpenApparatus.Studio.Services.ProjectIO.FileExtension.TrimStart('.'),
+            DefaultExtension = ProjectIO.FileExtension.TrimStart('.'),
             FileTypeChoices = new[]
             {
                 new FilePickerFileType("OpenApparatus project (*.oapp)")
@@ -2762,7 +2838,7 @@ public partial class MainWindowViewModel : ViewModelBase
         try
         {
             string path = file.Path.LocalPath;
-            OpenApparatus.Studio.Services.ProjectIO.Save(path, this);
+            ProjectIO.Save(path, ToProjectFile());
             ProjectFilePath = path;
             ProjectTitle = System.IO.Path.GetFileNameWithoutExtension(path);
             HasUnsavedChanges = false;
@@ -2799,7 +2875,7 @@ public partial class MainWindowViewModel : ViewModelBase
         try
         {
             string path = file.Path.LocalPath;
-            OpenApparatus.Studio.Services.ProjectIO.Load(path, this);
+            RestoreFromProjectFile(ProjectIO.Load(path));
             ProjectFilePath = path;
             ProjectTitle = System.IO.Path.GetFileNameWithoutExtension(path);
             var settings = OpenApparatus.Studio.Services.AppSettings.LoadOrDefault();
@@ -2850,7 +2926,7 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         try
         {
-            OpenApparatus.Studio.Services.ProjectIO.Load(path, this);
+            RestoreFromProjectFile(ProjectIO.Load(path));
             ProjectFilePath = path;
             ProjectTitle = System.IO.Path.GetFileNameWithoutExtension(path);
             var settings = OpenApparatus.Studio.Services.AppSettings.LoadOrDefault();
