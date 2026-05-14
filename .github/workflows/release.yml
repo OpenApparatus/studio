@@ -1,17 +1,20 @@
 name: Release
 
-# Builds Velopack installers for Windows + macOS (x64 + arm64) on every tag
-# matching v*.*.* and uploads them as a GitHub Release.
+# Builds self-contained Studio binaries for Windows + macOS (x64 + arm64)
+# on every tag matching v*.*.*, zips them, and attaches the zips to a
+# GitHub Release.
 #
 # Usage:
 #   git tag v0.1.0
 #   git push --tags
 #
-# Outputs (per platform) attached to the release:
-#   - OpenApparatusStudio-win-Setup.exe
-#   - OpenApparatusStudio-osx-x64-Setup.pkg
-#   - OpenApparatusStudio-osx-arm64-Setup.pkg
-#   - Plus full + delta .nupkg update artifacts (consumed by the in-app updater)
+# Outputs attached to the release:
+#   - OpenApparatusStudio-<version>-win-x64.zip   (extract, run OpenApparatus.Studio.exe)
+#   - OpenApparatusStudio-<version>-osx-x64.zip   (extract, double-click the .app bundle)
+#   - OpenApparatusStudio-<version>-osx-arm64.zip (extract, double-click the .app bundle)
+#
+# Builds are unsigned. Windows SmartScreen will warn on first run; macOS
+# Gatekeeper will block until the user right-clicks the .app and chooses Open.
 
 on:
   push:
@@ -29,9 +32,7 @@ permissions:
 
 env:
   STUDIO_PROJECT: src/OpenApparatus.Studio/OpenApparatus.Studio.csproj
-  PACK_ID: OpenApparatusStudio
-  PACK_TITLE: OpenApparatus Studio
-  PACK_AUTHORS: OpenApparatus
+  APP_NAME: OpenApparatusStudio
 
 jobs:
   build:
@@ -41,16 +42,10 @@ jobs:
         include:
           - os: windows-latest
             rid: win-x64
-            channel: win
-            artifact: win
           - os: macos-latest
             rid: osx-x64
-            channel: osx-x64
-            artifact: osx-x64
           - os: macos-latest
             rid: osx-arm64
-            channel: osx-arm64
-            artifact: osx-arm64
 
     runs-on: ${{ matrix.os }}
 
@@ -83,12 +78,9 @@ jobs:
             VERSION="${{ inputs.version }}"
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Building version $VERSION"
+          echo "Building version $VERSION for ${{ matrix.rid }}"
 
-      - name: Install Velopack CLI
-        run: dotnet tool install -g vpk
-
-      - name: Publish (${{ matrix.rid }})
+      - name: Publish
         shell: bash
         working-directory: openapparatus-studio
         run: |
@@ -99,44 +91,61 @@ jobs:
             -p:OpenApparatusCoreRepo="$GITHUB_WORKSPACE/openapparatus-core/" \
             -o publish
 
-      - name: Pack (Windows)
-        if: runner.os == 'Windows'
-        shell: bash
-        working-directory: openapparatus-studio
-        run: |
-          vpk pack \
-            --packId "$PACK_ID" \
-            --packTitle "$PACK_TITLE" \
-            --packAuthors "$PACK_AUTHORS" \
-            --packVersion "${{ steps.version.outputs.version }}" \
-            --packDir publish \
-            --mainExe OpenApparatus.Studio.exe \
-            --channel ${{ matrix.channel }} \
-            --outputDir releases
-
-      - name: Pack (macOS)
+      # On macOS, wrap the published binary in a minimal .app bundle so
+      # Finder will launch it on double-click. Without the bundle users
+      # would have to invoke the binary from Terminal, which isn't the
+      # "extract and run" experience the rest of the package targets.
+      - name: Wrap macOS app bundle
         if: runner.os == 'macOS'
         shell: bash
         working-directory: openapparatus-studio
         run: |
-          # On macOS, Velopack expects the publish output to be wrapped in a .app bundle
-          # before packing. `vpk pack` handles bundle generation when --packDir points at
-          # the publish output and --mainExe is the platform binary name.
-          vpk pack \
-            --packId "$PACK_ID" \
-            --packTitle "$PACK_TITLE" \
-            --packAuthors "$PACK_AUTHORS" \
-            --packVersion "${{ steps.version.outputs.version }}" \
-            --packDir publish \
-            --mainExe OpenApparatus.Studio \
-            --channel ${{ matrix.channel }} \
-            --outputDir releases
+          BUNDLE="bundle/$APP_NAME.app"
+          mkdir -p "$BUNDLE/Contents/MacOS"
+          mkdir -p "$BUNDLE/Contents/Resources"
+          cp -R publish/* "$BUNDLE/Contents/MacOS/"
+          chmod +x "$BUNDLE/Contents/MacOS/OpenApparatus.Studio"
+          cat > "$BUNDLE/Contents/Info.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleExecutable</key><string>OpenApparatus.Studio</string>
+            <key>CFBundleIdentifier</key><string>org.openapparatus.studio</string>
+            <key>CFBundleName</key><string>OpenApparatus Studio</string>
+            <key>CFBundlePackageType</key><string>APPL</string>
+            <key>CFBundleShortVersionString</key><string>${{ steps.version.outputs.version }}</string>
+            <key>CFBundleVersion</key><string>${{ steps.version.outputs.version }}</string>
+            <key>NSHighResolutionCapable</key><true/>
+          </dict>
+          </plist>
+          PLIST
+
+      - name: Zip (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        working-directory: openapparatus-studio
+        run: |
+          $name = "$env:APP_NAME-${{ steps.version.outputs.version }}-${{ matrix.rid }}.zip"
+          New-Item -ItemType Directory -Force -Path releases | Out-Null
+          Compress-Archive -Path publish/* -DestinationPath "releases/$name"
+
+      - name: Zip (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        working-directory: openapparatus-studio
+        run: |
+          NAME="$APP_NAME-${{ steps.version.outputs.version }}-${{ matrix.rid }}.zip"
+          mkdir -p releases
+          # `ditto` preserves the macOS-specific bundle metadata that `zip`
+          # can lose; produces a Finder-friendly archive.
+          (cd bundle && ditto -c -k --sequesterRsrc --keepParent "$APP_NAME.app" "../releases/$NAME")
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: velopack-${{ matrix.artifact }}
-          path: openapparatus-studio/releases/**
+          name: build-${{ matrix.rid }}
+          path: openapparatus-studio/releases/*.zip
           if-no-files-found: error
 
   release:
@@ -152,7 +161,7 @@ jobs:
       - name: Flatten release files
         run: |
           mkdir -p release-files
-          find artifacts -type f \( -name '*.exe' -o -name '*.pkg' -o -name '*.dmg' -o -name '*.nupkg' -o -name 'RELEASES*' \) -exec cp {} release-files/ \;
+          find artifacts -name '*.zip' -exec cp {} release-files/ \;
           ls -la release-files
 
       - name: Create GitHub Release
