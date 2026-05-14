@@ -13,13 +13,15 @@ Cross-platform desktop app for authoring, previewing, and exporting OpenApparatu
 
 ## Install
 
-Pre-built installers are published on the [Releases page](https://github.com/OpenApparatus/studio/releases):
+Pre-built zips are attached to the [Releases page](https://github.com/OpenApparatus/studio/releases):
 
-- **Windows** — `OpenApparatusStudio-win-Setup.exe`
-- **macOS (Apple Silicon)** — `OpenApparatusStudio-osx-arm64-Setup.pkg`
-- **macOS (Intel)** — `OpenApparatusStudio-osx-x64-Setup.pkg`
+- **Windows** — `OpenApparatusStudio-<version>-win-x64.zip`. Extract anywhere, run `OpenApparatus.Studio.exe`.
+- **macOS (Apple Silicon)** — `OpenApparatusStudio-<version>-osx-arm64.zip`. Extract and double-click `OpenApparatusStudio.app`.
+- **macOS (Intel)** — `OpenApparatusStudio-<version>-osx-x64.zip`. Same.
 
-The installer bundles the .NET 8 runtime, so no other prerequisites are required. Updates are delivered automatically via [Velopack](https://velopack.io).
+The build is self-contained (.NET 8 runtime included) — no separate runtime install needed.
+
+Builds are unsigned. On first run, Windows SmartScreen will warn ("Don't run" / "More info" → "Run anyway") and macOS Gatekeeper will block (right-click the .app, choose Open, then Open again at the dialog). Once accepted, the OS remembers.
 
 ## Building from source
 
@@ -41,26 +43,23 @@ dotnet build -p:OpenApparatusCoreRepo=/path/to/openapparatus-core/
 
 When `OpenApparatus.Core` ships on NuGet, the local clone requirement goes away.
 
-## Building an installer
+## Cutting a release
 
-CI builds installers for all platforms automatically when a `v*.*.*` tag is pushed (see [.github/workflows/release.yml](.github/workflows/release.yml)). To cut a release:
+CI builds and zips for every supported platform on tag push, then attaches the zips to a GitHub Release (see [.github/workflows/release.yml](.github/workflows/release.yml)):
 
 ```bash
 git tag v0.1.0
 git push --tags
 ```
 
-To build an installer locally:
+To build a release zip locally instead:
 
 ```bash
-# Windows
-./scripts/build-installer.ps1 -Version 0.1.0
-
-# macOS / Linux
-./scripts/build-installer.sh 0.1.0
+dotnet publish src/OpenApparatus.Studio -c Release -r win-x64 --self-contained true -o publish
+# then zip the publish/ folder
 ```
 
-Output lands in `./releases/`.
+Substitute `osx-x64` or `osx-arm64` for macOS. On macOS, wrap `publish/` inside an `.app` bundle before zipping if you want Finder-launchable output.
 
 ## Architecture
 
