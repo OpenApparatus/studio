@@ -266,18 +266,27 @@ public partial class MainWindowViewModel : ViewModelBase
     partial void OnUseRandomDefaultWallColorChanged(bool value)
         => OnPropertyChanged(nameof(WallDefaultBrush));
 
-    /// <summary>Hue-rotated random Vector3 colour at S=0.55, V=0.82.
-    /// Bright enough to be distinguishable but desaturated enough not to
-    /// clash with floor / ceiling palettes.</summary>
+    /// <summary>Hue-stepped Vector3 colour. Advances by the golden-ratio
+    /// conjugate (~0.618) per call so each successive room lands ~222°
+    /// around the wheel from the last — guarantees visually distinct
+    /// neighbours instead of the random-RNG clusters (two greens in a
+    /// row, two blues) the old NextDouble-on-every-call version produced.
+    /// Saturation and value are lightly jittered so back-to-back rooms
+    /// read as different shades, not just different hues.</summary>
     static System.Numerics.Vector3 PickRandomWallColor()
     {
-        // Use a deterministic-seeded RNG that rolls forward each call so
-        // adjacent rooms get visibly different hues.
         s_wallRng ??= new System.Random();
-        float h = (float)s_wallRng.NextDouble();
-        return HsvToRgbVec3(h, 0.55f, 0.82f);
+        // Randomise the starting hue once per process so the first room
+        // isn't always the same colour.
+        if (s_lastHue < 0f) s_lastHue = (float)s_wallRng.NextDouble();
+        const float Phi = 0.61803398875f;
+        s_lastHue = (s_lastHue + Phi) % 1f;
+        float s = 0.50f + (float)s_wallRng.NextDouble() * 0.18f; // 0.50–0.68
+        float v = 0.78f + (float)s_wallRng.NextDouble() * 0.10f; // 0.78–0.88
+        return HsvToRgbVec3(s_lastHue, s, v);
     }
     static System.Random? s_wallRng;
+    static float s_lastHue = -1f;
     static System.Numerics.Vector3 HsvToRgbVec3(float h, float s, float v)
     {
         h = (h % 1f + 1f) % 1f;
