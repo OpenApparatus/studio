@@ -75,6 +75,22 @@ public partial class ObjectTypesPanel : UserControl
         for (int i = 0; i < _vm.ObjectTypes.Count; i++)
             Body.Children.Add(TypeRow(i, _vm.ObjectTypes[i]));
 
+        // Item-info toggle — draws each object's GlobalID / TypeID / CustomID /
+        // Name beside its icon on the canvas. Overlapping values render red.
+        var infoToggle = new CheckBox
+        {
+            Content = "Show item info",
+            IsChecked = _vm.ShowItemInfo,
+            Margin = new Thickness(0, 10, 0, 0),
+        };
+        ToolTip.SetTip(infoToggle,
+            "Display each object's IDs and name beside it. Overlapping values are red.");
+        infoToggle.IsCheckedChanged += (_, _) =>
+        {
+            if (_vm is not null) _vm.ShowItemInfo = infoToggle.IsChecked == true;
+        };
+        Body.Children.Add(infoToggle);
+
         var addBtn = new Button
         {
             Content = "+ Add type",
