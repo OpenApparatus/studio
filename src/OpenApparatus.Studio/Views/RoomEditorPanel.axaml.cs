@@ -511,6 +511,16 @@ public partial class RoomEditorPanel : UserControl
             Margin = new Thickness(0, 0, 0, 6),
         });
 
+        // Identity fields — all user-editable, none uniqueness-enforced.
+        host.Children.Add(BuildObjectTextRow("Global ID", sel.GlobalId,
+            v => MutateSelectedObject(o => o.GlobalId = v)));
+        host.Children.Add(BuildObjectTextRow("Type ID", sel.TypeId,
+            v => MutateSelectedObject(o => o.TypeId = v)));
+        host.Children.Add(BuildObjectTextRow("Custom ID", sel.CustomId,
+            v => MutateSelectedObject(o => o.CustomId = v)));
+        host.Children.Add(BuildObjectTextRow("Name", sel.Name,
+            v => MutateSelectedObject(o => o.Name = v)));
+
         // Position — single horizontal row with X/Y/Z side-by-side, each
         // labelled in its axis colour (Unity / Blender / Houdini convention:
         // red X, green Y, blue Z). Reads as one transform unit instead of
@@ -566,6 +576,45 @@ public partial class RoomEditorPanel : UserControl
         if (sel is null) return;
         change(sel);
         _vm!.OnEditedSelectedObject();
+    }
+
+    /// <summary>A labelled single-line text editor for an object identity
+    /// field. Commits on LostFocus / Enter only — committing per keystroke
+    /// would bump EditVersion and rebuild the panel mid-edit.</summary>
+    Control BuildObjectTextRow(string label, string value, System.Action<string> commit)
+    {
+        var holder = new StackPanel { Margin = new Thickness(0, 0, 0, 6) };
+        holder.Children.Add(new TextBlock
+        {
+            Text = label,
+            FontSize = 11,
+            Foreground = TextSecondary,
+            Margin = new Thickness(0, 0, 0, 2),
+        });
+        var box = new TextBox
+        {
+            Text = value,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+        };
+        string lastCommitted = value;
+        void Commit()
+        {
+            var t = box.Text ?? string.Empty;
+            if (t == lastCommitted) return;
+            lastCommitted = t;
+            commit(t);
+        }
+        box.LostFocus += (_, _) => Commit();
+        box.KeyDown += (_, e) =>
+        {
+            if (e.Key == Avalonia.Input.Key.Enter)
+            {
+                Commit();
+                e.Handled = true;
+            }
+        };
+        holder.Children.Add(box);
+        return holder;
     }
 
     Control TypeRow(int index, ObjectType type)

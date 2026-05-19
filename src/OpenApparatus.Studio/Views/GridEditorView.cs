@@ -1153,7 +1153,7 @@ public class GridEditorView : Control
         // Object icons — drawn last so they sit on top of room labels in
         // Objects mode. In Floor / Ceiling mode they still render, dimmed,
         // so the user always sees what's been placed.
-        DrawObjects(ctx, vm, origin, tileSize);
+        DrawObjects(ctx, vm, origin, tileSize, typeface);
 
         // Constraint zones (door annular wedges, object exclusion discs) and
         // violator rings — drawn before the measurement labels so the labels
@@ -2002,10 +2002,31 @@ public class GridEditorView : Control
         ctx.DrawText(fmt, new Point(rect.X + padX, rect.Y + padY));
     }
 
-    static void DrawObjects(DrawingContext ctx, MainWindowViewModel vm, Point origin, double tileSize)
+    static void DrawObjects(DrawingContext ctx, MainWindowViewModel vm, Point origin, double tileSize, Typeface typeface)
     {
         if (vm.Objects.Count == 0) return;
         bool dim = !vm.IsObjectsMode;
+        bool showInfo = vm.ShowItemInfo && vm.IsObjectsMode;
+
+        // Overlap detection for the info labels: a value is "overlapping" when
+        // it appears on more than one object. TypeID is scoped per type (the
+        // 0,1,2… sequence restarts for each object type); the rest are global.
+        Dictionary<string, int>? globalIdCounts = null, customIdCounts = null, nameCounts = null;
+        Dictionary<(int, string), int>? typeIdCounts = null;
+        if (showInfo)
+        {
+            globalIdCounts = new(); customIdCounts = new(); nameCounts = new();
+            typeIdCounts = new();
+            foreach (var o in vm.Objects)
+            {
+                globalIdCounts[o.GlobalId] = globalIdCounts.GetValueOrDefault(o.GlobalId) + 1;
+                customIdCounts[o.CustomId] = customIdCounts.GetValueOrDefault(o.CustomId) + 1;
+                nameCounts[o.Name] = nameCounts.GetValueOrDefault(o.Name) + 1;
+                var tk = (o.Slot, o.TypeId);
+                typeIdCounts[tk] = typeIdCounts.GetValueOrDefault(tk) + 1;
+            }
+        }
+
         for (int i = 0; i < vm.Objects.Count; i++)
         {
             var o = vm.Objects[i];
@@ -2036,6 +2057,56 @@ public class GridEditorView : Control
                     },
                     screen, iconR + 5, iconR + 5);
             }
+
+            if (showInfo)
+            {
+                var lines = new (string Text, bool Overlap)[]
+                {
+                    ($"G: {o.GlobalId}", globalIdCounts![o.GlobalId] > 1),
+                    ($"T: {o.TypeId}",  typeIdCounts![(o.Slot, o.TypeId)] > 1),
+                    (o.CustomId,        customIdCounts![o.CustomId] > 1),
+                    (o.Name,            nameCounts![o.Name] > 1),
+                };
+                DrawObjectInfoLabel(ctx, typeface, lines,
+                    new Point(screen.X + iconR + 4, screen.Y));
+            }
+        }
+    }
+
+    /// <summary>Renders an object's identity fields as a small stacked label.
+    /// Each line is green by default, red when its value overlaps another
+    /// object. A faint backing panel keeps the text legible over the grid.</summary>
+    static void DrawObjectInfoLabel(
+        DrawingContext ctx, Typeface typeface, (string Text, bool Overlap)[] lines, Point anchor)
+    {
+        const double fontSize = 9.0;
+        var ok = new SolidColorBrush(Color.FromRgb(0x2E, 0x7D, 0x32));
+        var bad = new SolidColorBrush(Color.FromRgb(0xC8, 0x28, 0x28));
+
+        var fmts = new FormattedText[lines.Length];
+        double maxW = 0, totalH = 0;
+        for (int i = 0; i < lines.Length; i++)
+        {
+            fmts[i] = new FormattedText(lines[i].Text,
+                System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                typeface, fontSize, lines[i].Overlap ? bad : ok);
+            maxW = System.Math.Max(maxW, fmts[i].Width);
+            totalH += fmts[i].Height;
+        }
+        const double padX = 3.0, padY = 2.0;
+        // Centre the panel vertically on the object's icon.
+        var panel = new Rect(
+            anchor.X, anchor.Y - totalH * 0.5 - padY,
+            maxW + padX * 2, totalH + padY * 2);
+        ctx.DrawRectangle(
+            new SolidColorBrush(Color.FromArgb(225, 250, 250, 250)),
+            new Pen(new SolidColorBrush(Color.FromArgb(225, 200, 200, 205)), 0.8),
+            panel, 2, 2);
+        double y = panel.Y + padY;
+        for (int i = 0; i < fmts.Length; i++)
+        {
+            ctx.DrawText(fmts[i], new Point(panel.X + padX, y));
+            y += fmts[i].Height;
         }
     }
 

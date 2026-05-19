@@ -333,6 +333,13 @@ public partial class MainWindowViewModel : ViewModelBase
     public bool IsObjectsMode => EditMode == EditModeKind.Object;
     public bool IsLayoutMode => EditMode == EditModeKind.Layout;
 
+    /// <summary>When true (Object mode only), the editor draws each object's
+    /// identity fields — GlobalID, TypeID, CustomID, Name — as small text
+    /// beside its icon. Toggled from the Object-types panel.</summary>
+    [ObservableProperty] bool _showItemInfo;
+
+    partial void OnShowItemInfoChanged(bool value) => EditVersion++;
+
     /// <summary>Whether the keyboard-shortcut help overlay is showing. F1
     /// toggles, Esc dismisses (handled in MainWindow code-behind).</summary>
     [ObservableProperty] bool _isShortcutOverlayVisible;
@@ -573,6 +580,28 @@ public partial class MainWindowViewModel : ViewModelBase
         EditVersion++;
     }
 
+    /// <summary>Next default <see cref="RoomObject.GlobalId"/> — the largest
+    /// numeric GlobalId already in use plus one (0 when none parse). Non-numeric
+    /// user-edited ids are ignored; uniqueness is not enforced.</summary>
+    int NextGlobalId()
+    {
+        int next = 0;
+        foreach (var o in _objects)
+            if (int.TryParse(o.GlobalId, out int v) && v >= next) next = v + 1;
+        return next;
+    }
+
+    /// <summary>Next default <see cref="RoomObject.TypeId"/> for objects of
+    /// <paramref name="slot"/> — the largest numeric TypeId among same-slot
+    /// objects plus one (0 when none parse).</summary>
+    int NextTypeId(int slot)
+    {
+        int next = 0;
+        foreach (var o in _objects)
+            if (o.Slot == slot && int.TryParse(o.TypeId, out int v) && v >= next) next = v + 1;
+        return next;
+    }
+
     /// <summary>Sub-cell side length in metres at the current subdivision.</summary>
     public float SubCellSize => TileSize / System.Math.Max(1, GridSubdivision);
 
@@ -628,12 +657,18 @@ public partial class MainWindowViewModel : ViewModelBase
             }
         }
         PushUndo();
+        string globalId = NextGlobalId().ToString();
+        string typeId = NextTypeId(slot).ToString();
         var obj = new RoomObject
         {
             OwningRoomId = roomId,
             Slot = slot,
             Position = new System.Numerics.Vector3(center2.X, DefaultObjectY, center2.Y),
             Rotation = 0f,
+            GlobalId = globalId,
+            TypeId = typeId,
+            CustomId = $"{globalId}_{typeId}",
+            Name = $"{typeForPlacement.Name}_{globalId}_{typeId}",
         };
         _objects.Add(obj);
         SelectedObjectIndex = _objects.Count - 1;
@@ -1719,6 +1754,10 @@ public partial class MainWindowViewModel : ViewModelBase
                 OwningRoomId = o.OwningRoomId,
                 X = o.Position.X, Y = o.Position.Y, Z = o.Position.Z,
                 Rotation = o.Rotation,
+                GlobalId = o.GlobalId,
+                TypeId = o.TypeId,
+                CustomId = o.CustomId,
+                Name = o.Name,
             }).ToList();
         return f;
 
@@ -1825,14 +1864,41 @@ public partial class MainWindowViewModel : ViewModelBase
         _objects.Clear();
         if (f.Objects is not null)
         {
+            // Identity fields were added after the first releases. Files
+            // saved before then carry null/empty ids — backfill sequential
+            // defaults so older apparatus stay usable and consistent.
+            int backfillGlobal = 0;
+            var backfillType = new Dictionary<int, int>();
             foreach (var o in f.Objects)
+            {
+                string globalId = o.GlobalId ?? "";
+                string typeId = o.TypeId ?? "";
+                string customId = o.CustomId ?? "";
+                string name = o.Name ?? "";
+                if (globalId.Length == 0 && typeId.Length == 0 &&
+                    customId.Length == 0 && name.Length == 0)
+                {
+                    int gid = backfillGlobal++;
+                    backfillType.TryGetValue(o.Slot, out int tid);
+                    backfillType[o.Slot] = tid + 1;
+                    globalId = gid.ToString();
+                    typeId = tid.ToString();
+                    customId = $"{globalId}_{typeId}";
+                    var t = GetObjectType(o.Slot);
+                    name = $"{t?.Name ?? "Object"}_{globalId}_{typeId}";
+                }
                 _objects.Add(new RoomObject
                 {
                     Slot = o.Slot,
                     OwningRoomId = o.OwningRoomId,
                     Position = new System.Numerics.Vector3(o.X, o.Y, o.Z),
                     Rotation = o.Rotation,
+                    GlobalId = globalId,
+                    TypeId = typeId,
+                    CustomId = customId,
+                    Name = name,
                 });
+            }
         }
 
         // Camera.
